@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ielts.fullname" . }}
+  labels:
+    {{- include "ielts.labels" . | nindent 4 }}
+spec:
+  # SQLite chỉ cho phép một tiến trình ghi → 1 bản sao, dừng bản cũ trước khi chạy bản mới
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "ielts.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/vapid: {{ printf "%s%s" .Values.vapid.publicKey .Values.vapid.privateKey | sha256sum | trunc 16 }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "ielts.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ielts.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: app
+          image: {{ include "ielts.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "4000"
+            - name: DB_PATH
+              value: /data/ielts-learn.db
+            - name: TZ
+              value: {{ .Values.config.timezone | quote }}
+            - name: ALLOW_REGISTRATION
+              value: {{ .Values.config.allowRegistration | quote }}
+            - name: YT_LOCATION
+              value: {{ .Values.config.youtubeLocation | quote }}
+            - name: TRANSLATE_PROVIDER
+              value: {{ .Values.config.translateProvider | quote }}
+            - name: PUSH_CHECK_MINUTES
+              value: {{ .Values.config.pushCheckMinutes | quote }}
+            - name: VAPID_SUBJECT
+              value: {{ .Values.vapid.subject | quote }}
+            {{- with .Values.config.corsOrigin }}
+            - name: CORS_ORIGIN
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with (include "ielts.vapidSecret" .) }}
+            - name: VAPID_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: VAPID_PUBLIC_KEY
+            - name: VAPID_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: VAPID_PRIVATE_KEY
+            {{- end }}
+            {{- if .Values.hymt.enabled }}
+            - name: HYMT_BASE_URL
+              value: "http://{{ include "ielts.hymt.fullname" . }}:{{ .Values.hymt.service.port }}/v1"
+            - name: HYMT_MODEL
+              value: {{ .Values.hymt.model.alias | quote }}
+            - name: HYMT_PROMPT_STYLE
+              value: {{ .Values.hymt.model.promptStyle | quote }}
+            {{- end }}
+            {{- range $name, $value := .Values.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 3
+            failureThreshold: 40
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-data" (include "ielts.fullname" .)) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

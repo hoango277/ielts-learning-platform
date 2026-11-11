@@ -1,6 +1,8 @@
 # IELTS Learn — học tiếng Anh qua video YouTube
 
-Ứng dụng web cá nhân để học tiếng Anh theo hướng IELTS: **shadowing / chép chính tả với video YouTube**, bấm vào từ để tra nghĩa (Google Dịch hoặc **Tencent Hunyuan Hy-MT** dịch theo ngữ cảnh), lưu vào **sổ từ vựng**, ôn bằng **flashcard lặp lại ngắt quãng (FSRS)**, luyện tập nhiều dạng bài và học **26 bộ từ vựng IELTS theo chủ đề** (đã crawl sẵn vào database).
+Ứng dụng web cá nhân để học tiếng Anh theo hướng IELTS: **shadowing / chép chính tả với video YouTube**, bấm vào từ để tra nghĩa (Google Dịch hoặc **Tencent Hunyuan Hy-MT** dịch theo ngữ cảnh), lưu vào **sổ từ vựng**, ôn bằng **flashcard lặp lại ngắt quãng (FSRS)**, luyện tập nhiều dạng bài và học **26 bộ từ vựng IELTS theo chủ đề** (đã crawl sẵn vào database). App tự nhắc ôn thẻ sắp quên (kể cả khi đã đóng tab), có bài test ước lượng vốn từ, cài được như ứng dụng (PWA) và giải thích mọi thuật ngữ khó bằng tiếng Việt dễ hiểu.
+
+- **Image Docker**: [`xuanhoa2772004/ielts-learn`](https://hub.docker.com/r/xuanhoa2772004/ielts-learn) (linux/amd64 + linux/arm64) — xem [Chạy bằng Docker](#chạy-bằng-docker-khuyến-nghị-để-deploy)
 
 - **Backend**: Node.js 24 + TypeScript + Express 5 + SQLite (`node:sqlite`, không cần build native) — thư mục [backend/](backend/)
 - **Frontend**: React 19 + Vite 8 + Tailwind CSS 4 + TanStack Query — thư mục [frontend/](frontend/)
@@ -25,9 +27,76 @@ npm run build        # build frontend → frontend/dist
 npm start            # backend phục vụ cả API lẫn giao diện tại http://127.0.0.1:4000
 ```
 
-Các lệnh khác: `npm run crawl` (crawl lại bộ từ chủ đề), `npm run seed` (nạp lại seed vào DB), `npm test` (unit test backend), `npm run typecheck`.
+Chạy kèm **model dịch Hy-MT** trên máy (tự tải model ~1,1 GB lần đầu, chạy `llama-server` có sẵn trên máy hoặc qua Docker):
+
+```bash
+npm run dev:hymt     # = tải model (nếu chưa có) + bật llama-server ở cổng 8080 + npm run dev với cấu hình Hy-MT sẵn
+```
+
+Các lệnh khác: `npm run crawl` (crawl lại bộ từ chủ đề), `npm run seed` (nạp lại seed vào DB), `npm test` (unit test backend), `npm run typecheck`, `npm run hymt` (chỉ chạy Hy-MT), `npm run hymt:download` (chỉ tải model).
 
 Cấu hình tuỳ chọn: sao chép [backend/.env.example](backend/.env.example) thành `backend/.env`. Hầu hết cài đặt (nhà cung cấp dịch, Hy-MT, mục tiêu học…) chỉnh được ngay trong trang **Cài đặt**.
+
+---
+
+## Chạy bằng Docker (khuyến nghị để deploy)
+
+Một image chạy cả API lẫn giao diện trên cổng 4000; dữ liệu (SQLite, ghi âm, khoá thông báo) nằm trong volume `/data`. Chỉ cần Docker + Docker Compose — không cần cài Node.
+
+```bash
+git clone https://github.com/hoango277/ielts-learning-platform.git && cd ielts-learning-platform
+cp .env.docker.example .env      # tuỳ chọn: đổi cổng, múi giờ, email VAPID… (xem bảng bên dưới)
+docker compose up -d             # tải image từ Docker Hub và chạy → http://localhost:4000
+```
+
+Không muốn clone? Chỉ cần tải [docker-compose.yml](docker-compose.yml) về một thư mục trống rồi chạy `docker compose up -d`.
+
+**Kèm model dịch Hy-MT** (HY-MT1.5-1.8B chạy bằng CPU qua llama.cpp, dịch theo ngữ cảnh — lần đầu tự tải ~1,1 GB, có tải tiếp khi đứt mạng):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.hymt.yml up -d
+```
+
+| Việc | Lệnh |
+|---|---|
+| Xem log | `docker compose logs -f app` |
+| Cập nhật lên bản mới | `docker compose pull && docker compose up -d` (dữ liệu trong volume được giữ nguyên, migration tự chạy) |
+| Chạy một phiên bản cố định | đặt `IELTS_TAG=1.1.0` trong `.env` |
+| Dừng | `docker compose down` (thêm `-v` sẽ **xoá luôn dữ liệu**) |
+| Tự build image từ mã nguồn | `docker compose build && docker compose up -d` hoặc `npm run docker:up` |
+| Chạy không cần Compose | `docker run -d --name ielts-learn -p 4000:4000 -v ielts-data:/data --restart unless-stopped xuanhoa2772004/ielts-learn` |
+
+**Sao lưu / khôi phục** (volume tên `ielts-learn_ielts-data`; dừng app trước để file SQLite nhất quán):
+
+```bash
+# Sao lưu → file ielts-data-YYYY-MM-DD.tgz ở thư mục hiện tại
+docker compose stop app
+docker run --rm -v ielts-learn_ielts-data:/data -v "$PWD":/backup alpine tar czf /backup/ielts-data-$(date +%F).tgz -C /data .
+docker compose start app
+
+# Khôi phục từ một bản sao lưu
+docker compose stop app
+docker run --rm -v ielts-learn_ielts-data:/data -v "$PWD":/backup alpine sh -c "rm -rf /data/* && tar xzf /backup/ielts-data-2026-11-11.tgz -C /data"
+docker compose start app
+```
+
+**Biến môi trường** (đặt trong `.env` cạnh `docker-compose.yml`, mẫu: [.env.docker.example](.env.docker.example)):
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `IELTS_TAG` | `latest` | Phiên bản image |
+| `IELTS_PORT` | `4000` | Cổng mở trên máy chủ |
+| `TZ` | `Asia/Ho_Chi_Minh` | Múi giờ: quyết định “hôm nay”, chuỗi ngày học, giờ gửi nhắc (8h–22h) |
+| `ALLOW_REGISTRATION` | `true` | `false` = khoá đăng ký sau khi đã tạo tài khoản đầu tiên |
+| `YT_LOCATION` | `US` | Quốc gia cho kết quả YouTube |
+| `VAPID_SUBJECT` | `mailto:ielts-learn@example.com` | Email liên hệ gửi kèm thông báo đẩy — nên đặt email thật (Safari bắt buộc) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | tự tạo | Khoá thông báo đẩy; bỏ trống thì app tự tạo một lần và lưu trong `/data`. Tạo thủ công: `npx web-push generate-vapid-keys` |
+| `PUSH_CHECK_MINUTES` | `15` | Chu kỳ kiểm tra thẻ sắp quên để gửi nhắc; `0` = tắt |
+| `HYMT_MODELS` | volume `hymt-models` | (chỉ khi kèm Hy-MT) thư mục có sẵn file model, vd. `./tools/llm`, để khỏi tải lại |
+
+**Đưa lên máy chủ thật:** đặt app sau một reverse proxy có **HTTPS** (Caddy, Nginx, Traefik…) trỏ tới cổng 4000. Thông báo đẩy, ghi âm/micro và cài app (PWA) chỉ hoạt động trên HTTPS hoặc `localhost`. Cookie đăng nhập tự thêm `Secure` khi proxy gửi `X-Forwarded-Proto: https`. Image chạy an toàn: user không phải root, root filesystem chỉ đọc, bỏ mọi Linux capability, có `HEALTHCHECK` (`/api/health` trả về cả số phiên bản).
+
+> Kubernetes: có Helm chart mẫu ở [charts/ielts-learn-chart](charts/ielts-learn-chart) (tuỳ chọn — cách chạy được hỗ trợ chính là Docker Compose).
 
 ---
 
@@ -38,7 +107,7 @@ Cấu hình tuỳ chọn: sao chép [backend/.env.example](backend/.env.example)
 - Mật khẩu băm bằng **scrypt** (salt ngẫu nhiên, so sánh chống timing attack). Phiên đăng nhập là cookie `HttpOnly` + `SameSite=Lax` (thêm `Secure` khi chạy HTTPS); DB chỉ lưu SHA-256 của token. “Ghi nhớ đăng nhập” giữ 30 ngày và tự gia hạn khi còn dùng; không chọn thì là cookie phiên, hết hạn sau 12 giờ không hoạt động.
 - Chống CSRF bằng SameSite + kiểm tra header `Origin`; sai mật khẩu 8 lần trong 15 phút sẽ bị khoá 15 phút.
 - Đổi tên, đổi mật khẩu (tự đăng xuất các thiết bị khác) và đăng xuất trong **Cài đặt → Tài khoản** hoặc menu avatar.
-- Chỉ mình bạn dùng? Đặt `ALLOW_REGISTRATION=false` trong `backend/.env` để khoá đăng ký sau khi tạo tài khoản.
+- Chỉ mình bạn dùng? Đặt `ALLOW_REGISTRATION=false` trong `backend/.env` (hoặc `.env` của Docker Compose) để khoá đăng ký sau khi tạo tài khoản.
 
 ## Cơ sở dữ liệu
 
@@ -47,10 +116,10 @@ Cấu hình tuỳ chọn: sao chép [backend/.env.example](backend/.env.example)
 | Nhóm | Bảng |
 |---|---|
 | Tài khoản | `users`, `sessions` |
-| Dữ liệu riêng từng người (`user_id`) | `words`, `review_logs`, `activity`, `practice_sessions`, `user_videos`, `video_notes`, `user_settings` |
-| Dùng chung | `topics`, `lexicon`, `topic_words`, `videos` (metadata), `transcripts`, `transcript_sentences`, `translation_cache`, `dictionary_cache` |
+| Dữ liệu riêng từng người (`user_id`) | `words`, `review_logs`, `activity`, `practice_sessions`, `user_videos`, `video_notes`, `user_settings`, `phrases`, `phrase_logs`, `speaking_attempts`, `fluency_sessions`, `fluency_rounds`, `daily_plans`, `push_subscriptions`, `push_log`, `placement_results` |
+| Dùng chung | `topics`, `lexicon`, `topic_words`, `videos` (metadata), `transcripts`, `transcript_sentences`, `video_lexicon`, `translation_cache`, `dictionary_cache`, `word_profiles`, `word_freq`, `ext_cache`, `app_kv` (vd. khoá VAPID tự tạo) |
 
-Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` khi đang chạy. Bản sao lưu trước khi nâng cấp lên đăng nhập nằm ở `backend/data/backups/`.
+Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` khi đang chạy (chạy bằng Docker: xem lệnh sao lưu volume ở mục [Chạy bằng Docker](#chạy-bằng-docker-khuyến-nghị-để-deploy)). Bản sao lưu trước khi nâng cấp lên đăng nhập nằm ở `backend/data/backups/`.
 
 ---
 
@@ -110,6 +179,7 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 ### 10. Hồ sơ từ & dùng từ tự nhiên
 - Trang `/profile/:từ` (và trong chi tiết từ của sổ): **họ từ** (decide → decision → decisive → decisively), các nghĩa chính, **từ đồng nghĩa kèm định nghĩa chung, độ phổ biến, nhãn văn phong** (trang trọng / thân mật / Anh-Anh…), collocation, câu chứa từ trong video đã xem.
 - 4 dạng bài mới: **Collocation** (make/do/take…, phương án sai được chọn tay để chắc chắn sai), **Điền dạng từ** (dùng họ từ WordNet), **Ghép đồng nghĩa**, **Nâng cấp từ cơ bản** (good, big, very, think… → từ thay thế kèm ghi chú sắc thái soạn tay).
+- **Sổ tay nâng cấp từ** (`/practice/upgrades`): 38 từ cơ bản hay bị lạm dụng, mỗi từ kèm các từ thay thế, nghĩa, ghi chú sắc thái, nghe phát âm và thêm nhanh vào sổ từ.
 
 ### 11. Nói trôi chảy 4/3/2
 - Nói cùng một đề 3 lần trong 4 → 3 → 2 phút (hoặc 2 → 1,5 → 1). 40 đề kiểu IELTS Part 2 hoặc tự nhập; 1 phút chuẩn bị, ghi chú.
@@ -123,6 +193,19 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 - Trang chủ: **chuỗi ngày học (streak)**, XP & cấp độ, **mục tiêu XP mỗi ngày**, biểu đồ XP 7 ngày, **bản đồ nhiệt cả năm**, phân bố trạng thái từ, **dự báo lịch ôn 7 ngày**, **từ của ngày**, video đang xem dở, 10 huy hiệu thành tích.
 - XP: ôn thẻ +2 (Quên +1), lưu từ mới +3, câu luyện tập đúng +3 (+5/+10 khi xong phiên), câu shadowing +3, câu chính tả đúng +4, mỗi phút xem video +1.
 - Giao diện sáng/tối, responsive (sidebar trên desktop, thanh điều hướng dưới trên mobile), focus ring rõ ràng, điều hướng bằng bàn phím, nhãn ARIA, tôn trọng `prefers-reduced-motion`.
+
+### 14. Hộp khởi động & nhắc ôn (kể cả khi đã đóng tab)
+- Đăng nhập, mở lại app (tối đa 1 lần/giờ) hoặc quay lại tab sau ≥ 30 phút → hộp **“Khởi động”**: ôn nhanh ~90 giây những thẻ có **khả năng còn nhớ** thấp nhất (ước tính bằng FSRS), buổi sáng ưu tiên **từ học tối qua** (nhớ lại sau một đêm ngủ), kèm bước tiếp theo của “Hôm nay học gì”. Không bật đè lên lúc đang xem video / làm bài (chỉ hiện nút nhỏ); có “Để sau 2 giờ” và “Hôm nay không hiện nữa”.
+- **Thông báo đẩy (Web Push, chuẩn VAPID)**: máy chủ kiểm tra định kỳ và gửi nhắc khi có thẻ sắp quên — 8h–22h, tối đa 2 lần/ngày, cách nhau ≥ 3 giờ; buổi tối nhắc học vài từ mới nếu hôm nay chưa học. Bấm thông báo mở thẳng hộp khởi động. Đăng xuất thì thiết bị thôi nhận nhắc của tài khoản đó.
+- **Cài như ứng dụng (PWA)**: manifest + service worker, biểu tượng riêng, lối tắt “Hôm nay học gì” / “Ôn tập”.
+
+### 15. Bài test ước lượng vốn từ
+- ~3 phút, 52 từ: chọn **Biết / Không biết** cho 40 từ thật thuộc 5 nhóm từ phổ biến đến ít gặp (NGSL + bộ từ chủ đề) và 12 **từ giả** để trừ phần đoán mò (phương pháp Yes/No test — Meara & Buxton 1987, LexTALE).
+- Ra mức A2 / B1 / B2 / C1 và vốn từ ước lượng; một bấm để dùng mức đó làm **trình độ nền** khi tính độ khó video.
+
+### 16. Giải thích thuật ngữ & giao diện
+- Mọi thuật ngữ khó (FSRS, lặp lại ngắt quãng, shadowing, collocation, họ từ, CEFR, độ phủ từ vựng, 4/3/2, từ/phút, từ đệm, Web Push, Hy-MT…) có **gạch chân chấm** hoặc nút (?): rê chuột / chạm để xem giải thích ngắn bằng tiếng Việt, “Giải thích thêm” để đọc đầy đủ kèm ví dụ. Trang **Giải thích thuật ngữ** (`/glossary`) gom toàn bộ, tìm được cả khi gõ không dấu.
+- Font **Be Vietnam Pro** (chữ thường) + **Nunito** (tiêu đề, nút); nút và thẻ “nổi khối” bấm lún xuống, bóng đổ nhiều lớp, hiệu ứng xuất hiện lần lượt, số đếm chạy, nền gradient chuyển màu, ngọn lửa chuỗi ngày “cháy” — tất cả tự tắt khi hệ điều hành bật giảm chuyển động.
 
 ---
 
@@ -151,7 +234,9 @@ Mọi bản dịch được cache trong SQLite nên mỗi câu/từ chỉ dịch
 
 ### Chạy Hy-MT trên máy
 
-Bất kỳ server tương thích OpenAI (`/v1/chat/completions`) đều dùng được — điền **Base URL** và **Model** trong trang Cài đặt rồi bấm **Kiểm tra kết nối**:
+Cách nhanh nhất: `npm run dev:hymt` (chạy từ mã nguồn) hoặc Docker Compose kèm `docker-compose.hymt.yml` (xem [Chạy bằng Docker](#chạy-bằng-docker-khuyến-nghị-để-deploy)) — cả hai tự tải model HY-MT1.5-1.8B (Q4_K_M) và cấu hình sẵn cho app.
+
+Hoặc tự chạy bằng bất kỳ server tương thích OpenAI (`/v1/chat/completions`) — điền **Base URL** và **Model** trong trang Cài đặt rồi bấm **Kiểm tra kết nối**:
 
 ```bash
 # llama.cpp (khuyến nghị cho HY-MT1.5 GGUF, chạy được trên CPU) → Base URL: http://localhost:8080/v1
@@ -213,6 +298,9 @@ backend/
       profile.service.ts     hồ sơ từ (WordNet + Datamuse + Wiktionary)
       difficulty.service.ts  độ khó video, hàng đợi phân tích nền, gợi ý video vừa sức
       today.service.ts       kế hoạch “Hôm nay học gì”
+      warmup.service.ts      hộp “khởi động”: chọn thẻ sắp quên theo khả năng nhớ FSRS
+      push.service.ts        thông báo đẩy (VAPID, đăng ký thiết bị, bộ hẹn giờ nhắc ôn)
+      placement.service.ts   bài test vốn từ (Yes/No có từ giả)
       topics.service.ts      bộ từ chủ đề
       stats.service.ts       streak, XP, heatmap, thành tích
     lib/wordnet.ts           đọc WordNet offline: nghĩa, đồng nghĩa, họ từ
@@ -223,15 +311,21 @@ backend/
   data/seed/topics.json      dữ liệu chủ đề đã crawl (nạp tự động lần đầu)
   data/ngsl/                 New General Service List 1.2 (CC BY-SA 4.0)
 frontend/
+  public/                    sw.js (service worker nhận thông báo đẩy), manifest.webmanifest, icons/
   src/
-    pages/                   Dashboard, Today, Explore, Channel, Library, Notebook, Phrases, Review, Topics, TopicDetail, WordProfilePage, Settings
+    pages/                   Dashboard, Today, Explore, Channel, Library, Notebook, Phrases, Review, Topics, TopicDetail, WordProfilePage, Settings, Placement, Glossary
     pages/speaking/          luyện nói lại
     pages/fluency/           4/3/2
     pages/watch/             trang học video: player, phụ đề, transcript, shadowing, chép chính tả
     pages/practice/          hub, phiên luyện tập, trò ghép cặp
-    components/              UI cơ bản, layout, thẻ video, popover tra từ, biểu đồ
+    components/              UI cơ bản (Button, Term — thẻ giải thích thuật ngữ…), layout, hộp khởi động, thẻ video, popover tra từ, biểu đồ
     hooks/                   YouTube player, nhận dạng giọng nói, ghi âm, phím tắt
-    lib/                     API client, kiểu dữ liệu, so khớp từ (diff), phát âm
+    lib/                     API client, kiểu dữ liệu, so khớp từ (diff), phát âm, push.ts (Web Push), glossary.ts (nội dung giải thích thuật ngữ)
+    index.css                design system: màu, font, bóng đổ, hiệu ứng, tiện ích (card, press, stagger…)
+scripts/                     hymt.mjs (tải/chạy model Hy-MT), dev-hymt.mjs (npm run dev:hymt)
+Dockerfile, .dockerignore    image production nhiều nền tảng (amd64/arm64)
+docker-compose.yml           chạy app; docker-compose.hymt.yml thêm model dịch Hy-MT
+charts/ielts-learn-chart/    Helm chart mẫu (tuỳ chọn)
 ```
 
 ## API chính
@@ -251,8 +345,10 @@ frontend/
 | 4/3/2 | `GET /api/fluency/topics` · `GET/POST /fluency/sessions` · `GET/PATCH/DELETE /fluency/sessions/:id` · `POST /fluency/sessions/:id/rounds` · `PUT/GET /fluency/rounds/:id/audio` |
 | Hồ sơ từ | `GET /api/words/profile/:term` · `GET /practice/upgrades` |
 | Độ khó video | `GET /api/videos/:id/difficulty` · `POST /videos/difficulty {ids}` · `GET /videos/recommended` |
-| Hôm nay | `GET /api/today` · `POST /today/skip` · `PUT /today/video` |
-| Khác | `GET /api/stats/overview` · `GET/PUT /api/settings` · `GET /api/health` |
+| Hôm nay | `GET /api/today` · `POST /today/skip` · `PUT /today/video` · `GET /review/warmup` (hộp khởi động) |
+| Thông báo đẩy | `GET /api/push/public-key` · `POST /push/subscribe` · `POST /push/unsubscribe` · `POST /push/test` |
+| Test vốn từ | `GET /api/placement/test` · `POST /placement/result` · `GET /placement/last` |
+| Khác | `GET /api/stats/overview` · `GET/PUT /api/settings` · `GET /api/health` (kèm `version`) |
 
 ## Ghi chú
 
@@ -261,3 +357,7 @@ frontend/
 - Cấp độ CEFR của từ được ước lượng từ tần suất xuất hiện (Google Books Ngram qua Datamuse) — mang tính tham khảo.
 - Nguồn dữ liệu cho phần cách dùng từ: **WordNet 3.1** (Princeton, gói `wordnet-db`, chạy offline), **Datamuse API**, **Wiktionary** (CC BY-SA, nhãn văn phong), **NGSL 1.2** (Browne, Culligan & Phillips, CC BY-SA 4.0 — xem `backend/data/ngsl/README.md`). Danh sách collocation, nâng cấp từ và đề nói 4/3/2 do app tự soạn.
 - Ghi âm 4/3/2 nằm trong `backend/data/recordings/<id người dùng>/` (không commit); xoá buổi luyện sẽ xoá luôn file ghi âm.
+
+## Phát hành phiên bản mới
+
+Mỗi lần phát hành tính năng mới đều làm đủ các bước: kiểm tra (typecheck, unit test, build), cập nhật tài liệu, commit, build & đẩy image đa nền tảng lên Docker Hub (`xuanhoa2772004/ielts-learn:<phiên bản>` và `:latest`), chạy thử image bằng Docker Compose, gắn tag `v<phiên bản>` và đẩy lên GitHub. Danh sách chi tiết và lệnh cụ thể: xem mục **Quy trình phát hành** trong [CLAUDE.md](CLAUDE.md).

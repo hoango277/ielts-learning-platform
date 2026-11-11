@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, BookMarked, Clock, Compass, Flame, Layers, Mic, PenLine, Shapes, Sparkles, Target, Trophy } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ForecastBars, Heatmap, StatusBreakdown, WeekBars } from '../components/charts/Charts';
 import { LinkButton } from '../components/ui/Button';
-import { Card, ErrorBox, Progress, Ring, SectionTitle, Skeleton } from '../components/ui/primitives';
+import { Card, CountUp, ErrorBox, Progress, Ring, SectionTitle, Skeleton } from '../components/ui/primitives';
+import { Term } from '../components/ui/Term';
 import { AudioButton, LevelBadge, StatusBadge } from '../components/word/bits';
 import { api } from '../lib/api';
 import type { Overview } from '../lib/types';
@@ -14,9 +16,9 @@ function Hero({ o }: { o: Overview }) {
   const pct = o.today.goal ? o.today.xp / o.today.goal : 0;
   const due = o.review.dueNow + o.review.newAvailable;
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-brand p-6 text-white shadow-xl shadow-violet-500/20 sm:p-8">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-10 h-56 w-56 rounded-full bg-amber-300/25 blur-3xl" />
+    <section className="relative overflow-hidden rounded-3xl bg-brand-animated p-6 text-white shadow-glow sm:p-8">
+      <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 animate-float-slow rounded-full bg-white/15 blur-2xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 left-10 h-56 w-56 animate-float-slow rounded-full bg-amber-300/30 blur-3xl [animation-delay:-4s]" />
       <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="max-w-xl">
           <p className="text-sm font-semibold text-white/80">{greeting()} 👋</p>
@@ -25,7 +27,7 @@ function Hero({ o }: { o: Overview }) {
           </h1>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold backdrop-blur">
-              <Flame className={cn('h-4 w-4', o.streak.todayDone && 'fill-amber-300 text-amber-300')} /> {o.streak.current} ngày liên tiếp
+              <Flame className={cn('h-4 w-4 origin-bottom', o.streak.todayDone && 'animate-flicker fill-amber-300 text-amber-300')} /> {o.streak.current} ngày liên tiếp
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold backdrop-blur">
               <Trophy className="h-4 w-4" /> Kỷ lục {o.streak.best} ngày
@@ -44,12 +46,16 @@ function Hero({ o }: { o: Overview }) {
         <div className="flex items-center gap-5">
           <Ring value={pct} size={112} stroke={11} color="#ffffff" trackClass="stroke-white/20">
             <div className="text-center">
-              <p className="text-3xl font-extrabold">{o.today.xp}</p>
+              <p className="font-display text-3xl font-black">
+                <CountUp value={o.today.xp} />
+              </p>
               <p className="text-xs font-semibold text-white/80">/ {o.today.goal} XP</p>
             </div>
           </Ring>
           <div className="min-w-0 flex-1 space-y-2">
-            <p className="text-sm font-semibold text-white/85">Mục tiêu hôm nay</p>
+            <p className="flex items-center gap-1 text-sm font-semibold text-white/85">
+              Mục tiêu hôm nay <Term k="xp" icon className="text-white/80 hover:bg-white/20 hover:text-white dark:hover:text-white" />
+            </p>
             <LinkButton to="/review" className="w-full whitespace-nowrap bg-white text-violet-700 hover:bg-white/90 sm:w-auto" size="lg" icon={<Layers className="h-5 w-5" />}>
                 {due ? `Ôn tập (${due})` : 'Đã ôn xong'}
               </LinkButton>
@@ -61,34 +67,38 @@ function Hero({ o }: { o: Overview }) {
 }
 
 const ACTIONS = [
-  { to: '/review', title: 'Ôn tập thẻ', desc: 'Lặp lại ngắt quãng FSRS', icon: Layers, tone: 'from-violet-500 to-fuchsia-500' },
-  { to: '/explore', title: 'Xem & Shadowing', desc: 'Học qua video YouTube', icon: Compass, tone: 'from-rose-500 to-orange-400' },
+  { to: '/review', title: 'Ôn tập thẻ', desc: 'Ôn lại đúng lúc sắp quên', icon: Layers, tone: 'from-violet-500 to-fuchsia-500' },
+  { to: '/explore', title: 'Xem & nói đuổi', desc: 'Học qua video YouTube', icon: Compass, tone: 'from-rose-500 to-orange-400' },
   { to: '/practice', title: 'Luyện tập', desc: 'Trắc nghiệm, điền từ, nghe', icon: Target, tone: 'from-amber-500 to-yellow-400' },
   { to: '/topics', title: 'Bộ từ chủ đề', desc: '26 chủ đề IELTS', icon: Shapes, tone: 'from-emerald-500 to-teal-400' },
 ];
 
 function TodayStats({ o }: { o: Overview }) {
-  const items = [
-    { icon: Layers, label: 'Lượt ôn', value: o.today.reviews, color: 'text-violet-500' },
-    { icon: BookMarked, label: 'Từ mới', value: o.today.newWords, color: 'text-sky-500' },
-    { icon: Target, label: 'Câu luyện', value: `${o.today.practiceCorrect}/${o.today.practiceTotal}`, color: 'text-amber-500' },
-    { icon: Mic, label: 'Shadowing', value: o.today.shadowSentences, color: 'text-fuchsia-500' },
-    { icon: PenLine, label: 'Chính tả', value: o.today.dictationSentences, color: 'text-orange-500' },
-    { icon: Clock, label: 'Phút xem', value: o.today.watchMinutes, color: 'text-rose-500' },
+  const items: { key: string; icon: typeof Layers; label: ReactNode; value: number | string; color: string }[] = [
+    { key: 'reviews', icon: Layers, label: 'Lượt ôn thẻ', value: o.today.reviews, color: 'text-violet-500' },
+    { key: 'new', icon: BookMarked, label: 'Từ mới', value: o.today.newWords, color: 'text-sky-500' },
+    { key: 'practice', icon: Target, label: 'Câu luyện đúng', value: `${o.today.practiceCorrect}/${o.today.practiceTotal}`, color: 'text-amber-500' },
+    { key: 'shadow', icon: Mic, label: <Term k="shadowing">Câu nói đuổi</Term>, value: o.today.shadowSentences, color: 'text-fuchsia-500' },
+    { key: 'dictation', icon: PenLine, label: <Term k="dictation">Câu chép chính tả</Term>, value: o.today.dictationSentences, color: 'text-orange-500' },
+    { key: 'watch', icon: Clock, label: 'Phút xem video', value: o.today.watchMinutes, color: 'text-rose-500' },
   ];
   return (
-    <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-      {items.map((it) => {
-        const Icon = it.icon;
-        return (
-          <Card key={it.label} className="p-3 text-center">
-            <Icon className={cn('mx-auto h-5 w-5', it.color)} />
-            <p className="mt-1 text-xl font-extrabold text-ink">{it.value}</p>
-            <p className="text-xs text-muted">{it.label}</p>
-          </Card>
-        );
-      })}
-    </div>
+    <section aria-label="Hôm nay bạn đã làm được">
+      <div className="stagger grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {items.map((it) => {
+          const Icon = it.icon;
+          return (
+            <Card key={it.key} className="p-3 text-center">
+              <span className={cn('mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-current/10', it.color)}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <p className="mt-1.5 font-display text-2xl font-black text-ink">{typeof it.value === 'number' ? <CountUp value={it.value} /> : it.value}</p>
+              <p className="text-xs leading-snug text-muted">{it.label}</p>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -107,7 +117,7 @@ function WordOfDay({ o }: { o: Overview }) {
         <LevelBadge level={w.level} />
       </div>
       <p className="text-sm text-muted">
-        {w.ipaUs ?? w.ipa} {w.pos && `· ${posLabel(w.pos)}`}
+        <span className="font-ipa">{w.ipaUs ?? w.ipa}</span> {w.pos && `· ${posLabel(w.pos)}`}
       </p>
       <p className="mt-2 font-semibold text-ink">{w.meaning}</p>
       {w.examples[0] && (
@@ -140,15 +150,20 @@ export default function Dashboard() {
 
       <TodayCard />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
         {ACTIONS.map((a) => {
           const Icon = a.icon;
           return (
-            <Link key={a.to} to={a.to} className="card group relative overflow-hidden p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
-              <span className={cn('mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br text-white shadow-md', a.tone)}>
+            <Link key={a.to} to={a.to} className="card card-hover group relative overflow-hidden p-4">
+              <span
+                className={cn(
+                  'icon-tile mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br text-white transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110',
+                  a.tone,
+                )}
+              >
                 <Icon className="h-6 w-6" />
               </span>
-              <p className="font-bold text-ink">{a.title}</p>
+              <p className="font-display text-[17px] font-extrabold text-ink">{a.title}</p>
               <p className="text-xs text-muted">{a.desc}</p>
               <ArrowRight className="absolute right-4 top-4 h-4 w-4 text-muted transition group-hover:translate-x-1 group-hover:text-ink" />
             </Link>
@@ -158,7 +173,7 @@ export default function Dashboard() {
 
       <TodayStats o={o} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {o.continueWatching.length > 0 && (
             <section>
@@ -174,7 +189,7 @@ export default function Dashboard() {
               <div className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
                 {o.continueWatching.map((v) => (
                   <Link key={v.id} to={`/watch/${v.id}`} className="group w-64 shrink-0">
-                    <div className="relative aspect-video overflow-hidden rounded-2xl bg-surface-3">
+                    <div className="relative aspect-video overflow-hidden rounded-2xl bg-surface-3 shadow-card transition-shadow group-hover:shadow-lift">
                       <img src={v.thumbnail} alt="" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />
                       <span className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 text-xs font-semibold text-white">
                         {formatTime(v.lastPosition)} / {formatTime(v.durationSec)}
@@ -194,7 +209,14 @@ export default function Dashboard() {
           )}
 
           <Card className="p-5">
-            <SectionTitle title="XP 7 ngày qua" subtitle={`Đường nét đứt là mục tiêu ${o.today.goal} XP/ngày`} />
+            <SectionTitle
+              title={
+                <>
+                  <Term k="xp">Điểm XP</Term> 7 ngày qua
+                </>
+              }
+              subtitle={`Đường nét đứt là mục tiêu ${o.today.goal} XP/ngày`}
+            />
             <WeekBars data={o.week} goal={o.today.goal} />
           </Card>
 
@@ -209,7 +231,11 @@ export default function Dashboard() {
 
           <Card className="p-5">
             <SectionTitle
-              title="Sổ từ vựng"
+              title={
+                <>
+                  Sổ từ vựng <Term k="statuses" icon />
+                </>
+              }
               subtitle={`${o.totals.words} từ`}
               action={
                 <Link to="/notebook" className="text-sm font-semibold text-violet-600 hover:underline dark:text-violet-300">
@@ -221,7 +247,14 @@ export default function Dashboard() {
           </Card>
 
           <Card className="p-5">
-            <SectionTitle title="Lịch ôn 7 ngày tới" subtitle={`${o.review.dueToday} thẻ đến hạn hôm nay`} />
+            <SectionTitle
+              title={
+                <>
+                  Lịch ôn 7 ngày tới <Term k="srs" icon />
+                </>
+              }
+              subtitle={`${o.review.dueToday} thẻ đến hạn hôm nay`}
+            />
             <ForecastBars data={o.forecast} />
           </Card>
 
@@ -233,8 +266,10 @@ export default function Dashboard() {
                   key={a.key}
                   title={`${a.title} — ${a.desc} (${a.progress}/${a.target})`}
                   className={cn(
-                    'flex aspect-square flex-col items-center justify-center rounded-2xl text-2xl transition',
-                    a.achieved ? 'bg-linear-to-br from-amber-100 to-orange-100 shadow-sm dark:from-amber-500/20 dark:to-orange-500/10' : 'bg-surface-2 opacity-45 grayscale',
+                    'flex aspect-square cursor-default flex-col items-center justify-center rounded-2xl text-2xl transition-transform duration-200 hover:scale-110',
+                    a.achieved
+                      ? 'bg-linear-to-br from-amber-100 to-orange-100 shadow-[inset_0_-3px_0_rgb(251_146_60/0.35),0_4px_10px_-4px_rgb(251_146_60/0.6)] dark:from-amber-500/25 dark:to-orange-500/15'
+                      : 'bg-surface-2 opacity-45 grayscale',
                   )}
                 >
                   {a.icon}
@@ -248,9 +283,9 @@ export default function Dashboard() {
       {o.recentWords.length > 0 && (
         <section>
           <SectionTitle title="Từ mới lưu gần đây" />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {o.recentWords.map((w) => (
-              <Link key={w.id} to={`/notebook?word=${w.id}`} className="card flex items-start gap-3 p-4 transition hover:shadow-md">
+              <Link key={w.id} to={`/notebook?word=${w.id}`} className="card card-hover flex items-start gap-3 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="font-bold text-ink">{w.term}</span>

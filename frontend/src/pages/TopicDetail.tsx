@@ -41,16 +41,20 @@ function WordCard({ w, slug }: { w: LexiconEntry; slug: string }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <h3 className="text-lg font-bold text-ink">{w.word}</h3>
+            <h3 className="text-lg font-extrabold text-ink">{w.word}</h3>
             <AudioButton term={w.word} audio={w.audioUs ?? w.audio} size="sm" />
           </div>
           <p className="text-xs text-muted">
-            {w.ipaUs ?? w.ipa} {w.pos && `· ${posLabel(w.pos)}`}
+            <span className="font-ipa">{w.ipaUs ?? w.ipa}</span> {w.pos && `· ${posLabel(w.pos)}`}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <LevelBadge level={w.level} />
-          {w.group === 'core' && <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">Cốt lõi</Badge>}
+          {w.group === 'core' && (
+            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" title="Từ/cụm cốt lõi của chủ đề — nên học trước">
+              Cốt lõi
+            </Badge>
+          )}
         </div>
       </div>
       <p className="mt-2 font-semibold text-ink">{w.meaning}</p>
@@ -151,13 +155,13 @@ function BrowseDeck({ words, slug, onClose }: { words: LexiconEntry[]; slug: str
           <Progress value={i / deck.length} />
           <button type="button" onClick={() => setFlipped((f) => !f)} className="perspective block h-72 w-full" aria-label="Lật thẻ">
             <div className="relative h-full w-full transition-transform duration-500 preserve-3d" style={{ transform: flipped ? 'rotateY(180deg)' : 'none' }}>
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-3xl border border-line bg-surface-2 p-6 backface-hidden">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-3xl border border-line bg-surface-2 p-6 shadow-card backface-hidden">
                 <LevelBadge level={w.level} />
                 <p className="text-4xl font-extrabold text-ink">{w.word}</p>
-                <p className="font-mono text-muted">{w.ipaUs ?? w.ipa}</p>
+                <p className="font-ipa text-muted">{w.ipaUs ?? w.ipa}</p>
                 <p className="text-xs text-muted">Bấm để xem nghĩa</p>
               </div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-y-auto rounded-3xl border border-line bg-surface p-6 text-center backface-hidden rotate-y-180">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-y-auto rounded-3xl border border-line bg-surface p-6 text-center shadow-card backface-hidden rotate-y-180">
                 <p className="text-2xl font-bold text-violet-700 dark:text-violet-300">{w.meaning}</p>
                 {w.definitions[0] && <p className="text-sm text-muted">{w.definitions[0].definition}</p>}
                 {w.examples[0] && (
@@ -213,7 +217,7 @@ export default function TopicDetail() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-48 rounded-3xl" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-56" />
           ))}
@@ -230,13 +234,13 @@ export default function TopicDetail() {
       <Link to="/topics" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink">
         <ArrowLeft className="h-4 w-4" /> Tất cả chủ đề
       </Link>
-      <section className={cn('relative overflow-hidden rounded-3xl bg-linear-to-br p-6 text-white sm:p-8', c.gradient)}>
-        <div className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full bg-white/15 blur-2xl" />
+      <section className={cn('relative overflow-hidden rounded-3xl bg-linear-to-br p-6 text-white shadow-card sm:p-8', c.gradient)}>
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 animate-float-slow rounded-full bg-white/20 blur-2xl" />
         <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <span className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/20 text-5xl backdrop-blur">{t.icon}</span>
+            <span className="flex h-20 w-20 animate-float items-center justify-center rounded-3xl bg-white/20 text-5xl shadow-[inset_0_1px_0_rgb(255_255_255/0.4)] ring-1 ring-white/30 backdrop-blur">{t.icon}</span>
             <div>
-              <h1 className="text-3xl font-extrabold">{t.name}</h1>
+              <h1 className="text-3xl font-black">{t.name}</h1>
               <p className="text-lg font-semibold text-white/90">{t.nameVi}</p>
               <p className="mt-1 max-w-xl text-sm text-white/85">{t.description}</p>
             </div>
@@ -307,7 +311,7 @@ export default function TopicDetail() {
       {words.length === 0 ? (
         <EmptyState icon="🔍" title="Không có từ phù hợp" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {words.map((w) => (
             <WordCard key={w.id} w={w} slug={slug} />
           ))}

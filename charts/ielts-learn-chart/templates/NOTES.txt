@@ -1,0 +1,22 @@
+IELTS Learn {{ .Chart.AppVersion }} đã được cài vào namespace "{{ .Release.Namespace }}".
+
+{{- if .Values.ingress.enabled }}
+Mở ứng dụng:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+Mở ứng dụng trên máy của bạn:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "ielts.fullname" . }} 4000:{{ .Values.service.port }}
+  rồi vào http://localhost:4000
+{{- end }}
+
+- Tài khoản đăng ký đầu tiên là chủ dữ liệu học; đặt config.allowRegistration=false để khoá đăng ký thêm.
+- Dữ liệu (SQLite + ghi âm) nằm trong PVC {{ .Values.persistence.existingClaim | default (printf "%s-data" (include "ielts.fullname" .)) }} — PVC được giữ lại khi gỡ chart.
+- Micro (luyện nói) và thông báo đẩy cần HTTPS khi truy cập qua tên miền.
+{{- if .Values.hymt.enabled }}
+- Model dịch Hy-MT: lần đầu pod {{ include "ielts.hymt.fullname" . }} tải ~1,1 GB, theo dõi bằng
+    kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "ielts.hymt.fullname" . }} -c download-model -f
+{{- end }}
+
+Kiểm tra nhanh: helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

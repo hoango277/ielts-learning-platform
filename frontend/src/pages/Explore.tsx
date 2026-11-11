@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '../components/ui/Button';
 import { EmptyState, ErrorBox, Segmented, Skeleton, Switch } from '../components/ui/primitives';
+import { Term } from '../components/ui/Term';
 import { DifficultyPill, useDifficultyBadges } from '../components/video/DifficultyBadge';
 import { ChannelAvatar, VideoCard, VideoCardSkeleton, VideoGrid } from '../components/video/VideoCard';
 import { useDebounced, useInView } from '../hooks/misc';
@@ -82,7 +83,7 @@ function SearchBox({ initial, onSearch }: { initial: string; onSearch: (q: strin
       </form>
       {ytId && <p className="mt-1.5 pl-2 text-xs font-medium text-rose-500">Đã nhận diện link YouTube — bấm "Mở video" để học ngay.</p>}
       {open && suggestions.length > 0 && !ytId && (
-        <ul role="listbox" className="absolute inset-x-0 top-14 z-20 overflow-hidden rounded-2xl border border-line bg-surface py-2 shadow-xl">
+        <ul role="listbox" className="absolute inset-x-0 top-14 z-20 overflow-hidden rounded-2xl border border-line bg-surface py-2 shadow-lift">
           {suggestions.map((s, i) => (
             <li key={s} role="option" aria-selected={i === active}>
               <button
@@ -118,12 +119,20 @@ function RecommendedRow() {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-bold text-ink">
-          Vừa sức với bạn <span className="text-sm font-normal text-muted">· trình độ nền {rec.data?.vocabLevel}</span>
+        <h2 className="text-lg font-extrabold text-ink">
+          Vừa sức với bạn{' '}
+          <span className="text-sm font-normal text-muted">
+            · <Term k="vocab_level">trình độ nền</Term> {rec.data?.vocabLevel} · % là <Term k="coverage">số từ bạn đã biết</Term>
+          </span>
         </h2>
-        <Link to="/settings#learning" className="text-xs font-semibold text-violet-600 hover:underline">
-          Đổi trình độ
-        </Link>
+        <span className="flex gap-3">
+          <Link to="/placement" className="text-xs font-semibold text-violet-600 hover:underline">
+            Làm bài test vốn từ
+          </Link>
+          <Link to="/settings#learning" className="text-xs font-semibold text-violet-600 hover:underline">
+            Đổi trình độ
+          </Link>
+        </span>
       </div>
       {items.length === 0 ? (
         <p className="rounded-2xl bg-surface-2 p-4 text-sm text-muted">Đang đo độ khó {rec.data?.analyzing} video từ các kênh học tiếng Anh… gợi ý sẽ xuất hiện sau ít phút.</p>
@@ -131,7 +140,7 @@ function RecommendedRow() {
         <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
           {items.map((v) => (
             <Link key={v.id} to={`/watch/${v.id}`} className="group w-60 shrink-0">
-              <div className="relative aspect-video overflow-hidden rounded-xl bg-surface-3">
+              <div className="relative aspect-video overflow-hidden rounded-xl bg-surface-3 shadow-card transition-shadow group-hover:shadow-lift">
                 <img src={v.thumbnail} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
                 <DifficultyPill data={v} className="absolute right-1.5 top-1.5 shadow" />
                 {v.durationSec > 0 && (
@@ -160,7 +169,7 @@ function ChannelsRow() {
             <Link
               key={c.id}
               to={`/channel/${c.id}`}
-              className="flex w-[132px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md"
+              className="flex w-[132px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center shadow-soft transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-card"
             >
               <ChannelAvatar name={c.name} src={c.avatar} size={40} />
               <span className="line-clamp-2 text-xs font-semibold leading-tight text-ink">{c.name}</span>
@@ -220,14 +229,17 @@ export default function Explore() {
 
   return (
     <div className="space-y-6" ref={topRef}>
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-rose-500 via-fuchsia-500 to-violet-600 px-5 py-7 text-white sm:px-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-16 left-1/3 h-48 w-48 rounded-full bg-orange-300/30 blur-3xl" />
-        <h1 className="text-2xl font-extrabold sm:text-3xl">Khám phá video để học</h1>
-        <p className="mt-1 max-w-xl text-sm text-white/85">
-          Lướt video như trên YouTube. Mở bất kỳ video nào có phụ đề để shadowing, chép chính tả, bấm vào từ để tra nghĩa và lưu vào sổ.
+      <section className="relative z-10 rounded-3xl bg-linear-to-br from-rose-500 via-fuchsia-500 to-violet-600 px-5 py-7 text-white shadow-[0_14px_34px_-12px_rgb(217_70_239/0.6)] sm:px-8">
+        {/* Lớp trang trí riêng có overflow-hidden để danh sách gợi ý của ô tìm kiếm không bị cắt */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+          <div className="absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/15 blur-2xl" />
+          <div className="absolute -bottom-16 left-1/3 h-48 w-48 animate-float-slow rounded-full bg-orange-300/30 blur-3xl [animation-delay:-4s]" />
+        </div>
+        <h1 className="relative text-2xl font-black sm:text-3xl">Khám phá video để học</h1>
+        <p className="relative mt-1 max-w-xl text-sm text-white/85">
+          Lướt video như trên YouTube. Mở bất kỳ video nào có phụ đề để nói đuổi (shadowing), chép chính tả, bấm vào từ để tra nghĩa và lưu vào sổ.
         </p>
-        <div className="mt-5">
+        <div className="relative mt-5">
           <SearchBox initial={q} onSearch={(query) => set({ q: query, chip: null })} />
         </div>
       </section>
@@ -236,7 +248,7 @@ export default function Explore() {
 
       {!q && (
         <section>
-          <h2 className="mb-3 text-base font-bold text-ink">Kênh học tiếng Anh nổi bật</h2>
+          <h2 className="mb-3 text-lg font-extrabold text-ink">Kênh học tiếng Anh nổi bật</h2>
           <ChannelsRow />
         </section>
       )}

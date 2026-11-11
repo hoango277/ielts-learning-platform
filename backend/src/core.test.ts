@@ -189,3 +189,78 @@ test('chọn thẻ khởi động: ưu tiên + ngân sách thời gian', async (
   assert.equal(selectWarmup(many('phrase')).length, 6);
   assert.equal(selectWarmup([]).length, 0);
 });
+
+test('bài test vốn từ: hiệu chỉnh đoán mò và quy ra trình độ', async () => {
+  const { scoreAnswers } = await import('./services/placement.service.ts');
+  type Key = 'b1' | 'b2' | 'b3' | 'b4' | 'b5' | 'pseudo';
+  const answers = (known: Partial<Record<Key, number>>, pseudoYes = 0): { band: Key; known: boolean }[] => [
+    ...(['b1', 'b2', 'b3', 'b4', 'b5'] as const).flatMap((band) => Array.from({ length: 8 }, (_, i) => ({ band, known: i < (known[band] ?? 0) }))),
+    ...Array.from({ length: 12 }, (_, i) => ({ band: 'pseudo' as const, known: i < pseudoYes })),
+  ];
+  assert.equal(scoreAnswers(answers({ b1: 8, b2: 8, b3: 8, b4: 8, b5: 8 })).level, 'C1');
+  assert.equal(scoreAnswers(answers({ b1: 8, b2: 7, b3: 3 })).level, 'B1');
+  assert.equal(scoreAnswers(answers({ b1: 8, b2: 4 })).level, 'A2');
+  // Chọn "Biết" cho mọi thứ (kể cả từ giả) → điểm hiệu chỉnh về 0, có cảnh báo
+  const guesser = scoreAnswers(answers({ b1: 8, b2: 8, b3: 8, b4: 8, b5: 8 }, 12));
+  assert.equal(guesser.level, 'A2');
+  assert.equal(guesser.size, 0);
+  assert.ok(guesser.warning);
+  // 3/12 từ giả → hiệu chỉnh: (7/8 − 0,25) / 0,75 ≈ 0,83
+  const r = scoreAnswers(answers({ b1: 7 }, 3));
+  assert.equal(r.bands[0].corrected, 0.83);
+});
+
+test('từ giả của bài test không trùng từ có thật', async () => {
+  const { PSEUDOWORDS } = await import('./data/pseudowords.ts');
+  const { hasWord } = await import('./lib/wordnet.ts');
+  const { ngslRank } = await import('./lib/ngsl.ts');
+  assert.ok(PSEUDOWORDS.length >= 30);
+  for (const w of PSEUDOWORDS) assert.ok(!hasWord(w) && ngslRank(w) === null, w);
+});
+
+test('nhận ra khi Hy-MT dịch cả câu ngữ cảnh thay vì từ cần dịch', async () => {
+  const { looksLikeSentenceTranslation } = await import('./services/translate/index.ts');
+  assert.equal(looksLikeSentenceTranslation('Chúng tôi ngồi trên bờ sông và ngắm nhìn những chiếc thuyền.', 'bank'), true);
+  assert.equal(looksLikeSentenceTranslation('Xuất bản nó thành nhiều phần nhỏ như vậy.', 'spread it out'), true);
+  assert.equal(looksLikeSentenceTranslation('kinh doanh', 'runs'), false);
+  assert.equal(looksLikeSentenceTranslation('hòa nhã', 'civil'), false);
+  assert.equal(looksLikeSentenceTranslation('đưa ra quyết định nhanh chóng', 'make a quick decision'), false);
+  // Dịch cả câu thì kết quả dài là đúng
+  assert.equal(looksLikeSentenceTranslation('Luyện tập dẫn đến sự hoàn hảo.', 'Practice makes perfect.'), false);
+});
+
+test('đăng ký thông báo đẩy: chỉ nhận endpoint HTTPS công khai', async () => {
+  const { isPublicPushEndpoint } = await import('./services/push.service.ts');
+  for (const ok of [
+    'https://fcm.googleapis.com/fcm/send/abc123',
+    'https://updates.push.services.mozilla.com/wpush/v2/gAAAA',
+    'https://wns2-sg2p.notify.windows.com/w/?token=abc',
+    'https://web.push.apple.com/QGuQ',
+  ]) {
+    assert.equal(isPublicPushEndpoint(ok), true, ok);
+  }
+  for (const bad of [
+    'http://fcm.googleapis.com/fcm/send/abc',
+    'https://localhost/x',
+    'https://127.0.0.1:8080/x',
+    'https://0x7f.1/x',
+    'https://[::1]/x',
+    'https://10.0.0.5/admin',
+    'https://hymt.internal/v1',
+    'https://user:pass@fcm.googleapis.com/x',
+    'not a url',
+  ]) {
+    assert.equal(isPublicPushEndpoint(bad), false, bad);
+  }
+});
+
+test('bài test vốn từ: mọi từ trong đề đều được xếp đúng nhóm khi chấm', async () => {
+  const { createTest, submitResult } = await import('./services/placement.service.ts');
+  const { runWithUser } = await import('./lib/context.ts');
+  const t = createTest();
+  // DB test không có bộ từ chủ đề → chỉ có 3 nhóm NGSL (8 từ mỗi nhóm) + từ giả
+  assert.equal(t.items.length, 3 * t.perBand + t.pseudo);
+  const r = runWithUser(1, () => submitResult({ answers: t.items.map((word) => ({ word, known: true })), apply: false }));
+  for (const b of r.bands.slice(0, 3)) assert.equal(b.total, t.perBand, b.key);
+  assert.equal(r.falseAlarm, 1);
+});

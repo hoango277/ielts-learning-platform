@@ -471,6 +471,49 @@ export const MIGRATIONS: { id: number; sql: string }[] = [
       ALTER TABLE activity ADD COLUMN fluency_rounds INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    // Thông báo đẩy (Web Push) kể cả khi đã đóng tab, bài test ước lượng vốn từ
+    id: 4,
+    sql: /* sql */ `
+      -- Khoá/giá trị dùng chung của ứng dụng (vd. cặp khoá VAPID tự sinh)
+      CREATE TABLE app_kv (
+        key    TEXT PRIMARY KEY,
+        value  TEXT NOT NULL
+      );
+
+      CREATE TABLE push_subscriptions (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL DEFAULT 0,
+        endpoint    TEXT NOT NULL UNIQUE,
+        p256dh      TEXT NOT NULL,
+        auth        TEXT NOT NULL,
+        user_agent  TEXT,
+        created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        last_ok_at  TEXT
+      );
+      CREATE INDEX idx_push_user ON push_subscriptions(user_id);
+
+      -- Số thông báo đã gửi mỗi ngày (giới hạn tần suất)
+      CREATE TABLE push_log (
+        user_id  INTEGER NOT NULL DEFAULT 0,
+        day      TEXT NOT NULL,
+        count    INTEGER NOT NULL DEFAULT 0,
+        last_at  TEXT,
+        PRIMARY KEY (user_id, day)
+      );
+
+      CREATE TABLE placement_results (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER NOT NULL DEFAULT 0,
+        level        TEXT NOT NULL,
+        size         INTEGER NOT NULL DEFAULT 0,
+        false_alarm  REAL NOT NULL DEFAULT 0,
+        detail       TEXT NOT NULL DEFAULT '[]',
+        created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      );
+      CREATE INDEX idx_placement_user ON placement_results(user_id, created_at);
+    `,
+  },
 ];
 
 /** Các bảng có cột user_id — dùng khi chuyển dữ liệu cũ (user_id = 0) cho tài khoản đầu tiên. */
@@ -488,4 +531,7 @@ export const USER_TABLES = [
   'fluency_sessions',
   'fluency_rounds',
   'daily_plans',
+  'push_subscriptions',
+  'push_log',
+  'placement_results',
 ] as const;

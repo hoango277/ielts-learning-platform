@@ -6,12 +6,13 @@ import { toast } from 'sonner';
 import { Button, LinkButton } from '../components/ui/Button';
 import { ConfirmDialog, Modal } from '../components/ui/Modal';
 import { Badge, Card, EmptyState, ErrorBox, Field, Input, Skeleton } from '../components/ui/primitives';
+import { Term } from '../components/ui/Term';
 import { ClipPlayer } from '../components/video/ClipPlayer';
 import { useDebounced } from '../hooks/misc';
 import { api } from '../lib/api';
 import type { Phrase, PhraseStatus } from '../lib/types';
 import { cn, formatTime, relativeTime } from '../lib/utils';
-import { ChunkSentence } from './Review';
+import { ChunkSentence } from '../components/phrase/ChunkSentence';
 
 const STATUS: Record<PhraseStatus, { label: string; className: string }> = {
   new: { label: 'Mới', className: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
@@ -166,14 +167,17 @@ export default function Phrases() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-fuchsia-500 via-pink-500 to-orange-400 p-6 text-white sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15 blur-2xl" />
-        <h1 className="text-2xl font-extrabold sm:text-3xl">Sổ mẫu câu 💬</h1>
-        <p className="mt-1 max-w-2xl text-sm text-white/90">
-          Học theo cụm và theo câu thay vì từ đơn lẻ: lưu câu hay từ phụ đề (nút <BookmarkPlus className="inline h-4 w-4" /> hoặc phím B), chọn cụm cần học. Khi ôn, bạn nghe lại
-          đúng giọng người nói trong video.
+      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-fuchsia-500 via-pink-500 to-orange-400 p-6 text-white shadow-[0_14px_34px_-12px_rgb(236_72_153/0.6)] sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-amber-200/30 blur-2xl [animation-delay:-4s]" />
+        <h1 className="relative flex items-center gap-2 text-2xl font-black sm:text-3xl">
+          Sổ mẫu câu 💬 <Term k="phrase" icon className="text-white/80 hover:bg-white/20 hover:text-white dark:hover:text-white" />
+        </h1>
+        <p className="relative mt-1 max-w-2xl text-sm text-white/90">
+          Học theo cụm từ và theo câu thay vì từ đơn lẻ: lưu câu hay từ phụ đề (nút <BookmarkPlus className="inline h-4 w-4" /> hoặc phím B), chọn cụm cần học. Khi ôn, bạn nghe
+          lại đúng giọng người nói trong video.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="relative mt-4 flex flex-wrap gap-2">
           <LinkButton to="/review" variant="secondary" icon={<Layers className="h-4 w-4" />} className="bg-white/90 text-fuchsia-700 hover:bg-white">
             Ôn thẻ đến hạn ({counts.due ?? 0})
           </LinkButton>

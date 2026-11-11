@@ -99,7 +99,7 @@ export function VideoCard({ video, progress, compact, difficulty }: { video: Vid
 }
 
 export function VideoGrid({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn('grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4', className)}>{children}</div>;
+  return <div className={cn('grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4', className)}>{children}</div>;
 }
 
 export function VideoCardSkeleton() {

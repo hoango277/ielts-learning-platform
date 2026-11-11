@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { api } from '../lib/api';
+import { unsubscribePush } from '../lib/push';
 import type { User } from '../lib/types';
 
 /** Người dùng đang đăng nhập (null nếu chưa). */
@@ -39,7 +40,12 @@ export function useLogout() {
   const setSignedIn = useSetSignedIn();
   const navigate = useNavigate();
   return useMutation({
-    mutationFn: api.logout,
+    mutationFn: async () => {
+      // Máy này thôi nhận nhắc ôn của tài khoản vừa đăng xuất (đăng nhập lại sẽ tự đăng ký lại nếu vẫn bật nhắc nhở).
+      // Chờ tối đa 3 giây — trình duyệt chậm cũng không được làm chậm việc đăng xuất.
+      await Promise.race([unsubscribePush().catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 3000))]);
+      return api.logout();
+    },
     onSettled: () => {
       setSignedIn(null);
       navigate('/login', { replace: true });

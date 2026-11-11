@@ -53,3 +53,30 @@ export function useMediaQuery(query: string) {
   }, [query]);
   return match;
 }
+
+/** Số chạy dần tới giá trị mới (thống kê, điểm). Người dùng bật "giảm chuyển động" thì hiện luôn giá trị cuối. */
+export function useCountUp(value: number, duration = 700) {
+  const [shown, setShown] = useState(0);
+  const current = useRef(0);
+  useEffect(() => {
+    const start = current.current;
+    const set = (n: number) => {
+      current.current = n;
+      setShown(n);
+    };
+    if (start === value || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      set(value);
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration);
+      set(Math.round(start + (value - start) * (1 - (1 - p) ** 3)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return shown;
+}

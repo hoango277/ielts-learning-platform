@@ -6,15 +6,15 @@ import { Spinner } from './primitives';
 type Variant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'success' | 'soft';
 type Size = 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm';
 
+// Nút "nổi khối" (press): bóng đặc phía dưới bằng màu --edge, bấm thì lún xuống — cảm giác bấm thật như Duolingo
 const VARIANTS: Record<Variant, string> = {
-  primary:
-    'bg-brand text-white shadow-[0_6px_20px_-6px_rgba(124,58,237,0.55)] hover:brightness-110 active:brightness-95 disabled:opacity-50',
-  secondary: 'bg-surface-2 text-ink hover:bg-surface-3 disabled:opacity-50',
-  soft: 'bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-500/15 dark:text-violet-200 dark:hover:bg-violet-500/25 disabled:opacity-50',
-  ghost: 'text-ink hover:bg-surface-2 disabled:opacity-40',
-  outline: 'border border-line bg-surface text-ink hover:bg-surface-2 disabled:opacity-50',
-  danger: 'bg-rose-500 text-white hover:bg-rose-600 disabled:opacity-50',
-  success: 'bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50',
+  primary: 'press bg-brand text-white [--edge:#5b21b6] hover:brightness-110 disabled:opacity-50 dark:[--edge:#2e1065]',
+  secondary: 'press bg-surface-2 text-ink [--edge:#dcd5ee] hover:bg-surface-3 disabled:opacity-50 dark:[--edge:#0d0a14]',
+  soft: 'press bg-violet-100 text-violet-700 [--edge:#d4c8fb] hover:bg-violet-200 dark:bg-violet-500/15 dark:text-violet-200 dark:[--edge:#1a1230] dark:hover:bg-violet-500/25 disabled:opacity-50',
+  ghost: 'text-ink hover:bg-surface-2 active:scale-[0.97] disabled:opacity-40',
+  outline: 'press border-2 border-line bg-surface text-ink [--edge:var(--border)] hover:bg-surface-2 disabled:opacity-50',
+  danger: 'press bg-rose-500 text-white [--edge:#be123c] hover:bg-rose-600 disabled:opacity-50',
+  success: 'press bg-emerald-500 text-white [--edge:#047857] hover:bg-emerald-600 disabled:opacity-50',
 };
 
 const SIZES: Record<Size, string> = {
@@ -33,8 +33,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   ref?: Ref<HTMLButtonElement>;
 }
 
-const BASE =
-  'inline-flex shrink-0 select-none items-center justify-center font-semibold transition-all duration-150 active:scale-[0.97] disabled:active:scale-100';
+const BASE = 'inline-flex shrink-0 select-none items-center justify-center font-display font-extrabold tracking-[0.01em] transition-all duration-150';
 
 export function Button({ variant = 'secondary', size = 'md', loading, icon, className, children, disabled, type = 'button', ref, ...rest }: ButtonProps) {
   return (
@@ -48,6 +47,7 @@ export function Button({ variant = 'secondary', size = 'md', loading, icon, clas
 /** Liên kết điều hướng trông như nút (tránh lồng <button> trong <a> — HTML không hợp lệ). */
 export function LinkButton({
   to,
+  href,
   variant = 'secondary',
   size = 'md',
   icon,
@@ -55,7 +55,10 @@ export function LinkButton({
   children,
   disabled,
 }: {
-  to: string;
+  /** Đường dẫn trong app (react-router) */
+  to?: string;
+  /** Liên kết thường: tải file, trang ngoài */
+  href?: string;
   variant?: Variant;
   size?: Size;
   icon?: ReactNode;
@@ -70,6 +73,14 @@ export function LinkButton({
         {icon}
         {children}
       </span>
+    );
+  }
+  if (href !== undefined || to === undefined) {
+    return (
+      <a href={href} className={cls}>
+        {icon}
+        {children}
+      </a>
     );
   }
   return (

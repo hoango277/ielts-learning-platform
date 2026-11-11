@@ -1,0 +1,37 @@
+# IELTS Learn — chạy bằng Docker Compose
+#   docker compose up -d                       # chạy app ở http://localhost:4000
+#   docker compose -f docker-compose.yml -f docker-compose.hymt.yml up -d   # kèm model dịch Hy-MT
+# Biến môi trường: sao chép .env.docker.example thành .env (cạnh file này) rồi sửa — xem phần "Chạy bằng Docker" trong README.
+name: ielts-learn
+
+services:
+  app:
+    image: xuanhoa2772004/ielts-learn:${IELTS_TAG:-latest}
+    build:
+      context: .
+      args:
+        VERSION: ${IELTS_TAG:-dev}
+    restart: unless-stopped
+    ports:
+      - "${IELTS_PORT:-4000}:4000"
+    environment:
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      YT_LOCATION: ${YT_LOCATION:-US}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:ielts-learn@example.com}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      PUSH_CHECK_MINUTES: ${PUSH_CHECK_MINUTES:-15}
+    volumes:
+      - ielts-data:/data
+    # Chạy an toàn: root filesystem chỉ đọc, không quyền đặc biệt — app chỉ ghi vào /data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  ielts-data:

@@ -1,0 +1,157 @@
+# Giá trị mặc định cho chart IELTS Learn.
+# App dùng SQLite nên chỉ chạy 1 bản sao (replica) với ổ đĩa ReadWriteOnce; cập nhật theo kiểu Recreate.
+
+# Tên tài nguyên: <release>-ielts-learn (đặt fullnameOverride để dùng tên khác hẳn)
+nameOverride: ielts-learn
+fullnameOverride: ""
+
+image:
+  repository: xuanhoa2772004/ielts-learn
+  # Để trống = dùng appVersion của chart
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Cấu hình app (biến môi trường)
+config:
+  # Múi giờ dùng cho streak, kế hoạch ngày và khung giờ gửi nhắc nhở (8h–22h)
+  timezone: Asia/Ho_Chi_Minh
+  # false = khoá đăng ký tài khoản mới (tài khoản đầu tiên vẫn tạo được)
+  allowRegistration: true
+  # Quốc gia dùng khi lấy video thịnh hành / gợi ý của YouTube
+  youtubeLocation: US
+  # auto = dùng Hy-MT nếu bật, không thì Google → MyMemory; google; hymt
+  translateProvider: auto
+  # Chu kỳ (phút) máy chủ kiểm tra để gửi nhắc ôn qua Web Push; 0 = tắt
+  pushCheckMinutes: 15
+  # Thêm nguồn được gọi API từ trình duyệt khác tên miền (thường không cần)
+  corsOrigin: ""
+
+# Biến môi trường bổ sung (map tên → giá trị)
+env: {}
+
+# Khoá VAPID cho thông báo đẩy. Để trống thì app tự sinh và lưu trong DB (giữ nguyên khi có volume).
+vapid:
+  subject: mailto:ielts-learn@example.com
+  publicKey: ""
+  privateKey: ""
+  # Dùng Secret có sẵn (khoá VAPID_PUBLIC_KEY và VAPID_PRIVATE_KEY) thay cho 2 giá trị trên
+  existingSecret: ""
+
+persistence:
+  enabled: true
+  # Dùng PVC có sẵn thay vì tạo mới
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: ielts.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # Web Push và micro (luyện nói) cần HTTPS khi truy cập qua tên miền
+  tls: []
+  #  - secretName: ielts-tls
+  #    hosts:
+  #      - ielts.example.com
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 768Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ---------- Model dịch Hy-MT (tuỳ chọn) ----------
+# Chạy HY-MT1.5-1.8B (GGUF, ~1,1 GB) bằng llama.cpp server trên CPU; app tự dùng khi bật.
+hymt:
+  enabled: false
+  image:
+    repository: ghcr.io/ggml-org/llama.cpp
+    tag: server-b11946
+    pullPolicy: IfNotPresent
+  model:
+    file: HY-MT1.5-1.8B-Q4_K_M.gguf
+    url: https://huggingface.co/tencent/HY-MT1.5-1.8B-GGUF/resolve/main/HY-MT1.5-1.8B-Q4_K_M.gguf
+    # Tên model mà app gọi (tham số --alias của llama-server)
+    alias: hy-mt
+    # Mẫu prompt: hymt15 cho HY-MT1.5, hymt2 cho Hy-MT2
+    promptStyle: hymt15
+  # Container tải model lần đầu (bỏ qua nếu model đã có trong ổ đĩa)
+  downloader:
+    image: curlimages/curl:8.11.1
+  args:
+    - --jinja
+    - -c
+    - "4096"
+    - -np
+    - "2"
+  service:
+    port: 8080
+  persistence:
+    existingClaim: ""
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 3Gi
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1536Mi
+    limits:
+      memory: 3Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

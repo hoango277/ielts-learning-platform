@@ -34,7 +34,7 @@ export const DIFF_META: Record<DifficultyLabel, { label: string; className: stri
 
 export const coveragePct = (c: number) => `${(Math.floor(c * 1000) / 10).toFixed(c >= 0.995 ? 0 : 1).replace('.', ',')}%`;
 
-/** Nhãn nhỏ "96,5% · Vừa sức" cho thẻ video. */
+/** Nhãn nhỏ "Biết 96,5% · Vừa sức" cho thẻ video (con số = % số từ trong video mà bạn đã biết). */
 export function DifficultyPill({ data, className }: { data: Badge; className?: string }) {
   const m = DIFF_META[data.label];
   return (
@@ -42,7 +42,7 @@ export function DifficultyPill({ data, className }: { data: Badge; className?: s
       className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold', m.className, className)}
       title={`${m.desc} (${data.newWords} từ mới)`}
     >
-      {coveragePct(data.coverage)} · {m.label}
+      Biết {coveragePct(data.coverage)} · {m.label}
     </span>
   );
 }

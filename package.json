@@ -1,16 +1,25 @@
 {
   "name": "ielts-learn",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Ứng dụng học tiếng Anh: shadowing YouTube, sổ từ vựng, flashcard SRS, luyện tập và bộ từ theo chủ đề",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hoango277/ielts-learning-platform.git"
+  },
   "workspaces": [
     "backend",
     "frontend"
   ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c magenta,cyan \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:hymt": "node scripts/dev-hymt.mjs",
+    "hymt": "node scripts/hymt.mjs serve",
+    "hymt:download": "node scripts/hymt.mjs download",
     "build": "npm run build -w frontend",
     "start": "npm run start -w backend",
+    "docker:build": "docker build -t xuanhoa2772004/ielts-learn:local .",
+    "docker:up": "docker compose up -d --build",
     "crawl": "npm run crawl -w backend",
     "seed": "npm run seed -w backend",
     "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",

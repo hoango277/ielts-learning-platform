@@ -4,7 +4,11 @@ import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 import { App } from './App';
 import './index.css';
+import { registerServiceWorker } from './lib/push';
 import { useUi } from './store/ui';
+
+// Service worker: nhận thông báo đẩy nhắc ôn tập (kể cả khi đã đóng tab) và cho phép cài app (PWA)
+void registerServiceWorker();
 
 const queryClient = new QueryClient({
   defaultOptions: {

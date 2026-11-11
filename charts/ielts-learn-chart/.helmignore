@@ -1,0 +1,12 @@
+# Bỏ qua khi đóng gói chart
+.DS_Store
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+ci/

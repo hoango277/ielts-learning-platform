@@ -6,11 +6,13 @@ import { toast } from 'sonner';
 import { useMe } from '../../hooks/useAuth';
 import { useHotkeys } from '../../hooks/useHotkeys';
 import { api } from '../../lib/api';
+import { pushSupported, subscribePush, unsubscribePush } from '../../lib/push';
 import type { Settings, WarmupItem } from '../../lib/types';
 import { cn, localDayKey } from '../../lib/utils';
 import { KEY_AFTER_LOGIN, useUi, type WarmupTrigger } from '../../store/ui';
-import { ChunkSentence } from '../../pages/Review';
+import { ChunkSentence } from '../phrase/ChunkSentence';
 import { Button } from '../ui/Button';
+import { Term } from '../ui/Term';
 import { Modal } from '../ui/Modal';
 import { Progress } from '../ui/primitives';
 import { ClipPlayer } from '../video/ClipPlayer';
@@ -48,18 +50,18 @@ const store = {
   },
 };
 
-/** Trang đang làm dở (xem video, làm bài, ghi âm) → không bật hộp đè lên, chỉ hiện nút nhỏ. */
+/** Trang đang làm dở (xem video, làm bài, ghi âm, đang tra thuật ngữ) → không bật hộp đè lên, chỉ hiện nút nhỏ. */
 function isBusyRoute(pathname: string, search: string) {
-  return /^\/(watch|practice\/play|review|fluency\/\d+)/.test(pathname) || (pathname === '/speaking' && search.includes('mode='));
+  return /^\/(watch|practice\/play|review|fluency\/\d+|placement|glossary)/.test(pathname) || (pathname === '/speaking' && search.includes('mode='));
 }
 
 // ---------- Ôn nhanh ----------
 
 const RATINGS = [
-  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-600' },
-  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-600' },
-  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-600' },
-  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-600' },
+  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-400 [--edge:#be123c]' },
+  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-400 [--edge:#b45309]' },
+  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:#047857]' },
+  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-400 [--edge:#0369a1]' },
 ];
 
 function MemoryBadge({ item }: { item: WarmupItem }) {
@@ -75,15 +77,15 @@ function MemoryBadge({ item }: { item: WarmupItem }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-bold">
       <span className="rounded-full bg-surface-2 px-2 py-0.5 text-muted">{reason}</span>
-      <span
+      <Term
+        k="retrievability"
         className={cn(
           'rounded-full px-2 py-0.5',
           pct < 70 ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' : pct < 85 ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
         )}
-        title="Khả năng bạn còn nhớ thẻ này lúc này (ước tính theo FSRS)"
       >
         Còn nhớ ~{pct}%
-      </span>
+      </Term>
     </div>
   );
 }
@@ -99,7 +101,7 @@ function QuickCard({ item, flipped }: { item: WarmupItem; flipped: boolean }) {
           <p className="text-3xl font-extrabold text-ink">{c.term}</p>
           <AudioButton term={c.term} audio={c.audio} />
         </div>
-        {c.ipa && <p className="font-mono text-sm text-muted">{c.ipa}</p>}
+        {c.ipa && <p className="font-ipa text-sm text-muted">{c.ipa}</p>}
         {flipped && (
           <div className="animate-fade-in space-y-2">
             <p className="text-xl font-bold text-violet-700 dark:text-violet-300">{c.meaning}</p>
@@ -215,16 +217,16 @@ function QuickReview({ items, available }: { items: WarmupItem[]; available: num
         <QuickCard key={`${item.kind}:${item.card.id}:${done}`} item={item} flipped={flipped} />
       </div>
       {flipped ? (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid animate-fade-in grid-cols-4 gap-2 pb-1">
           {RATINGS.map((r) => (
             <button
               key={r.value}
               type="button"
               disabled={rate.isPending}
               onClick={() => doRate(r.value)}
-              className={cn('flex flex-col items-center rounded-xl py-2 text-white transition active:scale-95 disabled:opacity-60', r.className)}
+              className={cn('press flex flex-col items-center rounded-xl py-2 text-white disabled:opacity-60', r.className)}
             >
-              <span className="text-sm font-extrabold">{r.label}</span>
+              <span className="font-display text-sm font-extrabold">{r.label}</span>
               <span className="text-[11px] text-white/85">{item.card.preview[r.value]}</span>
             </button>
           ))}
@@ -242,7 +244,10 @@ function QuickReview({ items, available }: { items: WarmupItem[]; available: num
 
 export const notificationsSupported = () => typeof window !== 'undefined' && 'Notification' in window;
 
-/** Xin quyền thông báo — chỉ gọi từ một cú bấm của người dùng (trình duyệt chặn nếu tự hỏi khi tải trang). */
+/**
+ * Bật nhắc nhở — chỉ gọi từ một cú bấm của người dùng (trình duyệt chặn nếu tự hỏi quyền khi tải trang).
+ * Có Web Push: đăng ký với máy chủ để nhận nhắc kể cả khi đã đóng tab, rồi gửi một thông báo thử.
+ */
 export async function enableReviewNotifications(qc: ReturnType<typeof useQueryClient>) {
   if (!notificationsSupported()) {
     toast.error('Trình duyệt này không hỗ trợ thông báo.');
@@ -253,10 +258,39 @@ export async function enableReviewNotifications(qc: ReturnType<typeof useQueryCl
     toast.error('Trình duyệt đang chặn thông báo. Bấm biểu tượng ổ khoá cạnh địa chỉ trang để cho phép.');
     return false;
   }
+  if (pushSupported()) {
+    // Lần đầu (hoặc ngay sau khi huỷ đăng ký) trình duyệt có thể mất tới ~1 phút để lấy kênh từ dịch vụ thông báo
+    // → báo cho người dùng biết đang chờ, tránh tưởng app bị treo
+    const slow = window.setTimeout(
+      () => toast.loading('Đang kết nối dịch vụ thông báo của trình duyệt… việc này có thể mất đến 1 phút.', { id: 'push-subscribe' }),
+      1500,
+    );
+    try {
+      await subscribePush();
+    } catch (err) {
+      toast.error(`Không đăng ký được thông báo đẩy: ${(err as Error).message}`);
+      return false;
+    } finally {
+      window.clearTimeout(slow);
+      toast.dismiss('push-subscribe');
+    }
+  }
   const s = await api.updateSettings({ notifyReviews: true });
   qc.setQueryData(['settings'], s);
-  new Notification('IELTS Learn', { body: 'Đã bật nhắc nhở: app sẽ báo khi có từ sắp quên (tối đa 2 lần/ngày).', icon: '/favicon.svg', tag: 'ielts-learn-test' });
+  if (pushSupported()) {
+    const r = await api.pushTest().catch(() => ({ sent: 0, failed: 1 }));
+    if (r.sent) toast.success('Đã bật nhắc nhở — một thông báo thử vừa được gửi tới máy này.');
+    else toast.warning('Đã bật nhắc nhở nhưng chưa gửi được thông báo thử. Kiểm tra kết nối mạng của máy chủ.');
+  } else {
+    new Notification('IELTS Learn', { body: 'Đã bật nhắc nhở: app sẽ báo khi có từ sắp quên (khi app đang mở trong một tab).', icon: '/icons/icon-192.png' });
+  }
   return true;
+}
+
+export async function disableReviewNotifications(qc: ReturnType<typeof useQueryClient>) {
+  await unsubscribePush().catch(() => undefined);
+  const s = await api.updateSettings({ notifyReviews: false });
+  qc.setQueryData(['settings'], s);
 }
 
 function NotifyOptIn({ settings }: { settings: Settings | undefined }) {
@@ -269,7 +303,8 @@ function NotifyOptIn({ settings }: { settings: Settings | undefined }) {
     <div className="flex items-center gap-3 rounded-2xl bg-violet-50 p-3 text-sm dark:bg-violet-500/10">
       <BellRing className="h-5 w-5 shrink-0 text-violet-500" />
       <p className="flex-1 text-ink">
-        Nhắc tôi khi có từ sắp quên <span className="text-muted">(khi app đang mở trong một tab, tối đa 2 lần/ngày)</span>
+        Nhắc tôi khi có từ sắp quên{' '}
+        <span className="text-muted">{pushSupported() ? '(kể cả khi đã đóng tab, tối đa 2 lần/ngày)' : '(khi app đang mở trong một tab, tối đa 2 lần/ngày)'}</span>
       </p>
       <Button
         size="sm"
@@ -290,13 +325,13 @@ function NotifyOptIn({ settings }: { settings: Settings | undefined }) {
 const NOTIFY = { checkMs: 10 * 60_000, gapMs: 3 * 3600_000, maxPerDay: 2, fromHour: 8, toHour: 22 };
 
 /**
- * Khi tab app đang mở nhưng người dùng làm việc khác: có thẻ quá hạn → thông báo; 20–22h chưa học từ mới →
- * nhắc học vài từ trước khi ngủ (sáng mai sẽ được ôn lại). Không có máy chủ push nên chỉ chạy khi tab còn mở.
+ * Dự phòng cho trình duyệt không có Web Push: khi tab app đang mở nhưng người dùng làm việc khác, có thẻ quá hạn
+ * → thông báo; 20–22h chưa học từ mới → nhắc học vài từ trước khi ngủ. Có Web Push thì máy chủ lo việc này.
  */
 function useReviewNotifications(settings: Settings | undefined) {
   const navigate = useNavigate();
   const openWarmup = useUi((s) => s.openWarmup);
-  const enabled = Boolean(settings?.notifyReviews) && notificationsSupported();
+  const enabled = Boolean(settings?.notifyReviews) && notificationsSupported() && !pushSupported();
   useEffect(() => {
     if (!enabled) return;
     const check = async () => {
@@ -424,7 +459,7 @@ function WarmupModal({ settings }: { settings: Settings | undefined }) {
         {snapshot ? (
           snapshot.items.length > 0 && <QuickReview items={snapshot.items} available={snapshot.available} />
         ) : (
-          <div className="h-44 animate-pulse rounded-2xl bg-surface-2" />
+          <div className="skeleton h-44 rounded-2xl" />
         )}
 
         {t.data && (
@@ -477,6 +512,34 @@ export function StartScreen() {
   const started = useRef(false);
 
   useReviewNotifications(settings);
+  const navigate = useNavigate();
+
+  // Bấm thông báo đẩy → mở app với ?warmup=1 (hoặc service worker gửi tin nhắn khi tab đã mở sẵn)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('warmup') !== '1') return;
+    params.delete('warmup');
+    navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : '' }, { replace: true });
+    store.set(KEY_LAST, String(Date.now()));
+    openWarmup('notification');
+  }, [location.search, location.pathname, navigate, openWarmup]);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const onMessage = (e: MessageEvent<{ type?: string; url?: string }>) => {
+      if (e.data?.type !== 'open-url' || !e.data.url) return;
+      const u = new URL(e.data.url);
+      navigate(u.pathname + u.search);
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [navigate]);
+
+  // Đã bật nhắc nhở trên máy này → làm mới đăng ký push mỗi lần mở app (máy chủ đổi khoá, đăng ký hết hạn…)
+  useEffect(() => {
+    if (settings?.notifyReviews && pushSupported() && Notification.permission === 'granted')
+      void subscribePush().catch((err) => console.warn('[push] không làm mới được đăng ký thông báo:', (err as Error).message));
+  }, [settings?.notifyReviews]);
 
   const evaluate = useCallback(
     async (trigger: WarmupTrigger) => {

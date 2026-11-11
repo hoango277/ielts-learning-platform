@@ -428,14 +428,14 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
 
   const sideTabs: { key: SideTab; label: string; icon: typeof Captions }[] = [
     { key: 'transcript', label: 'Phụ đề', icon: Captions },
-    { key: 'words', label: 'Từ lưu', icon: BookMarked },
+    { key: 'words', label: 'Từ đã lưu', icon: BookMarked },
     { key: 'level', label: 'Độ khó', icon: Gauge },
     { key: 'notes', label: 'Ghi chú', icon: NotebookPen },
-    { key: 'next', label: 'Tiếp', icon: ListVideo },
+    { key: 'next', label: 'Gợi ý', icon: ListVideo },
   ];
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="min-w-0 space-y-4">
         <div className="sticky top-14 z-10 -mx-4 bg-bg/95 px-4 pb-2 pt-1 backdrop-blur sm:-mx-6 sm:px-6 xl:static xl:mx-0 xl:bg-transparent xl:p-0 xl:backdrop-blur-none">
           <Player player={player} videoId={id} />
@@ -493,12 +493,12 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
           </div>
           {mode === 'watch' && (
             <>
-              <ToggleChip on={autoPause} onClick={() => toggleAutoPause()} icon={<Pause className="h-4 w-4" />} label="Tự dừng" title="Tự dừng sau mỗi câu để nhại lại (A)" />
-              <ToggleChip on={loop} onClick={() => setLoop((v) => !v)} icon={<Repeat className="h-4 w-4" />} label="Lặp câu" title="Lặp lại câu hiện tại (L)" />
-              <ToggleChip on={hideSubs} onClick={() => setHideSubs((v) => !v)} icon={hideSubs ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} label="Che phụ đề" title="Che phụ đề để luyện nghe (H)" />
+              <ToggleChip on={autoPause} onClick={() => toggleAutoPause()} icon={<Pause className="h-4 w-4" />} label="Tự dừng" title="Video tự tạm dừng sau mỗi câu để bạn kịp nhại lại (phím A)" />
+              <ToggleChip on={loop} onClick={() => setLoop((v) => !v)} icon={<Repeat className="h-4 w-4" />} label="Lặp câu" title="Phát đi phát lại câu hiện tại (phím L)" />
+              <ToggleChip on={hideSubs} onClick={() => setHideSubs((v) => !v)} icon={hideSubs ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} label="Che phụ đề" title="Làm mờ phụ đề để luyện nghe (phím H)" />
             </>
           )}
-          <ToggleChip on={showTranslation} onClick={() => setShowTranslation((v) => !v)} icon={<Languages className="h-4 w-4" />} label="Song ngữ" title="Hiện bản dịch tiếng Việt (T)" />
+          <ToggleChip on={showTranslation} onClick={() => setShowTranslation((v) => !v)} icon={<Languages className="h-4 w-4" />} label="Song ngữ" title="Hiện thêm bản dịch tiếng Việt dưới phụ đề tiếng Anh (phím T)" />
           <DifficultyChip videoId={id} onClick={() => setSide('level')} />
           <span className="ml-auto hidden font-mono text-xs text-muted sm:inline">
             {current >= 0 && sentences[current] ? formatTime(sentences[current].start) : '0:00'} / {formatTime(player.duration || details.data?.durationSec || 0)}
@@ -514,9 +514,9 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
           ariaLabel="Chế độ học"
           className="w-full [&>button]:flex-1"
           options={[
-            { value: 'watch', label: <><Tv className="h-4 w-4" /> <span className="sm:hidden">Xem</span><span className="hidden sm:inline">Xem & tra từ</span></>, title: 'Phím 1' },
-            { value: 'shadow', label: <><Mic className="h-4 w-4" /> Shadowing</>, title: 'Phím 2' },
-            { value: 'dictation', label: <><PenLine className="h-4 w-4" /> <span className="sm:hidden">Chính tả</span><span className="hidden sm:inline">Chép chính tả</span></>, title: 'Phím 3' },
+            { value: 'watch', label: <><Tv className="h-4 w-4" /> <span className="sm:hidden">Xem</span><span className="hidden sm:inline">Xem & tra từ</span></>, title: 'Xem video, bấm vào từ để tra nghĩa (phím 1)' },
+            { value: 'shadow', label: <><Mic className="h-4 w-4" /> Nói đuổi</>, title: 'Shadowing: nghe từng câu rồi nhại lại, app chấm từ nào bạn nói khớp (phím 2)' },
+            { value: 'dictation', label: <><PenLine className="h-4 w-4" /> <span className="sm:hidden">Chính tả</span><span className="hidden sm:inline">Chép chính tả</span></>, title: 'Nghe từng câu rồi gõ lại chính xác (phím 3)' },
           ]}
         />
 
@@ -572,6 +572,7 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
                 type="button"
                 role="tab"
                 aria-selected={side === t.key}
+                title={t.label}
                 onClick={() => setSide(t.key)}
                 className={cn(
                   'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-1.5 py-3 text-xs font-semibold transition sm:text-[13px]',
@@ -656,8 +657,8 @@ function ToggleChip({ on, onClick, icon, label, title }: { on: boolean; onClick:
       aria-pressed={on}
       title={title}
       className={cn(
-        'inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold transition',
-        on ? 'bg-violet-500 text-white shadow-md shadow-violet-500/25' : 'bg-surface-2 text-muted hover:text-ink',
+        'inline-flex h-9 items-center gap-1.5 rounded-xl px-3 font-display text-sm font-bold transition active:scale-95',
+        on ? 'bg-violet-500 text-white shadow-[inset_0_-2px_0_rgb(0_0_0/0.18),0_4px_10px_-4px_rgb(139_92_246/0.7)]' : 'bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink',
       )}
     >
       {icon}
@@ -673,7 +674,7 @@ export default function WatchPage() {
   if (!/^[\w-]{11}$/.test(id)) return <EmptyState icon="🤔" title="Link video không hợp lệ" />;
   if (stateQ.isPending) {
     return (
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <Skeleton className="aspect-video w-full rounded-2xl" />
         <Skeleton className="h-[60vh]" />
       </div>

@@ -11,9 +11,9 @@ import { cn } from '../lib/utils';
 import { KEY_AFTER_LOGIN } from '../store/ui';
 
 const FEATURES = [
-  { icon: Mic, text: 'Shadowing & chép chính tả với video YouTube' },
-  { icon: Languages, text: 'Bấm vào từ để tra nghĩa theo ngữ cảnh (Hy-MT / Google)' },
-  { icon: Layers, text: 'Flashcard lặp lại ngắt quãng FSRS — nhớ lâu hơn' },
+  { icon: Mic, text: 'Nói đuổi (shadowing) & chép chính tả với video YouTube' },
+  { icon: Languages, text: 'Bấm vào từ để tra nghĩa đúng theo câu trong video' },
+  { icon: Layers, text: 'Thẻ ghi nhớ tự hẹn ngày ôn đúng lúc bạn sắp quên' },
   { icon: Shapes, text: '26 bộ từ vựng IELTS theo chủ đề' },
   { icon: BookMarked, text: 'Sổ từ vựng riêng, đồng bộ trên mọi thiết bị dùng chung máy chủ' },
 ];
@@ -124,19 +124,19 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   return (
     <div className="flex min-h-dvh bg-bg">
       {/* Bảng giới thiệu (desktop) */}
-      <aside className="relative hidden w-[46%] overflow-hidden bg-brand p-12 text-white lg:flex lg:flex-col">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-amber-300/25 blur-3xl" />
+      <aside className="relative hidden w-[46%] overflow-hidden bg-brand-animated p-12 text-white lg:flex lg:flex-col">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 animate-float-slow rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 animate-float-slow rounded-full bg-amber-300/30 blur-3xl [animation-delay:-4s]" />
         <div className="relative flex items-center gap-3">
           <img src="/favicon.svg" alt="" className="h-11 w-11 rounded-2xl bg-white/15 p-0.5" />
-          <span className="text-2xl font-extrabold tracking-tight">IELTS Learn</span>
+          <span className="font-display text-2xl font-black tracking-tight">IELTS Learn</span>
         </div>
         <div className="relative mt-auto">
-          <h2 className="max-w-md text-4xl font-extrabold leading-tight">Học tiếng Anh qua video bạn thích — mỗi ngày một chút.</h2>
-          <ul className="mt-8 space-y-4">
+          <h2 className="max-w-md text-4xl font-black leading-tight">Học tiếng Anh qua video bạn thích — mỗi ngày một chút.</h2>
+          <ul className="stagger mt-8 space-y-4">
             {FEATURES.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-[15px] text-white/90">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 shadow-[inset_0_1px_0_rgb(255_255_255/0.3)] ring-1 ring-white/20">
                   <Icon className="h-5 w-5" />
                 </span>
                 {text}
@@ -152,7 +152,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <img src="/favicon.svg" alt="" className="h-10 w-10 rounded-xl" />
-            <span className="text-xl font-extrabold">
+            <span className="font-display text-xl font-black">
               IELTS <span className="text-gradient">Learn</span>
             </span>
           </div>

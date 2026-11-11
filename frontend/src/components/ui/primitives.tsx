@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode, Ref, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
-import { cn } from '../../lib/utils';
+import { useCountUp } from '../../hooks/misc';
+import { cn, formatNumber } from '../../lib/utils';
 
 export function Spinner({ className }: { className?: string }) {
   return (
@@ -64,12 +65,16 @@ export function Select({ className, children, ...rest }: SelectHTMLAttributes<HT
   );
 }
 
-export function Field({ label, hint, children, htmlFor }: { label: string; hint?: ReactNode; children: ReactNode; htmlFor?: string }) {
+export function Field({ label, hint, children, htmlFor, info }: { label: string; hint?: ReactNode; children: ReactNode; htmlFor?: string; info?: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-semibold text-ink">
-        {label}
-      </label>
+      {/* `info` (nút giải thích thuật ngữ) nằm ngoài <label> để bấm vào không nhảy focus sang ô nhập */}
+      <div className="flex items-center gap-1">
+        <label htmlFor={htmlFor} className="block text-sm font-semibold text-ink">
+          {label}
+        </label>
+        {info}
+      </div>
       {children}
       {hint && <p className="text-xs leading-relaxed text-muted">{hint}</p>}
     </div>
@@ -86,11 +91,16 @@ export function Switch({ checked, onChange, label, id }: { checked: boolean; onC
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full shadow-[inset_0_1px_3px_rgb(0_0_0/0.18)] transition-colors duration-200',
         checked ? 'bg-violet-500' : 'bg-surface-3',
       )}
     >
-      <span className={cn('inline-block h-5 w-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-5.5' : 'translate-x-0.5')} />
+      <span
+        className={cn(
+          'inline-block h-5 w-5 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.3)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+          checked ? 'translate-x-5.5' : 'translate-x-0.5',
+        )}
+      />
     </button>
   );
 }
@@ -111,7 +121,11 @@ export function Segmented<T extends string | number>({
   ariaLabel?: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={ariaLabel} className={cn('inline-flex rounded-xl bg-surface-2 p-1', className)}>
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className={cn('inline-flex rounded-xl bg-surface-2 p-1 shadow-[inset_0_1px_2px_rgb(0_0_0/0.05)]', className)}
+    >
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -121,9 +135,9 @@ export function Segmented<T extends string | number>({
           title={o.title}
           onClick={() => onChange(o.value)}
           className={cn(
-            'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-semibold transition',
+            'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-display font-bold transition-all duration-200',
             size === 'sm' ? 'h-7 px-2.5 text-xs' : 'h-8 px-3 text-sm',
-            o.value === value ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink',
+            o.value === value ? 'bg-surface text-ink shadow-soft ring-1 ring-line' : 'text-muted hover:text-ink',
           )}
         >
           {o.label}
@@ -134,15 +148,20 @@ export function Segmented<T extends string | number>({
 }
 
 export function Progress({ value, className, barClassName }: { value: number; className?: string; barClassName?: string }) {
+  const pct = Math.min(100, Math.max(0, value * 100));
   return (
     <div
-      className={cn('h-2 w-full overflow-hidden rounded-full bg-surface-3', className)}
+      className={cn('h-2 w-full overflow-hidden rounded-full bg-surface-3 shadow-[inset_0_1px_2px_rgb(0_0_0/0.06)]', className)}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(value * 100)}
     >
-      <div className={cn('h-full rounded-full bg-brand transition-[width] duration-500', barClassName)} style={{ width: `${Math.min(100, Math.max(0, value * 100))}%` }} />
+      {/* Vệt sáng chạy qua thanh đang có tiến độ cho cảm giác "sống" */}
+      <div
+        className={cn('h-full rounded-full bg-brand transition-[width] duration-700 ease-out', pct > 0 && pct < 100 && 'shine', barClassName)}
+        style={{ width: `${pct}%` }}
+      />
     </div>
   );
 }
@@ -195,8 +214,13 @@ export function Ring({
   );
 }
 
+/** Con số chạy dần từ 0 lên giá trị thật khi xuất hiện. */
+export function CountUp({ value }: { value: number }) {
+  return <>{formatNumber(useCountUp(value))}</>;
+}
+
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-xl bg-surface-3/70', className)} />;
+  return <div className={cn('skeleton rounded-xl', className)} aria-hidden="true" />;
 }
 
 export function EmptyState({
@@ -213,11 +237,14 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
-      <div className="mb-4 flex h-16 w-16 animate-float items-center justify-center rounded-2xl bg-surface-2 text-3xl">{icon}</div>
-      <h3 className="text-lg font-bold text-ink">{title}</h3>
+    <div className={cn('flex animate-rise flex-col items-center justify-center px-6 py-14 text-center', className)}>
+      <div className="relative mb-5">
+        <div className="absolute inset-0 -z-10 scale-125 rounded-full bg-brand opacity-20 blur-2xl" />
+        <div className="flex h-20 w-20 animate-float items-center justify-center rounded-3xl border border-line bg-surface text-4xl shadow-card">{icon}</div>
+      </div>
+      <h3 className="text-xl font-extrabold text-ink">{title}</h3>
       {description && <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+      {action && <div className="mt-6">{action}</div>}
     </div>
   );
 }
@@ -226,7 +253,7 @@ export function SectionTitle({ title, subtitle, action, icon }: { title: ReactNo
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+        <h2 className="flex items-center gap-2 text-xl font-extrabold text-ink">
           {icon}
           {title}
         </h2>

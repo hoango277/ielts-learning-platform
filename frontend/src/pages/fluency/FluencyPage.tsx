@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Button, LinkButton } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/Modal';
 import { Card, EmptyState, ErrorBox, Input, Segmented, Skeleton, Textarea } from '../../components/ui/primitives';
+import { Term } from '../../components/ui/Term';
 import { LONG_PAUSE, useFluencyCapture } from '../../hooks/useFluencyCapture';
 import { api } from '../../lib/api';
 import type { FluencyRound, FluencySession, FluencyTopic } from '../../lib/types';
@@ -28,11 +29,11 @@ const minutesLabel = (sec: number) => `${(sec / 60).toLocaleString('vi-VN', { ma
 
 // ---------- Chỉ số một lượt ----------
 
-const METRICS: { key: keyof FluencyRound; label: string; unit: string; better: 'up' | 'down'; hint: string }[] = [
-  { key: 'wpm', label: 'Tốc độ', unit: 'từ/phút', better: 'up', hint: 'Số từ nói được mỗi phút (tính cả lúc ngừng)' },
-  { key: 'longPausesPerMin', label: 'Ngừng dài', unit: 'lần/phút', better: 'down', hint: `Số quãng im lặng ≥ ${LONG_PAUSE} giây mỗi phút` },
-  { key: 'meanRun', label: 'Đoạn nói liền', unit: 'từ', better: 'up', hint: 'Số từ trung bình giữa hai lần ngừng' },
-  { key: 'fillersPerMin', label: 'Từ đệm', unit: 'lần/phút', better: 'down', hint: 'um, uh, you know, I mean, kind of… (nhận dạng giọng nói hay bỏ sót “um/uh”)' },
+const METRICS: { key: keyof FluencyRound; label: string; unit: string; better: 'up' | 'down'; hint: string; term: string }[] = [
+  { key: 'wpm', label: 'Tốc độ', unit: 'từ/phút', better: 'up', hint: 'Càng cao càng tốt', term: 'wpm' },
+  { key: 'longPausesPerMin', label: 'Ngừng dài', unit: 'lần/phút', better: 'down', hint: `Im lặng ≥ ${LONG_PAUSE} giây · càng ít càng tốt`, term: 'long_pause' },
+  { key: 'meanRun', label: 'Đoạn nói liền', unit: 'từ', better: 'up', hint: 'Càng dài càng tốt', term: 'mean_run' },
+  { key: 'fillersPerMin', label: 'Từ đệm', unit: 'lần/phút', better: 'down', hint: 'um, uh, you know… · càng ít càng tốt', term: 'filler' },
 ];
 
 function Delta({ cur, prev, better }: { cur: number; prev?: number; better: 'up' | 'down' }) {
@@ -49,15 +50,19 @@ function Delta({ cur, prev, better }: { cur: number; prev?: number; better: 'up'
 
 function RoundStats({ round, prev }: { round: FluencyRound; prev?: FluencyRound }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="stagger grid grid-cols-2 gap-2 sm:grid-cols-4">
       {METRICS.map((m) => (
-        <div key={m.key} className="rounded-2xl bg-surface-2 p-3" title={m.hint}>
-          <p className="text-xs font-semibold text-muted">{m.label}</p>
+        <div key={m.key} className="rounded-2xl border border-line bg-surface-2 p-3 shadow-soft">
+          <p className="text-xs font-semibold text-muted">
+            <Term k={m.term}>{m.label}</Term>
+          </p>
           <p className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-extrabold text-ink">{round[m.key] as number}</span>
+            <span className="font-display text-2xl font-black text-ink">{round[m.key] as number}</span>
             <Delta cur={round[m.key] as number} prev={prev?.[m.key] as number | undefined} better={m.better} />
           </p>
-          <p className="text-[11px] text-muted">{m.unit}</p>
+          <p className="text-[11px] text-muted">
+            {m.unit} · {m.hint}
+          </p>
         </div>
       ))}
     </div>
@@ -180,7 +185,7 @@ function Runner({ session }: { session: FluencySession }) {
         {session.prompts.length > 0 && (
           <div>
             <p className="mb-1 text-sm font-semibold text-ink">Gợi ý nên nói:</p>
-            <ul className="grid gap-1 text-sm text-muted sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-1 text-sm text-muted sm:grid-cols-2">
               {session.prompts.map((p) => (
                 <li key={p}>• {p}</li>
               ))}
@@ -289,7 +294,7 @@ function Summary({ session }: { session: FluencySession }) {
               <th className="py-1 pr-3 font-semibold">Lượt</th>
               {METRICS.map((m) => (
                 <th key={m.key} className="py-1 pr-3 font-semibold">
-                  {m.label} <span className="font-normal">({m.unit})</span>
+                  <Term k={m.term}>{m.label}</Term> <span className="font-normal">({m.unit})</span>
                 </th>
               ))}
             </tr>
@@ -325,7 +330,11 @@ function Summary({ session }: { session: FluencySession }) {
             <div key={r.id} className="space-y-1">
               <p className="text-xs font-bold text-muted">Lượt {r.round}</p>
               <p className="text-sm leading-relaxed text-ink">{r.transcript || '(không nhận dạng được lời nói)'}</p>
-              {Object.keys(r.fillers).length > 0 && <p className="text-xs text-muted">Từ đệm: {Object.entries(r.fillers).map(([k, v]) => `${k} ×${v}`).join(', ')}</p>}
+              {Object.keys(r.fillers).length > 0 && (
+                <p className="text-xs text-muted">
+                  <Term k="filler">Từ đệm</Term>: {Object.entries(r.fillers).map(([k, v]) => `${k} ×${v}`).join(', ')}
+                </p>
+              )}
               {r.hasAudio && <audio src={api.fluencyAudioUrl(r.id)} controls className="h-9 w-full" />}
             </div>
           ))}
@@ -374,14 +383,17 @@ function Hub() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-sky-500 via-indigo-500 to-violet-600 p-6 text-white sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15 blur-2xl" />
-        <h1 className="text-2xl font-extrabold sm:text-3xl">Nói trôi chảy 4/3/2 ⏱️</h1>
-        <p className="mt-1 max-w-2xl text-sm text-white/90">
-          Nói cùng một đề 3 lần với thời gian giảm dần (4 → 3 → 2 phút). Nội dung đã quen nên não tập trung vào tốc độ và sự liền mạch — kỹ thuật của Maurice (1983) và Nation
-          (1989) để luyện độ trôi chảy. App ghi âm, đo tốc độ nói, quãng ngừng và từ đệm qua từng lượt.
+      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-sky-500 via-indigo-500 to-violet-600 p-6 text-white shadow-[0_14px_34px_-12px_rgb(99_102_241/0.65)] sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-cyan-200/25 blur-2xl [animation-delay:-4s]" />
+        <h1 className="relative flex items-center gap-2 text-2xl font-black sm:text-3xl">
+          Nói trôi chảy 4/3/2 ⏱️ <Term k="fluency_432" icon className="text-white/80 hover:bg-white/20 hover:text-white dark:hover:text-white" />
+        </h1>
+        <p className="relative mt-1 max-w-2xl text-sm text-white/90">
+          Nói cùng một đề 3 lần với thời gian giảm dần (4 → 3 → 2 phút). Nội dung đã quen nên não không phải nghĩ “nói gì” mà tập trung nói nhanh và liền mạch hơn — kỹ thuật
+          luyện trôi chảy của Maurice (1983) và Paul Nation (1989). App ghi âm, đo tốc độ nói, số lần ngừng và từ đệm qua từng lượt.
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="relative mt-4 flex flex-wrap items-center gap-3">
           <Segmented
             value={plan}
             onChange={setPlan}
@@ -415,9 +427,15 @@ function Hub() {
                 <tr className="text-left text-xs text-muted">
                   <th className="py-1 pr-3 font-semibold">Ngày</th>
                   <th className="py-1 pr-3 font-semibold">Đề</th>
-                  <th className="py-1 pr-3 font-semibold">Tốc độ lượt đầu → cuối</th>
-                  <th className="py-1 pr-3 font-semibold">Ngừng dài/phút</th>
-                  <th className="py-1 font-semibold">Từ đệm/phút</th>
+                  <th className="py-1 pr-3 font-semibold">
+                    <Term k="wpm">Tốc độ</Term> lượt đầu → cuối
+                  </th>
+                  <th className="py-1 pr-3 font-semibold">
+                    <Term k="long_pause">Ngừng dài</Term>/phút
+                  </th>
+                  <th className="py-1 font-semibold">
+                    <Term k="filler">Từ đệm</Term>/phút
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -459,7 +477,7 @@ function Hub() {
               key={c.key}
               type="button"
               onClick={() => setCat(c.key)}
-              className={cn('h-8 shrink-0 rounded-lg px-3 text-sm font-semibold transition', cat === c.key ? 'bg-ink text-bg' : 'bg-surface-2 text-ink hover:bg-surface-3')}
+              className={cn('h-8 shrink-0 rounded-lg px-3 font-display text-sm font-bold transition active:scale-95', cat === c.key ? 'bg-ink text-bg shadow-card' : 'bg-surface-2 text-ink hover:bg-surface-3')}
             >
               {c.label}
             </button>
@@ -468,16 +486,16 @@ function Hub() {
         {topics.isPending ? (
           <Skeleton className="h-40" />
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {list.map((t) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => create.mutate({ topicId: t.id })}
                 disabled={create.isPending}
-                className="rounded-2xl border border-line p-3 text-left transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md disabled:opacity-60"
+                className="rounded-2xl border border-line bg-surface p-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-card active:translate-y-0 disabled:opacity-60"
               >
-                <p className="font-semibold text-ink">{t.title}</p>
+                <p className="font-display font-bold text-ink">{t.title}</p>
                 <p className="text-xs text-muted">{t.vi}</p>
               </button>
             ))}

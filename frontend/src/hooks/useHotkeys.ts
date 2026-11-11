@@ -19,7 +19,8 @@ export function useHotkeys(map: Record<string, Handler>, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.isComposing || e.repeat) return;
+      // defaultPrevented: một thành phần khác đã xử lý phím này (vd. thẻ giải thích thuật ngữ)
+      if (e.isComposing || e.repeat || e.defaultPrevented) return;
       const name = keyName(e);
       const fn = ref.current[name];
       if (!fn) return;

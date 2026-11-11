@@ -7,6 +7,7 @@ import type { WordProfile } from '../../lib/types';
 import { cn, formatTime, posLabel } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { Badge, ErrorBox, Skeleton } from '../ui/primitives';
+import { Term } from '../ui/Term';
 import { AudioButton, Highlight, LevelBadge } from './bits';
 
 const POS_ORDER = ['verb', 'noun', 'adjective', 'adverb'];
@@ -21,11 +22,11 @@ export function useWordProfile(term: string, enabled = true) {
   return useQuery({ queryKey: ['word-profile', term.toLowerCase()], queryFn: () => api.wordProfile(term), enabled: enabled && Boolean(term), staleTime: 30 * 60_000 });
 }
 
-function Section({ title, icon, children, hint }: { title: string; icon: React.ReactNode; children: React.ReactNode; hint?: string }) {
+function Section({ title, icon, children, hint, term }: { title: string; icon: React.ReactNode; children: React.ReactNode; hint?: string; term?: string }) {
   return (
     <section className="space-y-2">
       <h3 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-ink">
-        {icon} {title}
+        {icon} {title} {term && <Term k={term} icon />}
       </h3>
       {hint && <p className="text-xs leading-relaxed text-muted">{hint}</p>}
       {children}
@@ -90,17 +91,18 @@ function ProfileBody({ p, compact }: { p: WordProfile; compact: boolean }) {
           <AudioButton term={p.lemma} />
           {p.mainPos && <span className="text-muted">({posLabel(p.mainPos)})</span>}
           {p.labels.map((l) => (
-            <Badge key={l} className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200">
+            <Badge key={l} className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200" title="Nhãn văn phong: dùng trong ngữ cảnh nào">
               {l}
             </Badge>
           ))}
+          {p.labels.length > 0 && <Term k="register" icon />}
           <AddWordButton word={p.lemma} />
         </div>
       )}
 
       {familyByPos.length > 1 && (
-        <Section title="Họ từ" icon={<Network className="h-4 w-4 text-sky-500" />} hint="Biết cả họ từ giúp bạn đổi dạng linh hoạt khi nói và viết (decide → decision → decisive → decisively).">
-          <div className="grid gap-2 sm:grid-cols-2">
+        <Section title="Họ từ" term="word_family" icon={<Network className="h-4 w-4 text-sky-500" />} hint="Biết cả họ từ giúp bạn đổi dạng linh hoạt khi nói và viết (decide → decision → decisive → decisively).">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {familyByPos.map((g) => (
               <div key={g.pos} className={cn('rounded-xl border p-2.5', POS_TONE[g.pos])}>
                 <p className="mb-1 text-[11px] font-bold uppercase tracking-wide opacity-80">{posLabel(g.pos)}</p>
@@ -141,12 +143,13 @@ function ProfileBody({ p, compact }: { p: WordProfile; compact: boolean }) {
       {p.synonyms.length > 0 && (
         <Section
           title="Từ đồng nghĩa & sắc thái"
+          term="synonym"
           icon={<Sparkles className="h-4 w-4 text-fuchsia-500" />}
           hint="So sánh định nghĩa, độ phổ biến, nhãn văn phong và từ hay đi kèm để chọn từ đúng ngữ cảnh — từ đồng nghĩa hiếm khi thay thế được cho nhau hoàn toàn."
         >
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {p.synonyms.map((s) => (
-              <div key={s.word} className="rounded-xl border border-line p-3">
+              <div key={s.word} className="rounded-xl border border-line bg-surface p-3 shadow-soft">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Link to={`/profile/${encodeURIComponent(s.word)}`} className="font-bold text-ink hover:text-violet-600 hover:underline">
                     {s.word}
@@ -173,20 +176,27 @@ function ProfileBody({ p, compact }: { p: WordProfile; compact: boolean }) {
 
       {p.upgrade && (
         <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
-          <p className="mb-1 font-bold">💡 “{p.upgrade.basic}” là từ cơ bản hay bị dùng quá nhiều. Thử thay bằng:</p>
+          <p className="mb-1 font-bold">
+            💡 “{p.upgrade.basic}” là từ cơ bản hay bị dùng quá nhiều. Thử <Term k="upgrade">nâng cấp</Term> bằng:
+          </p>
           <ul className="list-disc space-y-0.5 pl-5">
             {p.upgrade.note.split(' · ').map((n) => (
               <li key={n}>{n}</li>
             ))}
           </ul>
-          <Link to="/practice/play?mode=upgrade&source=all&count=10" className="mt-2 inline-flex items-center gap-1 font-semibold underline">
-            Luyện “nâng cấp từ” <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
+          <span className="mt-2 flex flex-wrap gap-4">
+            <Link to="/practice/play?mode=upgrade&source=all&count=10" className="inline-flex items-center gap-1 font-semibold underline">
+              Luyện “nâng cấp từ” <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link to="/practice/upgrades" className="inline-flex items-center gap-1 font-semibold underline">
+              Xem sổ tay nâng cấp từ <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          </span>
         </div>
       )}
 
       {p.collocations.length > 0 && (
-        <Section title="Collocation" icon={<Link2 className="h-4 w-4 text-emerald-500" />} hint="Những từ hay đi cùng — học theo cụm để nói tự nhiên hơn.">
+        <Section title="Từ hay đi cùng (collocation)" term="collocation" icon={<Link2 className="h-4 w-4 text-emerald-500" />} hint="Những từ người bản xứ hay dùng chung với từ này — học theo cụm để nói tự nhiên hơn.">
           <div className="space-y-2">
             {p.collocations.map((g) => (
               <div key={g.label}>

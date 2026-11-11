@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Lightbulb, PenLine, Play, RotateCcw, Snail }
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Badge, Kbd } from '../../components/ui/primitives';
+import { Term } from '../../components/ui/Term';
 import type { PlayerApi } from '../../hooks/useYouTubePlayer';
 import { api } from '../../lib/api';
 import { diffWords, tokenize, type DiffResult } from '../../lib/diff';
@@ -80,7 +81,9 @@ export function DictationPanel({
             <PenLine className="h-5 w-5" />
           </span>
           <div>
-            <h3 className="font-bold text-ink">Chép chính tả — câu {index + 1}/{sentences.length}</h3>
+            <h3 className="font-extrabold text-ink">
+              <Term k="dictation">Chép chính tả</Term> — câu {index + 1}/{sentences.length}
+            </h3>
             <p className="text-xs text-muted">Nghe và gõ lại chính xác những gì bạn nghe được</p>
           </div>
         </div>

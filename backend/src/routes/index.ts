@@ -5,7 +5,9 @@ import * as difficulty from '../services/difficulty.service.ts';
 import * as fluency from '../services/fluency.service.ts';
 import { lookupTerm } from '../services/lookup.service.ts';
 import * as phrases from '../services/phrases.service.ts';
+import * as placement from '../services/placement.service.ts';
 import * as practice from '../services/practice.service.ts';
+import * as push from '../services/push.service.ts';
 import * as review from '../services/review.service.ts';
 import { getSettings, publicSettings, updateSettings } from '../services/settings.service.ts';
 import { upgradeBasics, wordProfile } from '../services/profile.service.ts';
@@ -409,6 +411,38 @@ api.post('/today/skip', (req, res) => {
 
 api.put('/today/video', (req, res) => {
   res.json(today.setTodayVideo(today.videoSchema.parse(req.body).videoId));
+});
+
+// ---------- Thông báo đẩy (Web Push) ----------
+
+api.get('/push/public-key', (_req, res) => {
+  res.json({ publicKey: push.getVapid().publicKey, ...push.status() });
+});
+
+api.post('/push/subscribe', (req, res) => {
+  res.json(push.subscribe(push.subscriptionSchema.parse(req.body), String(req.headers['user-agent'] ?? '')));
+});
+
+api.post('/push/unsubscribe', (req, res) => {
+  res.json(push.unsubscribe(z.object({ endpoint: z.string().max(2000) }).parse(req.body).endpoint));
+});
+
+api.post('/push/test', async (_req, res) => {
+  res.json(await push.sendTest());
+});
+
+// ---------- Bài test ước lượng vốn từ ----------
+
+api.get('/placement/test', (_req, res) => {
+  res.json(placement.createTest());
+});
+
+api.get('/placement/last', (_req, res) => {
+  res.json(placement.lastResult());
+});
+
+api.post('/placement/result', (req, res) => {
+  res.json(placement.submitResult(placement.resultSchema.parse(req.body)));
 });
 
 // ---------- Luyện tập ----------

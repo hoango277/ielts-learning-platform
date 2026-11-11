@@ -9,7 +9,7 @@ import { ROOT_DIR } from '../config.ts';
  */
 const DIR = path.join(ROOT_DIR, 'data', 'ngsl');
 
-let cache: { rank: Map<string, number>; freq: Map<string, number>; sup: Set<string> } | null = null;
+let cache: { rank: Map<string, number>; freq: Map<string, number>; sup: Set<string>; lemmas: { word: string; rank: number }[] } | null = null;
 
 function load() {
   if (cache) return cache;
@@ -39,8 +39,14 @@ function load() {
   for (const line of fs.readFileSync(path.join(DIR, 'SUP_lemmatized.csv'), 'utf8').split(/\r?\n/)) {
     for (const f of line.replace(/^﻿/, '').split(',')) if (f.trim()) sup.add(f.trim().toLowerCase());
   }
-  cache = { rank, freq, sup };
+  const lemmas = [...lemmaRank.entries()].map(([word, r]) => ({ word, rank: r })).sort((a, b) => a.rank - b.rank);
+  cache = { rank, freq, sup, lemmas };
   return cache;
+}
+
+/** Danh sách từ gốc NGSL theo thứ hạng tần suất (1 = phổ biến nhất). */
+export function ngslLemmas(): readonly { word: string; rank: number }[] {
+  return load().lemmas;
 }
 
 /** Hạng NGSL của một dạng từ (1 = phổ biến nhất); 0 = từ bổ sung (thứ, tháng, số); null = ngoài danh sách. */

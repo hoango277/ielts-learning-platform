@@ -396,6 +396,36 @@ export interface Warmup {
   budgetSec: number;
 }
 
+// ---------- Bài test ước lượng vốn từ ----------
+
+export type PlacementBandKey = 'b1' | 'b2' | 'b3' | 'b4' | 'b5';
+
+export interface PlacementTest {
+  items: string[];
+  bands: { key: PlacementBandKey; label: string; size: number }[];
+  perBand: number;
+  pseudo: number;
+}
+
+export interface PlacementBand {
+  key: PlacementBandKey;
+  label: string;
+  size: number;
+  known: number;
+  total: number;
+  corrected: number;
+}
+
+export interface PlacementResult {
+  level: Settings['vocabLevel'];
+  size: number;
+  falseAlarm: number;
+  bands: PlacementBand[];
+  warning?: string | null;
+  applied?: boolean;
+  createdAt?: string;
+}
+
 export interface User {
   id: number;
   email: string;

@@ -1,0 +1,51 @@
+# Thêm model dịch Hy-MT (HY-MT1.5-1.8B, chạy bằng CPU qua llama.cpp) cho app:
+#   docker compose -f docker-compose.yml -f docker-compose.hymt.yml up -d
+# Lần đầu container "hymt-model" tải ~1,1 GB từ HuggingFace (có tải tiếp nếu đứt mạng).
+# Đã có sẵn file model trên máy? Trỏ tới thư mục chứa nó để khỏi tải lại:
+#   HYMT_MODELS=./tools/llm docker compose -f docker-compose.yml -f docker-compose.hymt.yml up -d
+services:
+  app:
+    environment:
+      HYMT_BASE_URL: http://hymt:8080/v1
+      HYMT_MODEL: hy-mt
+      HYMT_PROMPT_STYLE: hymt15
+      TRANSLATE_PROVIDER: auto
+    depends_on:
+      hymt:
+        condition: service_started
+
+  hymt-model:
+    image: curlimages/curl:8.11.1
+    user: "0:0"
+    restart: "no"
+    volumes:
+      - ${HYMT_MODELS:-hymt-models}:/models
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        f=/models/HY-MT1.5-1.8B-Q4_K_M.gguf
+        if [ -s "$$f" ]; then echo "Model đã có: $$f"; exit 0; fi
+        echo "Đang tải model Hy-MT (~1,1 GB)…"
+        curl -fL --retry 5 --retry-delay 5 -C - -o "$$f.part" https://huggingface.co/tencent/HY-MT1.5-1.8B-GGUF/resolve/main/HY-MT1.5-1.8B-Q4_K_M.gguf
+        mv "$$f.part" "$$f"
+        echo "Đã tải xong model."
+
+  hymt:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11946
+    restart: unless-stopped
+    command: ["-m", "/models/HY-MT1.5-1.8B-Q4_K_M.gguf", "--host", "0.0.0.0", "--port", "8080", "--jinja", "-c", "4096", "-np", "2", "--alias", "hy-mt"]
+    volumes:
+      - ${HYMT_MODELS:-hymt-models}:/models:ro
+    depends_on:
+      hymt-model:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  hymt-models:

@@ -90,9 +90,9 @@ export function LookupCard({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted">
             {r.pos && <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{posLabel(r.pos)}</Badge>}
-            {(r.ipaUk || r.ipa) && <span className="font-mono text-[13px]">UK {r.ipaUk ?? r.ipa}</span>}
+            {(r.ipaUk || r.ipa) && <span className="font-ipa text-[13px]">UK {r.ipaUk ?? r.ipa}</span>}
             <AudioButton term={r.lemma || r.term} audio={r.audioUk ?? (r.audioUs ? undefined : r.audio)} accent="uk" label="UK" size="sm" />
-            {r.ipaUs && r.ipaUs !== r.ipaUk && <span className="font-mono text-[13px]">US {r.ipaUs}</span>}
+            {r.ipaUs && r.ipaUs !== r.ipaUk && <span className="font-ipa text-[13px]">US {r.ipaUs}</span>}
             <AudioButton term={r.lemma || r.term} audio={r.audioUs} accent="us" label="US" size="sm" />
           </div>
         </div>

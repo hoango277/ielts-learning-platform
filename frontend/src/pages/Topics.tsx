@@ -32,14 +32,15 @@ export default function Topics() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-emerald-500 via-teal-500 to-sky-500 p-6 text-white sm:p-8">
-        <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-white/15 blur-2xl" />
-        <h1 className="text-2xl font-extrabold sm:text-3xl">Bộ từ vựng IELTS theo chủ đề 📚</h1>
-        <p className="mt-1 max-w-2xl text-sm text-white/90">
-          {data?.length ?? 26} chủ đề hay gặp trong IELTS Speaking & Writing, gồm cụm từ cốt lõi và từ liên quan — kèm phiên âm, audio, nghĩa tiếng
-          Việt, định nghĩa, câu ví dụ song ngữ và collocation.
+      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-emerald-500 via-teal-500 to-sky-500 p-6 text-white shadow-[0_14px_34px_-12px_rgb(20_184_166/0.6)] sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 animate-float-slow rounded-full bg-white/20 blur-2xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-lime-200/25 blur-2xl [animation-delay:-4s]" />
+        <h1 className="relative text-2xl font-black sm:text-3xl">Bộ từ vựng IELTS theo chủ đề 📚</h1>
+        <p className="relative mt-1 max-w-2xl text-sm text-white/90">
+          {data?.length ?? 26} chủ đề hay gặp trong IELTS Speaking & Writing, gồm cụm từ cốt lõi và từ liên quan — kèm phiên âm, audio, nghĩa tiếng Việt, định nghĩa, câu ví dụ
+          song ngữ và các từ hay đi cùng. Nhãn A1–C2 trên mỗi từ là cấp độ ước lượng.
         </p>
-        <p className="mt-3 text-sm font-semibold">
+        <p className="relative mt-3 text-sm font-semibold">
           {totals.words} từ · bạn đã đưa {totals.inNb} từ vào sổ
         </p>
       </section>
@@ -55,7 +56,7 @@ export default function Topics() {
       {error ? (
         <ErrorBox error={error} onRetry={() => refetch()} />
       ) : isPending ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {Array.from({ length: 8 }, (_, i) => (
             <Skeleton key={i} className="h-44" />
           ))}
@@ -67,18 +68,25 @@ export default function Topics() {
           description={data?.length ? undefined : 'Chạy “npm run crawl” trong thư mục backend để crawl và nạp bộ từ.'}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {list.map((t) => {
             const c = colorOf(t.color);
             const progress = t.wordCount ? t.mastered / t.wordCount : 0;
             const levels = Object.entries(t.levels ?? {}).sort(([a], [b]) => a.localeCompare(b));
             return (
-              <Link key={t.slug} to={`/topics/${t.slug}`} className="card group relative overflow-hidden p-5 transition hover:-translate-y-1 hover:shadow-xl">
+              <Link key={t.slug} to={`/topics/${t.slug}`} className="card card-hover group relative overflow-hidden p-5">
                 <div className={cn('pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-linear-to-br opacity-20 blur-xl transition group-hover:opacity-40', c.gradient)} />
                 <div className="flex items-start gap-3">
-                  <span className={cn('flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br text-3xl shadow-md', c.gradient)}>{t.icon}</span>
+                  <span
+                    className={cn(
+                      'icon-tile flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br text-3xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110',
+                      c.gradient,
+                    )}
+                  >
+                    {t.icon}
+                  </span>
                   <div className="min-w-0">
-                    <h3 className="truncate text-lg font-bold text-ink">{t.name}</h3>
+                    <h3 className="truncate text-lg font-extrabold text-ink">{t.name}</h3>
                     <p className={cn('text-sm font-semibold', c.text)}>{t.nameVi}</p>
                   </div>
                 </div>

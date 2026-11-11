@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
+import { Button } from './Button';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -79,7 +80,7 @@ export function Modal({
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
         className={cn(
-          'relative flex max-h-[92dvh] w-full animate-slide-up flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-2xl sm:rounded-3xl',
+          'relative flex max-h-[92dvh] w-full animate-slide-up flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-lift sm:rounded-3xl',
           width,
           className,
         )}
@@ -88,7 +89,7 @@ export function Modal({
           <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
             <div className="min-w-0">
               {title && (
-                <h2 id={titleId} className="text-lg font-bold text-ink">
+                <h2 id={titleId} className="text-lg font-extrabold text-ink">
                   {title}
                 </h2>
               )}
@@ -135,12 +136,12 @@ export function Drawer({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={cn('relative flex h-full w-full flex-col border-l border-line bg-surface shadow-2xl', width)}
+        className={cn('relative flex h-full w-full flex-col border-l border-line bg-surface shadow-lift', width)}
         style={{ animation: 'slide-in-right 0.25s ease-out both' }}
       >
         <style>{'@keyframes slide-in-right{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}'}</style>
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-          <h2 id={titleId} className="min-w-0 truncate text-lg font-bold text-ink">
+          <h2 id={titleId} className="min-w-0 truncate text-lg font-extrabold text-ink">
             {title}
           </h2>
           <button type="button" onClick={onClose} aria-label="Đóng" className="rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-ink">
@@ -180,19 +181,18 @@ export function ConfirmDialog({
       size="sm"
       footer={
         <>
-          <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-sm font-semibold text-ink hover:bg-surface-2">
+          <Button variant="ghost" onClick={onClose}>
             Huỷ
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant={danger ? 'danger' : 'primary'}
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            className={cn('h-10 rounded-xl px-4 text-sm font-semibold text-white', danger ? 'bg-rose-500 hover:bg-rose-600' : 'bg-violet-600 hover:bg-violet-700')}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </>
       }
     >

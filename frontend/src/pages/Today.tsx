@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Button, LinkButton } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Card, ErrorBox, Progress, Ring, Segmented, Skeleton } from '../components/ui/primitives';
+import { Term } from '../components/ui/Term';
 import { DifficultyPill } from '../components/video/DifficultyBadge';
 import { api } from '../lib/api';
 import type { TodayPlan, TodayStep, TodayStepKey } from '../lib/types';
@@ -16,8 +17,8 @@ const STEP_ICON: Record<TodayStepKey, { icon: typeof Layers; tone: string; stran
   review: { icon: Layers, tone: 'from-fuchsia-500 to-violet-500', strand: 'Học có chủ đích' },
   watch: { icon: Headphones, tone: 'from-rose-500 to-orange-400', strand: 'Nghe hiểu' },
   shadow: { icon: Waves, tone: 'from-sky-500 to-indigo-500', strand: 'Phát âm & ngữ điệu' },
-  speak: { icon: Mic, tone: 'from-emerald-500 to-teal-400', strand: 'Nói ra (output)' },
-  fluency: { icon: Timer, tone: 'from-amber-500 to-orange-500', strand: 'Trôi chảy' },
+  speak: { icon: Mic, tone: 'from-emerald-500 to-teal-400', strand: 'Tự nói ra' },
+  fluency: { icon: Timer, tone: 'from-amber-500 to-orange-500', strand: 'Luyện trôi chảy' },
 };
 
 export function useTodayPlan() {
@@ -32,14 +33,14 @@ export function TodayCard() {
   return (
     <Card className="flex flex-wrap items-center gap-4 p-5">
       <Ring value={data.total ? data.finished / data.total : 0} size={72} stroke={8}>
-        <span className="text-sm font-extrabold text-ink">
+        <span className="font-display text-base font-black text-ink">
           {data.finished}/{data.total}
         </span>
       </Ring>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold uppercase tracking-widest text-violet-500">Hôm nay học gì · ~{data.estimatedMinutes} phút</p>
         <p className="text-lg font-extrabold text-ink">{data.allDone ? 'Đã xong buổi học hôm nay 🎉' : next ? next.title : 'Tiếp tục'}</p>
-        <p className="truncate text-sm text-muted">{data.allDone ? 'Muốn học thêm? Thử một lượt 4/3/2 hoặc luyện nói lại.' : next?.desc}</p>
+        <p className="truncate text-sm text-muted">{data.allDone ? 'Muốn học thêm? Thử một lượt nói trôi chảy 4/3/2 hoặc luyện nói lại.' : next?.desc}</p>
       </div>
       <div className="flex gap-2">
         {next && !data.allDone && (
@@ -64,11 +65,11 @@ function StepRow({ step, index, onSkip, children }: { step: TodayStep; index: nu
       <div className="flex flex-col items-center">
         <span
           className={cn(
-            'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md',
+            'icon-tile flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white',
             step.done ? 'bg-emerald-500' : step.skipped ? 'bg-slate-400' : cn('bg-linear-to-br', meta.tone),
           )}
         >
-          {step.done ? <Check className="h-6 w-6" /> : step.skipped ? <SkipForward className="h-5 w-5" /> : <Icon className="h-6 w-6" />}
+          {step.done ? <Check className="h-6 w-6 animate-bounce-in" /> : step.skipped ? <SkipForward className="h-5 w-5" /> : <Icon className="h-6 w-6" />}
         </span>
       </div>
       <div className="min-w-0 flex-1 space-y-2">
@@ -182,14 +183,15 @@ export default function Today() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <section className="relative overflow-hidden rounded-3xl bg-brand p-6 text-white sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15 blur-2xl" />
-        <p className="text-sm font-semibold capitalize text-white/80">{dayLabel}</p>
-        <h1 className="text-2xl font-extrabold sm:text-3xl">Hôm nay học gì? 🗓️</h1>
-        <p className="mt-1 max-w-xl text-sm text-white/90">
+      <section className="relative overflow-hidden rounded-3xl bg-brand-animated p-6 text-white shadow-glow sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 left-1/4 h-44 w-44 animate-float-slow rounded-full bg-amber-300/25 blur-3xl [animation-delay:-5s]" />
+        <p className="relative text-sm font-semibold capitalize text-white/80">{dayLabel}</p>
+        <h1 className="relative text-2xl font-black sm:text-3xl">Hôm nay học gì? 🗓️</h1>
+        <p className="relative mt-1 max-w-xl text-sm text-white/90">
           Một buổi cân bằng: ôn thẻ, nghe một video vừa sức, nói đuổi, nói lại câu đã lưu và luyện trôi chảy. Xong bước nào app tự đánh dấu.
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="relative mt-4 flex flex-wrap items-center gap-3">
           <Segmented
             value={p.mode}
             onChange={(m) => mode.mutate(m)}
@@ -206,14 +208,14 @@ export default function Today() {
       </section>
 
       {p.allDone && (
-        <Card className="p-5 text-center">
-          <p className="text-4xl">🏆</p>
+        <Card className="animate-rise p-5 text-center">
+          <p className="animate-bounce-in text-4xl">🏆</p>
           <p className="mt-1 text-lg font-extrabold text-ink">Hoàn thành buổi học hôm nay!</p>
           <p className="text-sm text-muted">Hẹn gặp lại ngày mai — học đều mỗi ngày hiệu quả hơn học dồn.</p>
         </Card>
       )}
 
-      <ol className="space-y-3">
+      <ol className="stagger space-y-3">
         {p.steps.map((s, i) => (
           <StepRow key={s.key} step={s} index={i} onSkip={(skipped) => skip.mutate({ step: s.key, skipped })}>
             {s.key === 'watch' && (
@@ -242,8 +244,8 @@ export default function Today() {
       </ol>
 
       <p className="text-center text-xs text-muted">
-        Thiết kế theo khung “bốn mảng” của Paul Nation: nghe/đọc có nghĩa, nói/viết có nghĩa, học có chủ đích về ngôn ngữ và luyện trôi chảy — mỗi mảng nên chiếm khoảng 1/4 thời
-        gian học.
+        Buổi học chia theo <Term k="four_strands">“bốn mảng”</Term> của nhà ngôn ngữ học Paul Nation: nghe hiểu, tự nói ra, học có chủ đích (từ vựng, phát âm) và luyện trôi chảy
+        — mỗi mảng nên chiếm khoảng 1/4 thời gian học.
       </p>
 
       <VideoPicker open={picking} onClose={() => setPicking(false)} onPick={(id) => pickVideo.mutate(id)} />

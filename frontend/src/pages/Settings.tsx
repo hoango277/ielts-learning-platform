@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Cpu, Download, GraduationCap, KeyRound, Languages, LogOut, Monitor, Moon, Palette, PlugZap, Sun, Target, UserRound, Volume2, XCircle } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { CheckCircle2, CircleHelp, Cpu, Download, GraduationCap, KeyRound, Languages, LogOut, Monitor, Moon, Palette, PlugZap, Sun, Target, UserRound, Volume2, XCircle } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { toast } from 'sonner';
-import { Button } from '../components/ui/Button';
+import { Button, LinkButton } from '../components/ui/Button';
 import { Card, ErrorBox, Field, Input, Segmented, Select, Skeleton, Switch } from '../components/ui/primitives';
-import { enableReviewNotifications } from '../components/warmup/StartScreen';
+import { Term } from '../components/ui/Term';
+import { disableReviewNotifications, enableReviewNotifications } from '../components/warmup/StartScreen';
+import { pushSupported } from '../lib/push';
 import { useLogout, useMe } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { speak } from '../lib/speech';
@@ -12,13 +15,13 @@ import type { Settings as SettingsT } from '../lib/types';
 import { cn } from '../lib/utils';
 import { useUi, type Theme } from '../store/ui';
 
-function Section({ icon, title, desc, children }: { icon: ReactNode; title: string; desc?: string; children: ReactNode }) {
+function Section({ icon, title, desc, children }: { icon: ReactNode; title: string; desc?: ReactNode; children: ReactNode }) {
   return (
     <Card className="p-5 sm:p-6">
       <div className="mb-5 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-2">{icon}</span>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface-2 shadow-soft">{icon}</span>
         <div>
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
+          <h2 className="text-lg font-extrabold text-ink">{title}</h2>
           {desc && <p className="text-sm text-muted">{desc}</p>}
         </div>
       </div>
@@ -27,15 +30,70 @@ function Section({ icon, title, desc, children }: { icon: ReactNode; title: stri
   );
 }
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function Row({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="min-w-0">
+      <div className="min-w-0 max-w-md">
         <p className="text-sm font-semibold text-ink">{label}</p>
-        {hint && <p className="text-xs text-muted">{hint}</p>}
+        {hint && <p className="text-xs leading-relaxed text-muted">{hint}</p>}
       </div>
       {children}
     </div>
+  );
+}
+
+/** Thanh trượt: cập nhật bản nháp ngay khi kéo, tự lưu sau khi ngừng kéo (chuột, cảm ứng lẫn bàn phím đều được). */
+function Range({
+  value,
+  min,
+  max,
+  step,
+  label,
+  onChange,
+  onCommit,
+  className,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  label: string;
+  onChange: (v: number) => void;
+  onCommit: (v: number) => void;
+  className?: string;
+}) {
+  const timer = useRef<number | undefined>(undefined);
+  const pending = useRef<number | null>(null);
+  const commit = useRef(onCommit);
+  commit.current = onCommit;
+  // Rời trang khi chưa kịp lưu → lưu nốt giá trị đang chờ
+  useEffect(
+    () => () => {
+      window.clearTimeout(timer.current);
+      if (pending.current !== null) commit.current(pending.current);
+    },
+    [],
+  );
+  return (
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      aria-label={label}
+      onChange={(e) => {
+        const v = Number(e.target.value);
+        onChange(v);
+        pending.current = v;
+        window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => {
+          pending.current = null;
+          commit.current(v);
+        }, 500);
+      }}
+      className={cn('w-48 accent-violet-600', className)}
+    />
   );
 }
 
@@ -106,7 +164,7 @@ function AccountSection() {
         </p>
         {/* trường ẩn giúp trình quản lý mật khẩu biết đang đổi mật khẩu của tài khoản nào */}
         <input type="text" name="username" autoComplete="username" value={user.email} readOnly hidden />
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Mật khẩu hiện tại" htmlFor="pw-current">
             <Input id="pw-current" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} />
           </Field>
@@ -145,6 +203,24 @@ const PRESETS = [
   { label: 'vLLM (Hy-MT2-7B)', baseUrl: 'http://localhost:8000/v1', model: 'tencent/Hy-MT2-7B', style: 'hymt2' as const },
 ];
 
+/** Lối vào bài test ước lượng vốn từ + kết quả lần gần nhất. */
+function PlacementRow() {
+  const last = useQuery({ queryKey: ['placement-last'], queryFn: api.placementLast, staleTime: 60_000 });
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
+      <p className="text-sm text-muted">
+        {last.data
+          ? `Bài test gần nhất (${new Date(last.data.createdAt ?? '').toLocaleDateString('vi-VN')}): mức ${last.data.level}, ước khoảng ${last.data.size.toLocaleString('vi-VN')} từ.`
+          : 'Chưa chắc trình độ? Làm bài test ~3 phút để app ước lượng vốn từ của bạn.'}{' '}
+        <Term k="placement" icon />
+      </p>
+      <LinkButton to="/placement" size="sm" variant="soft">
+        {last.data ? 'Làm lại bài test' : 'Làm bài test'}
+      </LinkButton>
+    </div>
+  );
+}
+
 export default function Settings() {
   const qc = useQueryClient();
   const { theme, setTheme } = useUi();
@@ -165,6 +241,8 @@ export default function Settings() {
     onError: (e) => toast.error((e as Error).message),
   });
   const test = useMutation({ mutationFn: () => api.testHymt(draft!) });
+  // Bật/tắt nhắc nhở có thể chờ trình duyệt khá lâu → chặn bấm lặp trong lúc đang xử lý
+  const [notifyBusy, setNotifyBusy] = useState(false);
 
   if (error) return <ErrorBox error={error} onRetry={() => refetch()} />;
   if (isPending || !draft) return <Skeleton className="mx-auto h-96 max-w-3xl" />;
@@ -179,13 +257,30 @@ export default function Settings() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-ink">Cài đặt</h1>
-        <p className="text-sm text-muted">Tài khoản, dịch thuật, mục tiêu học, thuật toán ôn tập và giao diện.</p>
+        <p className="text-sm text-muted">
+          Tài khoản, dịch thuật, mục tiêu học, lịch ôn tập và giao diện. Gặp mục khó hiểu? Bấm dấu <CircleHelp className="inline h-4 w-4 -translate-y-px" aria-label="hỏi chấm" /> cạnh mục đó hoặc xem{' '}
+          <Link to="/glossary" className="font-semibold text-violet-600 hover:underline dark:text-violet-300">
+            Giải thích thuật ngữ
+          </Link>
+          .
+        </p>
       </div>
 
       <AccountSection />
 
       <Section icon={<Languages className="h-5 w-5 text-sky-500" />} title="Dịch thuật" desc="Dùng khi tra từ, dịch phụ đề song ngữ và câu ví dụ.">
-        <Row label="Nhà cung cấp" hint="Tự động: dùng Hy-MT nếu đã cấu hình & đang chạy, lỗi thì chuyển sang Google.">
+        <Row
+          label={
+            <>
+              Nguồn dịch <Term k="provider" icon />
+            </>
+          }
+          hint={
+            <>
+              Tự động: dùng <Term k="hymt">Hy-MT</Term> nếu đã cài và đang chạy, gặp lỗi thì chuyển sang Google.
+            </>
+          }
+        >
           <Segmented
             value={draft.translateProvider}
             onChange={(v) => commit('translateProvider', v)}
@@ -200,7 +295,9 @@ export default function Settings() {
         <div className="rounded-2xl border border-line p-4">
           <div className="mb-3 flex items-center gap-2">
             <Cpu className="h-5 w-5 text-violet-500" />
-            <p className="font-bold text-ink">Tencent Hunyuan Hy-MT</p>
+            <p className="flex items-center gap-1 font-bold text-ink">
+              Model dịch Hy-MT (Tencent) <Term k="hymt" icon />
+            </p>
             <span
               className={cn(
                 'rounded-full px-2 py-0.5 text-xs font-semibold',
@@ -211,8 +308,9 @@ export default function Settings() {
             </span>
           </div>
           <p className="mb-4 text-sm leading-relaxed text-muted">
-            Mô hình dịch mã nguồn mở của Tencent (HY-MT1.5 / Hy-MT2), hỗ trợ <b>dịch theo ngữ cảnh</b>: nghĩa của từ được dịch dựa trên cả câu
-            trong video. Chạy model trên máy bạn qua bất kỳ server tương thích OpenAI (Ollama, llama.cpp, vLLM…).
+            Model dịch miễn phí của Tencent chạy ngay trên máy bạn, biết <b>dịch theo ngữ cảnh</b>: nghĩa của từ được chọn theo cả câu trong video. Phần này
+            không bắt buộc — bỏ trống thì app dùng Google dịch. Nếu bạn chạy app bằng “npm run dev:hymt” hoặc Docker Compose kèm Hy-MT thì mọi thứ đã được điền
+            sẵn.
           </p>
           <div className="mb-4 flex flex-wrap gap-2">
             {PRESETS.map((p) => (
@@ -226,17 +324,17 @@ export default function Settings() {
               </Button>
             ))}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Base URL (OpenAI-compatible)" htmlFor="hymt-url">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Địa chỉ máy chủ model (Base URL)" htmlFor="hymt-url" info={<Term k="base_url" icon />}>
               <Input id="hymt-url" value={draft.hymtBaseUrl} onChange={(e) => set('hymtBaseUrl', e.target.value)} placeholder="http://localhost:11434/v1" />
             </Field>
             <Field label="Tên model" htmlFor="hymt-model">
               <Input id="hymt-model" value={draft.hymtModel} onChange={(e) => set('hymtModel', e.target.value)} placeholder="hf.co/tencent/HY-MT1.5-1.8B-GGUF:Q8_0" />
             </Field>
-            <Field label="API key (nếu dùng dịch vụ có khoá)" htmlFor="hymt-key">
-              <Input id="hymt-key" type="password" value={draft.hymtApiKey} onChange={(e) => set('hymtApiKey', e.target.value)} placeholder="để trống nếu chạy local" />
+            <Field label="Khoá API (nếu máy chủ yêu cầu)" htmlFor="hymt-key">
+              <Input id="hymt-key" type="password" value={draft.hymtApiKey} onChange={(e) => set('hymtApiKey', e.target.value)} placeholder="để trống nếu chạy trên máy bạn" />
             </Field>
-            <Field label="Mẫu prompt" htmlFor="hymt-style" hint="Theo đúng template trên model card của từng phiên bản.">
+            <Field label="Mẫu câu lệnh (prompt)" htmlFor="hymt-style" info={<Term k="prompt_style" icon />} hint="Chọn đúng phiên bản model bạn đang chạy.">
               <Select id="hymt-style" value={draft.hymtPromptStyle} onChange={(e) => set('hymtPromptStyle', e.target.value as SettingsT['hymtPromptStyle'])}>
                 <option value="hymt2">Hy-MT2 (2026)</option>
                 <option value="hymt15">HY-MT1.5</option>
@@ -275,7 +373,7 @@ export default function Settings() {
             </div>
           )}
           <details className="mt-4 text-sm text-muted">
-            <summary className="cursor-pointer font-semibold text-ink">Cách chạy Hy-MT trên máy</summary>
+            <summary className="cursor-pointer font-semibold text-ink">Tự chạy Hy-MT bằng công cụ khác (nâng cao)</summary>
             <div className="mt-2 space-y-2 leading-relaxed">
               <p>
                 <b>Ollama</b> (dễ nhất):
@@ -295,8 +393,27 @@ export default function Settings() {
         </div>
       </Section>
 
-      <Section icon={<Target className="h-5 w-5 text-amber-500" />} title="Mục tiêu & ôn tập" desc="Thuật toán FSRS tự tính lịch ôn dựa trên độ khó và độ ổn định trí nhớ.">
-        <Row label="Mục tiêu XP mỗi ngày" hint="Đạt mục tiêu để giữ chuỗi ngày học 🔥">
+      <Section
+        icon={<Target className="h-5 w-5 text-amber-500" />}
+        title="Mục tiêu & ôn tập"
+        desc={
+          <>
+            App tự tính ngày ôn lại cho từng thẻ bằng thuật toán <Term k="fsrs">FSRS</Term> — hỏi lại đúng lúc bạn sắp quên.
+          </>
+        }
+      >
+        <Row
+          label={
+            <>
+              Mục tiêu <Term k="xp">điểm XP</Term> mỗi ngày
+            </>
+          }
+          hint={
+            <>
+              Đạt mục tiêu để giữ <Term k="streak">chuỗi ngày học</Term> 🔥
+            </>
+          }
+        >
           <Segmented
             value={draft.dailyGoalXp}
             onChange={(v) => commit('dailyGoalXp', v)}
@@ -309,32 +426,40 @@ export default function Settings() {
             size="sm"
           />
         </Row>
-        <Row label={`Số thẻ mới mỗi ngày: ${draft.newCardsPerDay}`} hint="Nhiều thẻ mới → nhiều lượt ôn ở các ngày sau.">
-          <input
-            type="range"
+        <Row
+          label={
+            <>
+              Số thẻ mới mỗi ngày: {draft.newCardsPerDay} <Term k="new_cards" icon />
+            </>
+          }
+          hint="Nhiều thẻ mới hôm nay → nhiều lượt ôn ở các ngày sau. 10–20 là vừa sức."
+        >
+          <Range
             min={0}
             max={60}
             step={5}
             value={draft.newCardsPerDay}
-            onChange={(e) => set('newCardsPerDay', Number(e.target.value))}
-            onMouseUp={() => save.mutate({ newCardsPerDay: draft.newCardsPerDay })}
-            onKeyUp={() => save.mutate({ newCardsPerDay: draft.newCardsPerDay })}
-            className="w-48 accent-violet-600"
-            aria-label="Số thẻ mới mỗi ngày"
+            label="Số thẻ mới mỗi ngày"
+            onChange={(v) => set('newCardsPerDay', v)}
+            onCommit={(v) => save.mutate({ newCardsPerDay: v })}
           />
         </Row>
-        <Row label={`Tỉ lệ nhớ mong muốn: ${Math.round(draft.requestRetention * 100)}%`} hint="Cao hơn → ôn thường xuyên hơn nhưng nhớ chắc hơn. Khuyến nghị 90%.">
-          <input
-            type="range"
+        <Row
+          label={
+            <>
+              Tỉ lệ nhớ mong muốn: {Math.round(draft.requestRetention * 100)}% <Term k="retention" icon />
+            </>
+          }
+          hint="Cao hơn → phải ôn thường xuyên hơn nhưng nhớ chắc hơn. Nên để 90%."
+        >
+          <Range
             min={0.8}
             max={0.97}
             step={0.01}
             value={draft.requestRetention}
-            onChange={(e) => set('requestRetention', Number(e.target.value))}
-            onMouseUp={() => save.mutate({ requestRetention: draft.requestRetention })}
-            onKeyUp={() => save.mutate({ requestRetention: draft.requestRetention })}
-            className="w-48 accent-violet-600"
-            aria-label="Tỉ lệ nhớ mong muốn"
+            label="Tỉ lệ nhớ mong muốn"
+            onChange={(v) => set('requestRetention', v)}
+            onCommit={(v) => save.mutate({ requestRetention: v })}
           />
         </Row>
       </Section>
@@ -342,8 +467,17 @@ export default function Settings() {
       <div id="learning" className="scroll-mt-20">
         <Section icon={<GraduationCap className="h-5 w-5 text-emerald-500" />} title="Trình độ & kế hoạch học" desc="Dùng để đo độ khó video, gợi ý video vừa sức và lên kế hoạch mỗi ngày.">
           <Row
-            label="Trình độ từ vựng hiện tại"
-            hint="Từ thuộc nhóm phổ biến theo trình độ này (danh sách NGSL) được coi là bạn đã biết. Từ trong sổ (đã thuộc/đang ôn) luôn được tính."
+            label={
+              <>
+                Trình độ từ vựng hiện tại <Term k="cefr" icon />
+              </>
+            }
+            hint={
+              <>
+                App coi những từ phổ biến ở mức này (theo danh sách <Term k="ngsl">NGSL</Term>) là bạn đã biết, để tính video nào vừa sức. Từ trong sổ của bạn luôn được
+                tính.
+              </>
+            }
           >
             <Segmented
               value={draft.vocabLevel}
@@ -362,7 +496,15 @@ export default function Settings() {
               size="sm"
             />
           </Row>
-          <Row label="Buổi học mỗi ngày" hint="Trang “Hôm nay học gì”: bản ngắn bỏ bước 4/3/2 và giảm số câu.">
+          <PlacementRow />
+          <Row
+            label="Buổi học mỗi ngày"
+            hint={
+              <>
+                Trang “Hôm nay học gì”: bản ngắn bỏ <Term k="fluency_432">bài nói 4/3/2</Term> và giảm số câu.
+              </>
+            }
+          >
             <Segmented
               value={draft.dailyPlanMode}
               onChange={(v) => {
@@ -376,34 +518,68 @@ export default function Settings() {
               size="sm"
             />
           </Row>
-          <Row label={`Thời gian chờ trước khi nói lại: ${draft.speakDelaySec} giây`} hint="Bài “Nghe – chờ – nói”: chờ lâu hơn = phải nhớ nhiều hơn, khó hơn.">
+          <Row
+            label={`Thời gian chờ trước khi nói lại: ${draft.speakDelaySec} giây`}
+            hint={
+              <>
+                Bài <Term k="delayed_repeat">“Nghe – chờ – nói”</Term>: chờ lâu hơn = phải nhớ nhiều hơn, khó hơn.
+              </>
+            }
+          >
             <Segmented value={draft.speakDelaySec} onChange={(v) => commit('speakDelaySec', v)} options={[0, 1, 2, 3, 4, 5].map((n) => ({ value: n, label: `${n}s` }))} size="sm" />
           </Row>
           <Row
-            label="Hộp “khởi động” khi mở app"
+            label={
+              <>
+                Hộp “khởi động” khi mở app <Term k="warmup" icon />
+              </>
+            }
             hint="Sau khi đăng nhập, mở lại trang (tối đa 1 lần/giờ) hoặc quay lại tab sau ≥ 30 phút: ôn nhanh ~1 phút các thẻ sắp quên và xem kế hoạch hôm nay."
           >
             <Switch checked={draft.startScreen === 'auto'} onChange={(v) => commit('startScreen', v ? 'auto' : 'off')} label="Hộp khởi động khi mở app" />
           </Row>
-          <Row label="Ôn buổi sáng từ học tối qua" hint="Trước 12 giờ trưa, ưu tiên nhớ lại các từ học hôm qua — ôn sau một đêm ngủ giúp nhớ lâu hơn.">
+          <Row
+            label={
+              <>
+                Ôn buổi sáng từ học tối qua <Term k="morning_review" icon />
+              </>
+            }
+            hint="Trước 12 giờ trưa, ưu tiên nhớ lại các từ học hôm qua — ôn sau một đêm ngủ giúp nhớ lâu hơn."
+          >
             <Switch checked={draft.morningReview} onChange={(v) => commit('morningReview', v)} label="Ôn buổi sáng" />
           </Row>
           <Row
-            label="Thông báo khi có thẻ sắp quên"
+            label={
+              <>
+                Thông báo khi có thẻ sắp quên <Term k="web_push" icon />
+              </>
+            }
             hint={
               typeof Notification === 'undefined'
                 ? 'Trình duyệt không hỗ trợ thông báo.'
                 : Notification.permission === 'denied'
                   ? 'Trình duyệt đang chặn thông báo của trang — bấm biểu tượng ổ khoá cạnh địa chỉ trang để cho phép.'
-                  : 'Chỉ khi app đang mở trong một tab, 8h–22h, tối đa 2 lần/ngày; buổi tối nhắc học từ mới nếu hôm nay chưa học.'
+                  : pushSupported()
+                    ? 'Máy chủ gửi nhắc kể cả khi bạn đã đóng tab (trình duyệt vẫn chạy): 8h–22h, tối đa 2 lần/ngày, cách nhau ≥ 3 giờ; buổi sáng nhắc từ học tối qua, buổi tối nhắc học từ mới.'
+                    : 'Trình duyệt này không hỗ trợ thông báo đẩy — chỉ nhắc khi app đang mở trong một tab.'
             }
           >
             <Switch
               checked={draft.notifyReviews}
               onChange={async (v) => {
-                if (!v) return commit('notifyReviews', false);
-                const ok = await enableReviewNotifications(qc).catch(() => false);
-                if (ok) set('notifyReviews', true);
+                if (notifyBusy) return;
+                setNotifyBusy(true);
+                try {
+                  if (!v) {
+                    set('notifyReviews', false);
+                    await disableReviewNotifications(qc).catch(() => undefined);
+                    return;
+                  }
+                  const ok = await enableReviewNotifications(qc).catch(() => false);
+                  if (ok) set('notifyReviews', true);
+                } finally {
+                  setNotifyBusy(false);
+                }
               }}
               label="Thông báo khi có thẻ sắp quên"
             />
@@ -424,16 +600,15 @@ export default function Settings() {
         </Row>
         <Row label={`Tốc độ giọng đọc máy: ${draft.ttsRate}×`}>
           <div className="flex items-center gap-2">
-            <input
-              type="range"
+            <Range
               min={0.6}
               max={1.2}
               step={0.05}
               value={draft.ttsRate}
-              onChange={(e) => set('ttsRate', Number(e.target.value))}
-              onMouseUp={() => save.mutate({ ttsRate: draft.ttsRate })}
-              className="w-40 accent-violet-600"
-              aria-label="Tốc độ giọng đọc"
+              label="Tốc độ giọng đọc"
+              onChange={(v) => set('ttsRate', v)}
+              onCommit={(v) => save.mutate({ ttsRate: v })}
+              className="w-40"
             />
             <Button size="sm" variant="ghost" onClick={() => speak('Practice makes perfect', { accent: draft.accent, rate: draft.ttsRate })}>
               Nghe thử
@@ -449,13 +624,32 @@ export default function Settings() {
             ))}
           </Select>
         </Row>
-        <Row label="Tự dừng sau mỗi câu" hint="Bật sẵn khi mở video (phím A để đổi nhanh).">
+        <Row
+          label={
+            <>
+              Tự dừng sau mỗi câu <Term k="autopause" icon />
+            </>
+          }
+          hint="Bật sẵn khi mở video (phím A để đổi nhanh)."
+        >
           <Switch checked={draft.autoPause} onChange={(v) => commit('autoPause', v)} label="Tự dừng sau mỗi câu" />
         </Row>
-        <Row label="Hiện bản dịch song ngữ mặc định">
+        <Row
+          label={
+            <>
+              Hiện bản dịch <Term k="bilingual">song ngữ</Term> mặc định
+            </>
+          }
+        >
           <Switch checked={draft.showTranslation} onChange={(v) => commit('showTranslation', v)} label="Hiện bản dịch" />
         </Row>
-        <Row label="Số lần nghe mỗi câu khi shadowing">
+        <Row
+          label={
+            <>
+              Số lần nghe mỗi câu khi <Term k="shadowing">nói đuổi (shadowing)</Term>
+            </>
+          }
+        >
           <Segmented value={draft.shadowRepeat} onChange={(v) => commit('shadowRepeat', v)} options={[1, 2, 3].map((n) => ({ value: n, label: `${n}×` }))} size="sm" />
         </Row>
       </Section>
@@ -474,18 +668,18 @@ export default function Settings() {
         </Row>
       </Section>
 
-      <Section icon={<Download className="h-5 w-5 text-emerald-500" />} title="Dữ liệu" desc="Dữ liệu được lưu trong SQLite trên máy chủ (backend/data/ielts-learn.db), mỗi tài khoản một sổ từ riêng.">
-        <div className="flex flex-wrap gap-2">
-          <a href={api.exportUrl('csv')}>
-            <Button variant="outline" icon={<Download className="h-4 w-4" />}>
-              Xuất sổ từ (CSV)
-            </Button>
-          </a>
-          <a href={api.exportUrl('anki')}>
-            <Button variant="outline" icon={<Download className="h-4 w-4" />}>
-              Xuất cho Anki
-            </Button>
-          </a>
+      <Section
+        icon={<Download className="h-5 w-5 text-emerald-500" />}
+        title="Dữ liệu"
+        desc="Dữ liệu học được lưu trên máy chủ đang chạy app; mỗi tài khoản có sổ từ riêng. Bạn có thể tải sổ từ về bất cứ lúc nào."
+      >
+        <div className="flex flex-wrap gap-2 pb-1">
+          <LinkButton href={api.exportUrl('csv')} variant="outline" icon={<Download className="h-4 w-4" />}>
+            Tải sổ từ (file CSV, mở bằng Excel)
+          </LinkButton>
+          <LinkButton href={api.exportUrl('anki')} variant="outline" icon={<Download className="h-4 w-4" />}>
+            Tải cho Anki (app thẻ ghi nhớ)
+          </LinkButton>
         </div>
       </Section>
     </div>

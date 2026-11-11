@@ -72,7 +72,7 @@ export function todayPlan() {
     {
       key: 'review' as const,
       title: 'Ôn thẻ đến hạn',
-      desc: reviewTarget ? `Ôn ${reviewTarget} thẻ từ vựng và mẫu câu theo lịch FSRS` : 'Không có thẻ nào đến hạn — tuyệt!',
+      desc: reviewTarget ? `Ôn ${reviewTarget} thẻ từ vựng và mẫu câu đang đến hạn (sắp quên)` : 'Không có thẻ nào đến hạn — tuyệt!',
       value: Math.min(reviewed, reviewTarget),
       target: reviewTarget,
       unit: 'thẻ',

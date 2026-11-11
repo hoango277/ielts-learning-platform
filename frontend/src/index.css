@@ -4,42 +4,70 @@
 @import '@fontsource/be-vietnam-pro/600.css';
 @import '@fontsource/be-vietnam-pro/700.css';
 @import '@fontsource/be-vietnam-pro/800.css';
+/* Nunito: font tròn, đậm, thân thiện cho tiêu đề và nút (giống tinh thần Duolingo), có đủ dấu tiếng Việt */
+@import '@fontsource-variable/nunito';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------- Design tokens ---------- */
 :root {
-  --bg: #f6f5fb;
+  --bg: #f7f5ff;
   --surface: #ffffff;
-  --surface-2: #f2f0f9;
-  --surface-3: #e9e6f4;
-  --border: #e4e0ef;
+  --surface-2: #f3f0fb;
+  --surface-3: #e9e4f6;
+  --border: #e6e1f2;
   --text: #1b1530;
   --muted: #6a6382;
   --ring: #8b5cf6;
+  /* Màu "đáy" của nút/thẻ nổi khối (bóng đặc phía dưới) */
+  --edge: #d8d1ec;
+  /* Bóng đổ nhiều lớp, pha sắc tím cho ấm */
+  --shadow-color: 260 60% 30%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 2px 6px -2px hsl(var(--shadow-color) / 0.06);
+  --shadow-md: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 6px 16px -4px hsl(var(--shadow-color) / 0.1), 0 18px 36px -18px hsl(var(--shadow-color) / 0.18);
+  --shadow-lg: 0 2px 4px hsl(var(--shadow-color) / 0.05), 0 12px 28px -6px hsl(var(--shadow-color) / 0.16), 0 32px 64px -24px hsl(var(--shadow-color) / 0.28);
+  --glow: 0 10px 30px -8px rgb(124 58 237 / 0.55);
   color-scheme: light;
 }
 
 .dark {
   --bg: #0b0912;
-  --surface: #14111d;
-  --surface-2: #1b1727;
-  --surface-3: #252034;
-  --border: #2a2438;
+  --surface: #15111f;
+  --surface-2: #1c1729;
+  --surface-3: #272036;
+  --border: #2b2440;
   --text: #ece9f7;
   --muted: #a49dba;
   --ring: #a78bfa;
+  --edge: #0a0810;
+  --shadow-color: 260 80% 2%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.5);
+  --shadow-md: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 8px 24px -10px hsl(var(--shadow-color) / 0.7);
+  --shadow-lg: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 18px 48px -16px hsl(var(--shadow-color) / 0.85);
+  --glow: 0 10px 34px -10px rgb(167 139 250 / 0.55);
   color-scheme: dark;
 }
 
 @theme {
   --font-sans: 'Be Vietnam Pro', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Nunito Variable', 'Nunito', 'Be Vietnam Pro', ui-rounded, system-ui, sans-serif;
+  /* Phiên âm IPA cần font có đủ ký hiệu ə ʊ ɪ θ ð ʃ ŋ ː */
+  --font-ipa: 'Segoe UI', 'Lucida Sans Unicode', 'Noto Sans', 'DejaVu Sans', 'Arial Unicode MS', sans-serif;
 
   --animate-fade-in: fade-in 0.25s ease-out both;
   --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --animate-shake: shake 0.4s ease-in-out both;
   --animate-float: float 3s ease-in-out infinite;
+  --animate-float-slow: float-slow 9s ease-in-out infinite;
   --animate-slide-up: slide-up 0.3s ease-out both;
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-gradient: gradient-pan 12s ease infinite;
+  --animate-flicker: flicker 1.6s ease-in-out infinite;
+  --animate-wiggle: wiggle 0.5s ease-in-out;
+  --animate-bounce-in: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  /* Chuyển trang: kết thúc bằng transform: none để không ảnh hưởng phần tử fixed/sticky bên trong */
+  --animate-page: page-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pulse-ring: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
   @keyframes fade-in {
     from { opacity: 0; transform: translateY(4px); }
@@ -58,9 +86,54 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
   }
+  @keyframes float-slow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(14px, -18px) scale(1.06); }
+    66% { transform: translate(-10px, 10px) scale(0.96); }
+  }
   @keyframes slide-up {
     from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: none; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes gradient-pan {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes flicker {
+    0%, 100% { transform: scale(1) rotate(-3deg); }
+    25% { transform: scale(1.08) rotate(2deg); }
+    50% { transform: scale(0.96) rotate(-1deg); }
+    75% { transform: scale(1.05) rotate(3deg); }
+  }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+  }
+  @keyframes bounce-in {
+    0% { transform: scale(0.3); opacity: 0; }
+    55% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--ring) 55%, transparent); }
+    70%, 100% { box-shadow: 0 0 0 10px transparent; }
+  }
+  @keyframes shine {
+    from { transform: translateX(-120%); }
+    to { transform: translateX(220%); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
   }
 }
 
@@ -72,6 +145,10 @@
   --color-line: var(--border);
   --color-ink: var(--text);
   --color-muted: var(--muted);
+  --shadow-soft: var(--shadow-sm);
+  --shadow-card: var(--shadow-md);
+  --shadow-lift: var(--shadow-lg);
+  --shadow-glow: var(--glow);
 }
 
 /* ---------- Base ---------- */
@@ -83,6 +160,24 @@
   body {
     @apply bg-bg text-ink font-sans antialiased;
     min-height: 100dvh;
+    line-height: 1.6;
+    /* Mảng màu loang rất nhẹ ở hai góc tạo chiều sâu cho nền */
+    background-image:
+      radial-gradient(900px 520px at 105% -8%, rgb(217 70 239 / 0.09), transparent 60%),
+      radial-gradient(760px 480px at -8% 12%, rgb(124 58 237 / 0.08), transparent 60%),
+      radial-gradient(700px 420px at 50% 115%, rgb(251 146 60 / 0.07), transparent 60%);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(900px 520px at 105% -8%, rgb(217 70 239 / 0.08), transparent 60%),
+      radial-gradient(760px 480px at -8% 12%, rgb(124 58 237 / 0.1), transparent 60%);
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.012em;
   }
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -118,6 +213,14 @@
   }
 }
 
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility font-ipa {
+  font-family: var(--font-ipa);
+}
+
 @utility text-gradient {
   background-image: linear-gradient(100deg, #7c3aed 0%, #d946ef 50%, #fb923c 100%);
   -webkit-background-clip: text;
@@ -129,8 +232,105 @@
   background-image: linear-gradient(120deg, #7c3aed 0%, #c026d3 55%, #f97316 110%);
 }
 
+/* Nền gradient chuyển màu chậm (hero, banner) */
+@utility bg-brand-animated {
+  background-image: linear-gradient(120deg, #6d28d9, #a21caf, #db2777, #f97316, #7c3aed);
+  background-size: 300% 300%;
+  animation: var(--animate-gradient);
+}
+
+/* Bóng đi qua biến --tw-shadow của Tailwind (shadow-card / shadow-lift) để vẫn ghép được với ring-* (viền chọn, viền nháy) */
 @utility card {
-  @apply rounded-2xl border border-line bg-surface shadow-[0_1px_2px_rgba(20,10,50,0.04),0_8px_24px_-12px_rgba(20,10,50,0.08)] dark:shadow-none;
+  @apply rounded-2xl border border-line bg-surface shadow-card;
+}
+
+/* Thẻ tương tác (bấm được): nổi lên khi rê chuột — chỉ áp dụng trên thiết bị có chuột */
+@utility card-hover {
+  transition:
+    translate 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+  @media (hover: hover) {
+    &:hover {
+      @apply shadow-lift;
+      translate: 0 -3px;
+      border-color: color-mix(in oklab, var(--ring) 35%, var(--border));
+    }
+  }
+  &:active {
+    translate: 0 0;
+  }
+}
+
+/* Ô biểu tượng nổi khối (nền gradient, icon trắng): viền sáng phía trên, cạnh tối phía dưới, bóng đổ mềm */
+@utility icon-tile {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    inset 0 -3px 0 rgb(0 0 0 / 0.14),
+    0 8px 16px -8px rgb(20 10 50 / 0.45);
+}
+
+/* Khối "nổi" kiểu Duolingo: bóng đặc phía dưới, bấm thì lún xuống. Màu đáy đặt qua --edge */
+@utility press {
+  box-shadow: 0 4px 0 0 var(--edge);
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease,
+    filter 0.15s ease,
+    background-color 0.15s ease;
+  &:active:not(:disabled):not([aria-disabled='true']) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 0 var(--edge);
+  }
+}
+
+/* Các phần tử con xuất hiện lần lượt */
+@utility stagger {
+  & > * {
+    animation: var(--animate-rise);
+  }
+  & > *:nth-child(2) { animation-delay: 40ms; }
+  & > *:nth-child(3) { animation-delay: 80ms; }
+  & > *:nth-child(4) { animation-delay: 120ms; }
+  & > *:nth-child(5) { animation-delay: 160ms; }
+  & > *:nth-child(6) { animation-delay: 200ms; }
+  & > *:nth-child(7) { animation-delay: 240ms; }
+  & > *:nth-child(8) { animation-delay: 280ms; }
+  & > *:nth-child(9) { animation-delay: 320ms; }
+  & > *:nth-child(10) { animation-delay: 360ms; }
+  & > *:nth-child(n + 11) { animation-delay: 400ms; }
+}
+
+/* Vệt sáng chạy qua (thanh tiến độ, nút nổi bật) */
+@utility shine {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
+    animation: shine 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+}
+
+/* Khung kính mờ (thanh trên cùng, panel nổi).
+   Chỉ viết thuộc tính chuẩn: trình build tự thêm tiền tố -webkit- cho Safari. Viết tay cả hai thì bản rút gọn
+   giữ lại mỗi bản -webkit- (Chrome/Edge bỏ qua → mất hiệu ứng mờ). */
+@utility glass {
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+}
+
+/* Thuật ngữ có giải thích: gạch chân chấm */
+@utility term {
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in oklab, var(--ring) 70%, transparent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  cursor: help;
 }
 
 /* Thẻ lật 3D (flashcard) */
@@ -142,10 +342,16 @@
 }
 @utility backface-hidden {
   backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 @utility rotate-y-180 {
   transform: rotateY(180deg);
+}
+
+/* Khung xương khi đang tải: dải sáng lướt qua */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-3) 0%, color-mix(in oklab, var(--surface-3) 40%, var(--surface)) 50%, var(--surface-3) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }
 
 /* Từ trong transcript có thể bấm để tra */

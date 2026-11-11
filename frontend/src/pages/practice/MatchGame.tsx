@@ -78,7 +78,7 @@ export function MatchGame({ items, onFinish }: { items: PracticeItem[]; onFinish
           {matched.size}/{items.length} cặp · {mistakes} lần sai
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 pb-1 sm:grid-cols-4">
         {tiles.map((t) => {
           const done = matched.has(t.key);
           const isWrong = wrong.includes(t.id);
@@ -90,12 +90,12 @@ export function MatchGame({ items, onFinish }: { items: PracticeItem[]; onFinish
               onClick={() => pick(t)}
               disabled={done}
               className={cn(
-                'flex min-h-[84px] items-center justify-center rounded-2xl border-2 p-3 text-center text-sm font-semibold transition-all duration-300',
-                done && 'scale-90 border-transparent bg-emerald-100 text-emerald-700 opacity-0 dark:bg-emerald-500/15',
-                !done && !isSel && !isWrong && 'border-line bg-surface text-ink hover:-translate-y-0.5 hover:border-pink-300 hover:shadow-md',
-                isSel && 'border-pink-500 bg-pink-50 text-pink-700 dark:bg-pink-500/15 dark:text-pink-200',
-                isWrong && 'animate-shake border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-500/15',
-                t.kind === 'term' && !done && 'text-base',
+                'flex min-h-[84px] items-center justify-center rounded-2xl border-2 p-3 text-center text-sm font-semibold shadow-[0_4px_0_0_var(--edge)] transition-all duration-200 [--edge:var(--border)]',
+                done && 'scale-90 border-transparent bg-emerald-100 text-emerald-700 opacity-0 shadow-none dark:bg-emerald-500/15',
+                !done && !isSel && !isWrong && 'border-line bg-surface text-ink hover:border-pink-300 hover:[--edge:#f9a8d4] active:translate-y-[3px] active:shadow-[0_1px_0_0_var(--edge)]',
+                isSel && 'translate-y-[2px] border-pink-500 bg-pink-50 text-pink-700 shadow-[0_2px_0_0_var(--edge)] [--edge:#ec4899] dark:bg-pink-500/15 dark:text-pink-200',
+                isWrong && 'animate-shake border-rose-500 bg-rose-50 text-rose-700 [--edge:#f43f5e] dark:bg-rose-500/15',
+                t.kind === 'term' && !done && 'font-display text-base font-extrabold',
               )}
             >
               {t.text}

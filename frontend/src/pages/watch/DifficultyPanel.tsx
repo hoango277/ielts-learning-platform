@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../../components/ui/Button';
 import { EmptyState, Progress, Ring, Skeleton } from '../../components/ui/primitives';
+import { Term } from '../../components/ui/Term';
 import { coveragePct, DIFF_META } from '../../components/video/DifficultyBadge';
 import { LevelBadge } from '../../components/word/bits';
 import { api } from '../../lib/api';
@@ -19,7 +20,7 @@ export function useVideoDifficulty(videoId: string) {
   });
 }
 
-/** Nút nhỏ trên thanh điều khiển: "96% · Vừa sức". */
+/** Nút nhỏ trên thanh điều khiển: "Biết 96% · Vừa sức". */
 export function DifficultyChip({ videoId, onClick }: { videoId: string; onClick: () => void }) {
   const { data } = useVideoDifficulty(videoId);
   if (!data || data.status === 'unavailable' || data.status === 'error') return null;
@@ -32,7 +33,7 @@ export function DifficultyChip({ videoId, onClick }: { videoId: string; onClick:
   const m = DIFF_META[data.label];
   return (
     <button type="button" onClick={onClick} className={cn('inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold', m.className)} title={m.desc}>
-      <Gauge className="h-4 w-4" /> {coveragePct(data.coverage)} · {m.label}
+      <Gauge className="h-4 w-4" /> Biết {coveragePct(data.coverage)} · {m.label}
     </button>
   );
 }
@@ -81,12 +82,18 @@ export function DifficultyPanel({ videoId, onSeek }: { videoId: string; onSeek: 
           </div>
         </Ring>
         <div className="min-w-0 flex-1 space-y-1">
-          <span className={cn('inline-block rounded-full px-2.5 py-0.5 text-sm font-bold', m.className)}>{m.label}</span>
+          <p className="flex items-center gap-1.5">
+            <span className={cn('inline-block rounded-full px-2.5 py-0.5 text-sm font-bold', m.className)}>{m.label}</span>
+            <Term k="coverage" icon />
+          </p>
           <p className="text-sm leading-relaxed text-muted">{m.desc}</p>
           <p className="text-xs text-muted">
-            {data.newWords} từ mới · {data.learningWords} từ đang học · trình độ nền {data.vocabLevel}{' '}
+            {data.newWords} từ mới · {data.learningWords} từ đang học · <Term k="vocab_level">trình độ nền</Term> {data.vocabLevel}{' '}
             <LinkButton to="/settings#learning" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" icon={<Settings2 className="h-3.5 w-3.5" />}>
               Đổi
+            </LinkButton>
+            <LinkButton to="/placement" variant="ghost" size="sm" className="h-6 px-1.5 text-xs">
+              Test vốn từ
             </LinkButton>
           </p>
         </div>
@@ -154,8 +161,8 @@ export function DifficultyPanel({ videoId, onSeek }: { videoId: string; onSeek: 
         )}
       </div>
       <p className="text-[11px] leading-relaxed text-muted">
-        Cách tính: từ trong 2.809 từ phổ biến nhất (danh sách NGSL) theo trình độ nền của bạn + từ bạn đã thuộc/đang ôn trong sổ được tính là “đã biết”. Mốc 95–98% theo các
-        nghiên cứu về độ phủ từ vựng khi nghe hiểu.
+        Cách tính: những từ phổ biến ứng với trình độ nền của bạn (lấy từ danh sách <Term k="ngsl">NGSL</Term>) cùng các từ bạn đã thuộc hoặc đang ôn trong sổ được coi là “đã
+        biết”. Mốc 95–98% dựa trên các nghiên cứu về <Term k="coverage">độ phủ từ vựng</Term> khi nghe hiểu.
       </p>
     </div>
   );

@@ -108,7 +108,10 @@ const cleanChunk = (s?: string) => (s ?? '').trim().replace(/\s+/g, ' ').replace
 
 async function translateChunk(chunk: string, sentence: string) {
   if (!chunk) return '';
-  return (await translateText(chunk, { context: sentence }).catch(() => null))?.translation ?? '';
+  const vi = (await translateText(chunk, { context: sentence }).catch(() => null))?.translation ?? '';
+  // Cụm từ (không phải câu): bỏ dấu chấm cuối, viết thường chữ đầu như cụm gốc
+  const trimmed = vi.trim().replace(/[.!?。]+$/, '');
+  return /^[a-z]/.test(chunk) ? trimmed.charAt(0).toLocaleLowerCase('vi') + trimmed.slice(1) : trimmed;
 }
 
 export async function createPhrase(input: z.infer<typeof createSchema>) {

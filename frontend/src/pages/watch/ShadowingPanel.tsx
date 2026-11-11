@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/Button';
 import { Badge, Kbd, Switch } from '../../components/ui/primitives';
+import { Term } from '../../components/ui/Term';
 import { useLocalStorage } from '../../hooks/misc';
 import { useHotkeys } from '../../hooks/useHotkeys';
 import { useRecorder } from '../../hooks/useRecorder';
@@ -188,8 +189,10 @@ export function ShadowingPanel({
             <Mic className="h-5 w-5" />
           </span>
           <div>
-            <h3 className="font-bold text-ink">Shadowing — câu {index + 1}/{sentences.length}</h3>
-            <p className="text-xs text-muted">Nghe → nhại lại đúng nhịp, nối âm, ngữ điệu → xem điểm từng từ</p>
+            <h3 className="font-extrabold text-ink">
+              <Term k="shadowing">Nói đuổi (shadowing)</Term> — câu {index + 1}/{sentences.length}
+            </h3>
+            <p className="text-xs text-muted">Nghe → nhại lại đúng nhịp, nối âm, ngữ điệu → xem từ nào bạn nói khớp</p>
           </div>
         </div>
         {score !== undefined && <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">Tốt nhất {Math.round(score * 100)}%</Badge>}
@@ -245,7 +248,10 @@ export function ShadowingPanel({
               <DiffView result={result} />
               {heard && (
                 <p className="text-sm text-muted">
-                  <span className="font-semibold">Máy nghe được:</span> “{heard}”
+                  <span className="font-semibold">
+                    Máy nghe được <Term k="speech_recognition" icon />:
+                  </span>{' '}
+                  “{heard}”
                 </p>
               )}
             </>
@@ -275,7 +281,7 @@ export function ShadowingPanel({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-sm">
         <label className="flex items-center gap-2 font-medium text-ink">
-          <Switch checked={auto} onChange={setAuto} label="Shadowing tự động" />
+          <Switch checked={auto} onChange={setAuto} label="Nói đuổi tự động" />
           <Wand2 className="h-4 w-4 text-fuchsia-500" /> Tự động: nghe → ghi âm → qua câu khi ≥ 80%
         </label>
         <label className="flex items-center gap-2 font-medium text-ink" title="Phát video trong lúc bạn nói (nên đeo tai nghe)">

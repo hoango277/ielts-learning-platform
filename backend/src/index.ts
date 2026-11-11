@@ -4,10 +4,11 @@ import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
 import { config } from './config.ts';
-import { get } from './db/index.ts';
+import { db, get } from './db/index.ts';
 import { seedTopics } from './db/seed.ts';
 import { authRouter, requireAuth, sameOriginGuard } from './routes/auth.ts';
 import { api } from './routes/index.ts';
+import { startPushScheduler } from './services/push.service.ts';
 
 const app = express();
 app.disable('x-powered-by');
@@ -15,7 +16,7 @@ app.use(cors({ origin: config.corsOrigins, credentials: true }));
 app.use(express.json({ limit: '3mb' }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
+  res.json({ ok: true, version: process.env.APP_VERSION ?? 'dev', time: new Date().toISOString() });
 });
 app.use('/api', sameOriginGuard);
 app.use('/api/auth', authRouter);
@@ -28,9 +29,21 @@ app.use('/api', (_req, res) => {
 
 // Bản build frontend (npm run build) được phục vụ cùng cổng
 if (fs.existsSync(config.frontendDist)) {
-  app.use(express.static(config.frontendDist, { maxAge: '7d', index: false }));
+  app.use(
+    express.static(config.frontendDist, {
+      index: false,
+      setHeaders(res, file) {
+        const name = path.basename(file);
+        // File có mã băm trong tên (assets/*) không bao giờ đổi → cache lâu; service worker, manifest, HTML luôn kiểm tra bản mới
+        if (/[\\/]assets[\\/]/.test(file)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        else if (name === 'sw.js' || name.endsWith('.webmanifest') || name.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+        else res.setHeader('Cache-Control', 'public, max-age=86400');
+      },
+    }),
+  );
   app.use((req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(config.frontendDist, 'index.html'));
   });
 }
@@ -53,7 +66,20 @@ if (!topicCount && fs.existsSync(config.seedPath)) {
   console.log(`[seed] đã nạp ${r.topics} chủ đề, ${r.lexicon} từ`);
 }
 
-app.listen(config.port, config.host, () => {
+const server = app.listen(config.port, config.host, () => {
   console.log(`🚀 API sẵn sàng tại http://${config.host}:${config.port}/api`);
   if (fs.existsSync(config.frontendDist)) console.log(`🌐 Giao diện: http://${config.host}:${config.port}`);
+  startPushScheduler();
 });
+
+// Docker / Kubernetes gửi SIGTERM khi dừng container: ngừng nhận request, đóng DB sạch sẽ (ghi hết WAL)
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    console.log(`[server] nhận ${signal}, đang dừng…`);
+    server.close(() => {
+      db.close();
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(0), 8000).unref();
+  });
+}

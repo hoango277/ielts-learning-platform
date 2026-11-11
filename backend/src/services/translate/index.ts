@@ -70,6 +70,17 @@ async function machineTranslate(text: string, from: string, to: string): Promise
 
 const once = dedupe<unknown>();
 
+/**
+ * Kết quả "dịch theo ngữ cảnh" thực chất là bản dịch của cả câu ngữ cảnh? (dài hơn nhiều so với từ/cụm gốc,
+ * hoặc là một câu hoàn chỉnh trong khi nguồn chỉ là vài từ).
+ */
+export function looksLikeSentenceTranslation(output: string, source: string) {
+  const srcWords = source.trim().split(/\s+/).length;
+  const outWords = output.trim().split(/\s+/).length;
+  if (outWords > Math.max(6, srcWords * 4)) return true;
+  return /[.!?…]["”]?$/.test(output.trim()) && !/[.!?…]$/.test(source.trim()) && outWords > srcWords * 2 + 2;
+}
+
 export interface TranslateOptions {
   from?: string;
   to?: string;
@@ -93,13 +104,21 @@ export async function translateText(text: string, opts: TranslateOptions = {}): 
 
   if (provider === 'hymt') {
     const key = cacheKey('t', 'hymt', s.hymtModel, from, to, context, text);
-    const hit = readCache<{ translation: string }>(key);
-    if (hit) return { translation: hit.translation, provider: 'hymt', contextual: Boolean(context), cached: true };
+    const hit = readCache<{ translation: string; contextual?: boolean }>(key);
+    // Bỏ qua cache cũ (trước khi có kiểm tra bên dưới) nếu đó là bản dịch cả câu
+    const staleHit = hit && hit.contextual === undefined && context && looksLikeSentenceTranslation(hit.translation, text);
+    if (hit && !staleHit) return { translation: hit.translation, provider: 'hymt', contextual: hit.contextual ?? Boolean(context), cached: true };
     return once(key, async () => {
       try {
-        const translation = await hymtTranslate(text, to, s, { context });
-        writeCache(key, { translation });
-        return { translation, provider: 'hymt' as const, contextual: Boolean(context), cached: false };
+        let translation = await hymtTranslate(text, to, s, { context });
+        let contextual = Boolean(context);
+        // Model nhỏ đôi khi dịch luôn cả câu ngữ cảnh thay vì chỉ từ/cụm cần dịch → dịch riêng từ/cụm đó
+        if (context && looksLikeSentenceTranslation(translation, text)) {
+          translation = await hymtTranslate(text, to, s);
+          contextual = false;
+        }
+        writeCache(key, { translation, contextual });
+        return { translation, provider: 'hymt' as const, contextual, cached: false };
       } catch (err) {
         console.warn('[translate] Hy-MT lỗi, chuyển sang dịch máy:', (err as Error).message);
         hymtDownUntil = Date.now() + 60_000;

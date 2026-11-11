@@ -1,0 +1,23 @@
+apiVersion: v2
+name: ielts-learn-chart
+description: >-
+  IELTS Learn — học tiếng Anh qua video YouTube (shadowing, sổ từ vựng, ôn tập FSRS, luyện nói, bộ từ IELTS
+  theo chủ đề). Tuỳ chọn kèm model dịch Hy-MT chạy trên CPU (llama.cpp).
+type: application
+# Phiên bản chart và phiên bản app đi cùng nhau
+version: 1.1.0
+appVersion: "1.1.0"
+kubeVersion: ">=1.23.0-0"
+home: https://github.com/hoango277/ielts-learning-platform
+sources:
+  - https://github.com/hoango277/ielts-learning-platform
+icon: https://raw.githubusercontent.com/hoango277/ielts-learning-platform/main/frontend/public/icons/icon-192.png
+keywords:
+  - ielts
+  - english
+  - language-learning
+  - spaced-repetition
+  - youtube
+maintainers:
+  - name: hoango277
+    url: https://github.com/hoango277

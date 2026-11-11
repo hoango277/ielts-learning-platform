@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../../components/ui/Button';
 import { Card, EmptyState, ErrorBox, Input, Kbd, Progress, Segmented, Skeleton } from '../../components/ui/primitives';
+import { Term } from '../../components/ui/Term';
 import { ClipPlayer } from '../../components/video/ClipPlayer';
 import { AudioButton, useSettings } from '../../components/word/bits';
 import { useHotkeys } from '../../hooks/useHotkeys';
@@ -15,7 +16,7 @@ import { diffWords } from '../../lib/diff';
 import type { Phrase, SpeakMode, SpeakResult, SpeakWord } from '../../lib/types';
 import { cn, posLabel } from '../../lib/utils';
 import { DiffView, ScorePill } from '../watch/ShadowingPanel';
-import { ChunkSentence } from '../Review';
+import { ChunkSentence } from '../../components/phrase/ChunkSentence';
 
 export const SPEAK_MODES: { key: SpeakMode; title: string; desc: string; emoji: string; tone: string; source: 'phrase' | 'word' }[] = [
   {
@@ -53,10 +54,10 @@ export const SPEAK_MODES: { key: SpeakMode; title: string; desc: string; emoji: 
 ];
 
 const RATINGS = [
-  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-600' },
-  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-600' },
-  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-600' },
-  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-600' },
+  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-400 [--edge:#be123c]' },
+  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-400 [--edge:#b45309]' },
+  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:#047857]' },
+  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-400 [--edge:#0369a1]' },
 ];
 
 // ---------- Nút micro + phương án gõ khi trình duyệt không nhận dạng giọng nói ----------
@@ -64,18 +65,21 @@ const RATINGS = [
 function MicButton({ cap, disabled }: { cap: ReturnType<typeof useSpeakCapture>; disabled?: boolean }) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => (cap.listening ? cap.stop() : void cap.start())}
-        className={cn(
-          'flex h-20 w-20 items-center justify-center rounded-full text-white shadow-xl transition active:scale-95 disabled:opacity-50',
-          cap.listening ? 'animate-pulse bg-rose-500 shadow-rose-500/40' : 'bg-linear-to-br from-violet-500 to-fuchsia-500 shadow-violet-500/40',
-        )}
-        aria-label={cap.listening ? 'Dừng (Space)' : 'Bắt đầu nói (Space)'}
-      >
-        {cap.listening ? <Square className="h-8 w-8 fill-current" /> : <Mic className="h-9 w-9" />}
-      </button>
+      <span className="relative flex pb-1">
+        {cap.listening && <span aria-hidden="true" className="absolute inset-0 mb-1 animate-ping rounded-full bg-rose-400/40" />}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => (cap.listening ? cap.stop() : void cap.start())}
+          className={cn(
+            'press relative flex h-20 w-20 items-center justify-center rounded-full text-white hover:brightness-110 disabled:opacity-50',
+            cap.listening ? 'bg-rose-500 [--edge:#be123c]' : 'bg-linear-to-br from-violet-500 to-fuchsia-500 [--edge:#6d28d9]',
+          )}
+          aria-label={cap.listening ? 'Dừng (Space)' : 'Bắt đầu nói (Space)'}
+        >
+          {cap.listening ? <Square className="h-8 w-8 fill-current" /> : <Mic className="h-9 w-9" />}
+        </button>
+      </span>
       <p className="min-h-5 max-w-lg text-center text-sm text-muted">{cap.listening ? cap.live || 'Đang nghe… nói xong bấm dừng' : <>Bấm micro hoặc <Kbd>Space</Kbd> để nói</>}</p>
       {cap.error && <p className="text-sm text-rose-500">{cap.error}</p>}
     </div>
@@ -273,15 +277,17 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
           )}
           {due ? (
             <div className="space-y-2">
-              <p className="text-center text-sm font-semibold text-ink">Bạn nhớ cụm này thế nào? (cập nhật lịch ôn)</p>
-              <div className="grid grid-cols-4 gap-2">
+              <p className="flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-ink">
+                Bạn nhớ cụm này thế nào? (để app xếp lịch ôn) <Term k="ratings" icon />
+              </p>
+              <div className="grid grid-cols-4 gap-2 pb-1">
                 {RATINGS.map((r) => (
                   <button
                     key={r.value}
                     type="button"
                     disabled={rate.isPending}
                     onClick={() => rate.mutate(r.value)}
-                    className={cn('rounded-2xl py-3 font-extrabold text-white shadow-md transition active:scale-95 disabled:opacity-60', r.className)}
+                    className={cn('press rounded-2xl py-3 font-display font-extrabold text-white disabled:opacity-60', r.className)}
                   >
                     {r.label}
                   </button>
@@ -531,10 +537,10 @@ function Session({ mode, count }: { mode: SpeakMode; count: number }) {
     const passed = outcomes.filter(Boolean).length;
     return (
       <Card className="mx-auto max-w-xl space-y-4 p-8 text-center">
-        <p className="text-5xl">🎙️</p>
+        <p className="animate-bounce-in text-5xl">🎙️</p>
         <h2 className="text-2xl font-extrabold text-ink">Xong {items.length} lượt nói!</h2>
         <p className="text-muted">
-          Đạt {passed}/{items.length} · +{xp} XP
+          Đạt {passed}/{items.length} · +{xp} <Term k="xp">XP</Term>
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button variant="primary" icon={<RotateCcw className="h-4 w-4" />} onClick={() => setRound((r) => r + 1)}>
@@ -575,15 +581,16 @@ export default function SpeakingPage() {
   const s = stats.data;
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-violet-600 via-fuchsia-500 to-pink-500 p-6 text-white sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/15 blur-2xl" />
-        <h1 className="text-2xl font-extrabold sm:text-3xl">Luyện nói lại 🎙️</h1>
-        <p className="mt-1 max-w-2xl text-sm text-white/90">
-          Chủ động nói lại những câu và từ bạn đã học — cách tốt để biến vốn từ “hiểu được” thành vốn từ “dùng được”. App không có AI chấm điểm nên chỉ kiểm tra những gì
-          chắc chắn: bạn có nói đúng cụm, nhắc lại đúng câu, dùng đúng từ hay không.
+      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-violet-600 via-fuchsia-500 to-pink-500 p-6 text-white shadow-[0_14px_34px_-12px_rgb(192_38_211/0.6)] sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-amber-300/25 blur-2xl [animation-delay:-4s]" />
+        <h1 className="relative text-2xl font-black sm:text-3xl">Luyện nói lại 🎙️</h1>
+        <p className="relative mt-1 max-w-2xl text-sm text-white/90">
+          Chủ động nói lại những câu và từ bạn đã học — cách tốt để biến vốn từ “hiểu được” thành vốn từ “dùng được”. App không chấm điểm phát âm hay ngữ pháp, chỉ kiểm tra
+          những gì chắc chắn: bạn có nói đúng cụm từ, nhắc lại đúng câu, dùng đúng từ hay không.
         </p>
         {s && (
-          <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
+          <div className="relative mt-4 flex flex-wrap gap-2 text-sm font-semibold">
             <span className="rounded-xl bg-white/20 px-3 py-1.5">{s.phrases} mẫu câu ({s.chunks} có cụm)</span>
             <span className="rounded-xl bg-white/20 px-3 py-1.5">{s.words} từ đang học</span>
             <span className="rounded-xl bg-white/20 px-3 py-1.5">
@@ -599,7 +606,7 @@ export default function SpeakingPage() {
         <Segmented value={count} onChange={setCount} options={[3, 5, 10, 15].map((n) => ({ value: n, label: String(n) }))} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2">
         {SPEAK_MODES.map((m) => {
           const available = m.source === 'word' ? (s?.words ?? 0) : m.key === 'cloze' || m.key === 'vi' ? (s?.chunks ?? 0) : (s?.phrases ?? 0);
           return (
@@ -607,12 +614,19 @@ export default function SpeakingPage() {
               key={m.key}
               type="button"
               onClick={() => navigate(`/speaking?mode=${m.key}&count=${count}`)}
-              className="card flex items-start gap-4 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+              className="card card-hover group flex items-start gap-4 p-5 text-left"
             >
-              <span className={cn('flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br text-3xl shadow-md', m.tone)}>{m.emoji}</span>
+              <span
+                className={cn(
+                  'icon-tile flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br text-3xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110',
+                  m.tone,
+                )}
+              >
+                {m.emoji}
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="font-bold text-ink">{m.title}</span>
+                  <span className="font-display text-[17px] font-extrabold text-ink">{m.title}</span>
                   {m.key === 'vi' && <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-bold text-muted">TUỲ CHỌN</span>}
                 </span>
                 <span className="mt-0.5 block text-sm leading-relaxed text-muted">{m.desc}</span>
@@ -630,12 +644,12 @@ export default function SpeakingPage() {
           <MicOff className="h-4 w-4 text-violet-500" /> Lưu ý
         </p>
         <p>
-          Nhận dạng giọng nói dùng tính năng có sẵn của trình duyệt — chạy tốt nhất trên Chrome hoặc Edge và cần kết nối mạng. Bài tự đặt câu cho phép sửa lại chữ nhận dạng sai
-          trước khi kiểm tra.
+          <Term k="speech_recognition">Nhận dạng giọng nói</Term> dùng tính năng có sẵn của trình duyệt — chạy tốt nhất trên Chrome hoặc Edge và cần kết nối mạng. Bài tự đặt
+          câu cho phép sửa lại chữ máy nghe sai trước khi kiểm tra.
         </p>
         <p>
           Vì sao gợi ý tiếng Việt chỉ là tuỳ chọn? Một câu tiếng Việt có nhiều cách nói đúng bằng tiếng Anh nên máy không chấm từng chữ được; luyện với gợi ý tiếng Anh (câu có
-          chỗ trống, nghe lại đoạn gốc) giúp bạn nghĩ bằng tiếng Anh và được chấm chính xác hơn.
+          chỗ trống, nghe lại đoạn gốc) giúp bạn nghĩ bằng tiếng Anh — theo nguyên tắc <Term k="retrieval">tự nhớ lại</Term> — và được chấm chính xác hơn.
         </p>
       </Card>
     </div>

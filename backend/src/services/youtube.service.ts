@@ -202,11 +202,10 @@ class MergedFeed {
   private seen = new Set<string>();
   private pages: VideoCard[][] = [];
   private lock: Promise<unknown> = Promise.resolve();
+  private pageSize: number;
 
-  constructor(
-    loaders: (() => Promise<Page>)[],
-    private pageSize = 24,
-  ) {
+  constructor(loaders: (() => Promise<Page>)[], pageSize = 24) {
+    this.pageSize = pageSize;
     this.sources = loaders.map((l) => ({ buffer: [], next: l, failed: false }));
   }
 

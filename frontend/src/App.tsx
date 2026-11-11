@@ -23,6 +23,9 @@ const Phrases = lazy(() => import('./pages/Phrases'));
 const Speaking = lazy(() => import('./pages/speaking/SpeakingPage'));
 const Fluency = lazy(() => import('./pages/fluency/FluencyPage'));
 const WordProfilePage = lazy(() => import('./pages/WordProfilePage'));
+const Placement = lazy(() => import('./pages/Placement'));
+const Upgrades = lazy(() => import('./pages/practice/Upgrades'));
+const Glossary = lazy(() => import('./pages/Glossary'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function FullScreenLoader() {
@@ -77,6 +80,9 @@ function AppRoutes() {
           <Route path="fluency" element={<Fluency />} />
           <Route path="fluency/:id" element={<Fluency />} />
           <Route path="profile/:term" element={<WordProfilePage />} />
+          <Route path="placement" element={<Placement />} />
+          <Route path="practice/upgrades" element={<Upgrades />} />
+          <Route path="glossary" element={<Glossary />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

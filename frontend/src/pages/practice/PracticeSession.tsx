@@ -4,7 +4,8 @@ import { ArrowLeft, Check, Flame, Lightbulb, RotateCcw, Volume2, X } from 'lucid
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button, LinkButton } from '../../components/ui/Button';
-import { Card, EmptyState, ErrorBox, Kbd, Progress, Ring, Skeleton } from '../../components/ui/primitives';
+import { Card, CountUp, EmptyState, ErrorBox, Kbd, Progress, Ring, Skeleton } from '../../components/ui/primitives';
+import { Term } from '../../components/ui/Term';
 import { AudioButton, Highlight, useAccent } from '../../components/word/bits';
 import { useHotkeys } from '../../hooks/useHotkeys';
 import { api } from '../../lib/api';
@@ -28,7 +29,7 @@ const TYPE_LABEL: Record<Question['type'], string> = {
   cloze: 'Điền từ còn thiếu',
   listening: 'Nghe và gõ lại',
   spelling: 'Gõ từ tiếng Anh',
-  mcq_collocation: 'Chọn collocation đúng',
+  mcq_collocation: 'Chọn từ hay đi cùng (collocation)',
   mcq_upgrade: 'Nâng cấp từ cơ bản',
   wordform: 'Điền dạng đúng của từ',
 };
@@ -88,7 +89,7 @@ function QuestionView({ q, onAnswer, answered }: { q: Question; onAnswer: (corre
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-4xl font-extrabold text-ink">{q.prompt}</h2>
           <AudioButton term={q.item.term} audio={q.item.audio} />
-          {q.item.ipa && <span className="font-mono text-muted">{q.item.ipa}</span>}
+          {q.item.ipa && <span className="font-ipa text-muted">{q.item.ipa}</span>}
         </div>
       )}
       {(q.type === 'mcq_term' || q.type === 'spelling') && (
@@ -140,7 +141,7 @@ function QuestionView({ q, onAnswer, answered }: { q: Question; onAnswer: (corre
           <button
             type="button"
             onClick={() => pronounce(q.item.term, { audio: q.item.audio, accent, rate })}
-            className="flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-rose-500 to-orange-400 text-white shadow-xl shadow-rose-500/30 transition active:scale-95"
+            className="press flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-rose-500 to-orange-400 text-white [--edge:#be123c] hover:brightness-110"
             aria-label="Nghe lại"
           >
             <Volume2 className="h-10 w-10" />
@@ -153,7 +154,7 @@ function QuestionView({ q, onAnswer, answered }: { q: Question; onAnswer: (corre
 
       {/* Trả lời */}
       {isMcq ? (
-        <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 pb-1 sm:grid-cols-2">
           {q.options!.map((opt, i) => {
             const isAnswer = opt === q.answer;
             const chosen = answered?.given === opt;
@@ -164,17 +165,17 @@ function QuestionView({ q, onAnswer, answered }: { q: Question; onAnswer: (corre
                 disabled={!!answered}
                 onClick={() => onAnswer(isAnswer, opt)}
                 className={cn(
-                  'flex items-center gap-3 rounded-2xl border-2 p-4 text-left font-semibold transition',
-                  !answered && 'border-line bg-surface hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md',
-                  answered && isAnswer && 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
-                  answered && chosen && !isAnswer && 'animate-shake border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200',
-                  answered && !isAnswer && !chosen && 'border-line opacity-50',
+                  'press flex items-center gap-3 rounded-2xl border-2 p-4 text-left font-semibold',
+                  !answered && 'border-line bg-surface [--edge:var(--border)] hover:border-violet-300 hover:bg-violet-50/60 hover:[--edge:#c4b5fd] dark:hover:bg-violet-500/10 dark:hover:[--edge:#4c1d95]',
+                  answered && isAnswer && 'border-emerald-500 bg-emerald-50 text-emerald-800 [--edge:#10b981] dark:bg-emerald-500/15 dark:text-emerald-200',
+                  answered && chosen && !isAnswer && 'animate-shake border-rose-500 bg-rose-50 text-rose-700 [--edge:#f43f5e] dark:bg-rose-500/15 dark:text-rose-200',
+                  answered && !isAnswer && !chosen && 'border-line opacity-50 [--edge:var(--border)]',
                 )}
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-xs font-bold text-muted">{i + 1}</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-2 text-xs font-bold text-muted">{i + 1}</span>
                 <span className="flex-1 text-ink">{opt}</span>
-                {answered && isAnswer && <Check className="h-5 w-5 text-emerald-500" />}
-                {answered && chosen && !isAnswer && <X className="h-5 w-5 text-rose-500" />}
+                {answered && isAnswer && <Check className="h-5 w-5 animate-bounce-in text-emerald-500" strokeWidth={3} />}
+                {answered && chosen && !isAnswer && <X className="h-5 w-5 text-rose-500" strokeWidth={3} />}
               </button>
             );
           })}
@@ -198,8 +199,8 @@ function QuestionView({ q, onAnswer, answered }: { q: Question; onAnswer: (corre
             placeholder={q.hint ? `Gợi ý: ${q.hint}` : 'Gõ câu trả lời…'}
             aria-label="Câu trả lời"
             className={cn(
-              'h-14 w-full rounded-2xl border-2 bg-surface px-4 text-xl font-semibold text-ink focus:outline-none',
-              !answered && 'border-line focus:border-violet-400',
+              'h-14 w-full rounded-2xl border-2 bg-surface px-4 text-xl font-semibold text-ink shadow-[inset_0_2px_4px_rgb(0_0_0/0.04)] transition focus:outline-none',
+              !answered && 'border-line focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15',
               answered?.correct && 'border-emerald-500',
               answered && !answered.correct && 'animate-shake border-rose-500',
             )}
@@ -224,12 +225,12 @@ function QuestionView({ q, onAnswer, answered }: { q: Question; onAnswer: (corre
             answered.correct ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-100' : 'bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-100',
           )}
         >
-          <p className="font-bold">{answered.correct ? (close ? 'Gần đúng! Chú ý chính tả nhé 👍' : 'Chính xác! 🎉') : 'Chưa đúng 😅'}</p>
+          <p className="font-display text-lg font-extrabold">{answered.correct ? (close ? 'Gần đúng! Chú ý chính tả nhé 👍' : 'Chính xác! 🎉') : 'Chưa đúng 😅'}</p>
           {q.explain ? (
             <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{q.explain}</p>
           ) : (
           <p className="mt-1 text-sm">
-            <b>{q.item.term}</b> {q.item.ipa && <span className="font-mono">{q.item.ipa}</span>} — {q.item.meaning}
+            <b>{q.item.term}</b> {q.item.ipa && <span className="font-ipa">{q.item.ipa}</span>} — {q.item.meaning}
           </p>
           )}
           {q.item.examples[0] && !['cloze', 'wordform', 'mcq_collocation', 'mcq_upgrade'].includes(q.type) && (
@@ -255,14 +256,18 @@ function Results({ outcomes, xp, mode, onAgain }: { outcomes: Outcome[]; xp: num
       <div className="flex flex-col items-center text-center">
         <Ring value={acc} size={140} stroke={13}>
           <div>
-            <p className="text-3xl font-extrabold text-ink">{Math.round(acc * 100)}%</p>
+            <p className="font-display text-3xl font-black text-ink">
+              <CountUp value={Math.round(acc * 100)} />%
+            </p>
             <p className="text-xs text-muted">
               {correct}/{outcomes.length} đúng
             </p>
           </div>
         </Ring>
         <h2 className="mt-4 text-2xl font-extrabold text-ink">{acc === 1 ? 'Hoàn hảo! 🏆' : acc >= 0.8 ? 'Xuất sắc! 🌟' : acc >= 0.5 ? 'Làm tốt lắm! 💪' : 'Cố lên, luyện thêm nhé! 📚'}</h2>
-        <p className="text-muted">+{xp} XP · {MODES.find((m) => m.key === mode)?.title}</p>
+        <p className="text-muted">
+          +{xp} <Term k="xp">XP</Term> · {MODES.find((m) => m.key === mode)?.title}
+        </p>
       </div>
       {wrong.length > 0 && (
         <div>
@@ -367,14 +372,14 @@ export default function PracticeSession() {
         <ArrowLeft className="h-5 w-5" />
       </Button>
       <div className="min-w-0 flex-1">
-        <p className="font-bold text-ink">
+        <p className="font-display text-lg font-extrabold text-ink">
           {title?.emoji} {title?.title}
         </p>
         {mode !== 'match' && mode !== 'synonym' && questions.length > 0 && <Progress value={(idx + (answered ? 1 : 0)) / questions.length} className="mt-1.5" />}
       </div>
       {combo >= 2 && (
         <span className="inline-flex animate-pop items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-sm font-bold text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
-          <Flame className="h-4 w-4 fill-orange-400" /> {combo}
+          <Flame className="h-4 w-4 origin-bottom animate-flicker fill-orange-400" /> {combo} đúng liên tiếp
         </span>
       )}
       {mode !== 'match' && mode !== 'synonym' && questions.length > 0 && (

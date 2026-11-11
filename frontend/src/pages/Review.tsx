@@ -5,7 +5,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../components/ui/Button';
+import { ChunkSentence } from '../components/phrase/ChunkSentence';
 import { Card, EmptyState, ErrorBox, Kbd, Progress, Segmented, Skeleton, Switch } from '../components/ui/primitives';
+import { Term } from '../components/ui/Term';
 import { ClipPlayer } from '../components/video/ClipPlayer';
 import { AudioButton, Highlight, useAccent } from '../components/word/bits';
 import { useLocalStorage } from '../hooks/misc';
@@ -19,11 +21,12 @@ type Direction = 'en-vi' | 'vi-en' | 'mixed';
 type Filter = 'all' | 'words' | 'phrases';
 type QItem = { kind: 'word'; card: ReviewCard } | { kind: 'phrase'; card: PhraseCard };
 
+// Nút chấm nổi khối: --edge là màu "đáy" đậm hơn cùng tông
 const RATINGS = [
-  { value: 1 as const, label: 'Quên', key: '1', className: 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' },
-  { value: 2 as const, label: 'Khó', key: '2', className: 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30' },
-  { value: 3 as const, label: 'Nhớ', key: '3', className: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30' },
-  { value: 4 as const, label: 'Dễ', key: '4', className: 'bg-sky-500 hover:bg-sky-600 shadow-sky-500/30' },
+  { value: 1 as const, label: 'Quên', hint: 'Không nhớ ra', key: '1', className: 'bg-rose-500 hover:bg-rose-400 [--edge:#be123c]' },
+  { value: 2 as const, label: 'Khó', hint: 'Nhớ ra nhưng vất vả', key: '2', className: 'bg-amber-500 hover:bg-amber-400 [--edge:#b45309]' },
+  { value: 3 as const, label: 'Nhớ', hint: 'Nhớ được bình thường', key: '3', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:#047857]' },
+  { value: 4 as const, label: 'Dễ', hint: 'Nhớ ngay lập tức', key: '4', className: 'bg-sky-500 hover:bg-sky-400 [--edge:#0369a1]' },
 ];
 
 const LEARN_AGAIN_MS = 20 * 60_000;
@@ -58,7 +61,7 @@ function CardFace({ card, side, reversed }: { card: ReviewCard; side: 'front' | 
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">{card.term}</p>
         <div className="flex items-center gap-2 text-muted">
-          {card.ipa && <span className="font-mono">{card.ipa}</span>}
+          {card.ipa && <span className="font-ipa">{card.ipa}</span>}
           <AudioButton term={card.term} audio={card.audio} />
         </div>
         {ex && (
@@ -73,7 +76,7 @@ function CardFace({ card, side, reversed }: { card: ReviewCard; side: 'front' | 
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-6 text-left">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-2xl font-extrabold text-ink">{card.term}</span>
-        {card.ipa && <span className="font-mono text-sm text-muted">{card.ipa}</span>}
+        {card.ipa && <span className="font-ipa text-sm text-muted">{card.ipa}</span>}
         <AudioButton term={card.term} audio={card.audio} />
         {card.pos && <span className="text-sm text-muted">· {posLabel(card.pos)}</span>}
       </div>
@@ -92,28 +95,13 @@ function CardFace({ card, side, reversed }: { card: ReviewCard; side: 'front' | 
           )}
         </div>
       ))}
-      {card.collocations.length > 0 && <p className="text-sm text-muted">Collocation: {card.collocations.slice(0, 4).join(' · ')}</p>}
+      {card.collocations.length > 0 && (
+        <p className="text-sm text-muted">
+          <Term k="collocation">Hay đi cùng</Term>: {card.collocations.slice(0, 4).join(' · ')}
+        </p>
+      )}
       {card.note && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">💡 {card.note}</p>}
     </div>
-  );
-}
-
-/** Câu có cụm cần học bị che (mặt trước) hoặc tô màu (mặt sau). */
-export function ChunkSentence({ sentence, chunk, hidden, className }: { sentence: string; chunk: string; hidden: boolean; className?: string }) {
-  const i = chunk ? sentence.toLowerCase().indexOf(chunk.toLowerCase()) : -1;
-  if (i < 0) return <span className={className}>{sentence}</span>;
-  return (
-    <span className={className}>
-      {sentence.slice(0, i)}
-      {hidden ? (
-        <span className="mx-0.5 inline-block min-w-20 rounded-md border-b-4 border-violet-400 bg-violet-100/60 px-2 text-center text-violet-500 dark:bg-violet-500/15">
-          {chunk.split(' ').map((w) => w[0] + '…').join(' ')}
-        </span>
-      ) : (
-        <span className="rounded-md bg-violet-100 px-1 font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">{sentence.slice(i, i + chunk.length)}</span>
-      )}
-      {sentence.slice(i + chunk.length)}
-    </span>
   );
 }
 
@@ -163,10 +151,10 @@ function Summary({ stats, onRestart }: { stats: { reviewed: number; good: number
   const minutes = Math.max(1, Math.round((Date.now() - stats.startedAt) / 60000));
   return (
     <Card className="mx-auto max-w-xl p-8 text-center">
-      <PartyPopper className="mx-auto h-14 w-14 text-fuchsia-500" />
+      <PartyPopper className="mx-auto h-14 w-14 animate-bounce-in text-fuchsia-500" />
       <h2 className="mt-3 text-2xl font-extrabold text-ink">Hoàn thành phiên ôn tập!</h2>
       <p className="mt-1 text-muted">Bạn đã ôn hết các thẻ đến hạn. Bộ não của bạn sẽ cảm ơn bạn 🧠</p>
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="stagger mt-6 grid grid-cols-3 gap-3">
         <div className="rounded-2xl bg-violet-50 p-3 dark:bg-violet-500/10">
           <p className="text-2xl font-extrabold text-violet-600 dark:text-violet-300">{stats.reviewed}</p>
           <p className="text-xs text-muted">lượt ôn</p>
@@ -177,7 +165,9 @@ function Summary({ stats, onRestart }: { stats: { reviewed: number; good: number
         </div>
         <div className="rounded-2xl bg-amber-50 p-3 dark:bg-amber-500/10">
           <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-300">+{stats.xp}</p>
-          <p className="text-xs text-muted">XP · {minutes} phút</p>
+          <p className="text-xs text-muted">
+            <Term k="xp">XP</Term> · {minutes} phút
+          </p>
         </div>
       </div>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -364,14 +354,23 @@ export default function Review() {
           <h1 className="flex items-center gap-2 text-2xl font-extrabold text-ink">
             <Layers className="h-7 w-7 text-fuchsia-500" /> Ôn tập
           </h1>
-          <p className="text-sm text-muted">Lặp lại ngắt quãng FSRS — trả lời trung thực để lịch ôn chính xác nhất</p>
+          <p className="text-sm text-muted">
+            Ôn theo <Term k="srs">lặp lại ngắt quãng</Term> (<Term k="fsrs">FSRS</Term>) — chấm thật lòng để lịch ôn chính xác nhất
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {filterBar}
-          <span className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-1.5 text-sm font-bold">
-            <span className="text-sky-500" title="Thẻ mới">{counts.new}</span>
-            <span className="text-amber-500" title="Đang học">{counts.learning}</span>
-            <span className="text-violet-500" title="Ôn lại">{counts.review}</span>
+          {/* Số thẻ còn lại trong phiên, theo trạng thái */}
+          <span className="flex items-center gap-2.5 rounded-xl bg-surface-2 px-3 py-1.5 text-xs font-semibold text-muted">
+            <span title="Thẻ mới: chưa ôn lần nào">
+              <b className="text-sm text-sky-500">{counts.new}</b> mới
+            </span>
+            <span title="Đang học: vừa học, sẽ hỏi lại sau ít phút">
+              <b className="text-sm text-amber-500">{counts.learning}</b> đang học
+            </span>
+            <span title="Ôn lại: thẻ đã nhớ, nay đến hạn ôn theo lịch">
+              <b className="text-sm text-violet-500">{counts.review}</b> ôn lại
+            </span>
           </span>
           <Button size="icon" variant="ghost" onClick={() => undo.mutate()} aria-label="Hoàn tác (Z)" title="Hoàn tác lượt vừa rồi (Z)" disabled={stats.reviewed === 0}>
             <Undo2 className="h-5 w-5" />
@@ -415,21 +414,24 @@ export default function Review() {
         </div>
       )}
 
-      <div className="perspective">
+      <div className="perspective relative pb-4">
+        {/* Các thẻ còn lại xếp chồng phía sau cho có chiều sâu */}
+        {queue.length > 2 && <div aria-hidden="true" className="absolute inset-x-8 bottom-0 top-4 rounded-2xl border border-line bg-surface/50" />}
+        {queue.length > 1 && <div aria-hidden="true" className="absolute inset-x-4 bottom-2 top-2 rounded-2xl border border-line bg-surface/80 shadow-soft" />}
         {/* Vùng bấm để lật (chuột/chạm); bàn phím dùng Space hoặc nút “Hiện đáp án”. Không dùng <button> vì bên trong có nút phát âm. */}
         <div
           onClick={() => setFlipped((f) => !f)}
           className="relative block h-[380px] w-full cursor-pointer text-left transition-transform duration-500 preserve-3d sm:h-[420px]"
           style={{ transform: flipped ? 'rotateY(180deg)' : 'none' }}
         >
-          <div className="card absolute inset-0 overflow-hidden backface-hidden">
+          <div className="card absolute inset-0 overflow-hidden shadow-lift backface-hidden">
             <div className={cn('absolute inset-x-0 top-0 h-1.5', item.kind === 'phrase' ? 'bg-linear-to-r from-fuchsia-500 to-orange-400' : 'bg-brand')} />
             {item.kind === 'word' ? <CardFace card={item.card} side="front" reversed={reversed} /> : <PhraseFace card={item.card} side="front" />}
             <p className="absolute inset-x-0 bottom-4 text-center text-xs text-muted">
               Bấm thẻ hoặc <Kbd>Space</Kbd> để lật{item.kind === 'phrase' && <> · <Kbd>R</Kbd> nghe lại</>}
             </p>
           </div>
-          <div className="card absolute inset-0 overflow-hidden backface-hidden rotate-y-180">
+          <div className="card absolute inset-0 overflow-hidden shadow-lift backface-hidden rotate-y-180">
             <div className="absolute inset-x-0 top-0 h-1.5 bg-linear-to-r from-emerald-400 to-sky-400" />
             {item.kind === 'word' ? <CardFace card={item.card} side="back" reversed={reversed} /> : <PhraseFace card={item.card} side="back" />}
           </div>
@@ -437,18 +439,23 @@ export default function Review() {
       </div>
 
       {flipped ? (
-        <div className="space-y-3">
-          <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <div className="animate-fade-in space-y-3">
+          <p className="flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-muted">
+            Bạn nhớ thẻ này đến đâu? <Term k="ratings" icon />
+            <span className="hidden font-normal sm:inline">· dòng nhỏ dưới mỗi nút là lúc thẻ quay lại</span>
+          </p>
+          <div className="grid grid-cols-4 gap-2 pb-1 sm:gap-3">
             {RATINGS.map((r) => (
               <button
                 key={r.value}
                 type="button"
                 disabled={rate.isPending}
                 onClick={() => doRate(r.value)}
-                className={cn('flex flex-col items-center rounded-2xl py-3 text-white shadow-lg transition active:scale-95 disabled:opacity-60', r.className)}
+                title={`${r.hint} → ôn lại sau ${item.card.preview[r.value]}`}
+                className={cn('press flex flex-col items-center rounded-2xl py-3 text-white disabled:opacity-60', r.className)}
               >
-                <span className="text-base font-extrabold">{r.label}</span>
-                <span className="text-xs font-semibold text-white/85">{item.card.preview[r.value]}</span>
+                <span className="font-display text-base font-extrabold">{r.label}</span>
+                <span className="text-xs font-semibold text-white/90">{item.card.preview[r.value]}</span>
                 <span className="mt-1 hidden rounded bg-white/20 px-1.5 text-[10px] font-bold sm:block">{r.key}</span>
               </button>
             ))}

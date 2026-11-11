@@ -7,6 +7,8 @@ import type {
   FluencyRound,
   Phrase,
   PhraseCard,
+  PlacementResult,
+  PlacementTest,
   Warmup,
   PhraseList,
   PhraseSuggestion,
@@ -256,6 +258,17 @@ export const api = {
 
   // Hôm nay học gì
   warmup: () => request<Warmup>('/review/warmup'),
+
+  // Thông báo đẩy
+  pushPublicKey: () => request<{ publicKey: string; subscriptions: number }>('/push/public-key'),
+  pushSubscribe: (sub: PushSubscriptionJSON) => post<{ subscriptions: number }>('/push/subscribe', sub),
+  pushUnsubscribe: (endpoint: string) => post<{ subscriptions: number }>('/push/unsubscribe', { endpoint }),
+  pushTest: () => post<{ sent: number; failed: number }>('/push/test'),
+
+  // Bài test vốn từ
+  placementTest: () => request<PlacementTest>('/placement/test'),
+  placementLast: () => request<PlacementResult | null>('/placement/last'),
+  placementResult: (body: { answers: { word: string; known: boolean }[]; apply: boolean }) => post<PlacementResult>('/placement/result', body),
   today: () => request<TodayPlan>('/today'),
   skipTodayStep: (step: TodayStepKey, skipped: boolean) => post<TodayPlan>('/today/skip', { step, skipped }),
   setTodayVideo: (videoId: string | null) => request<TodayPlan>('/today/video', { method: 'PUT', body: { videoId } }),

@@ -87,10 +87,13 @@ export function createLimiter(concurrency: number, minIntervalMs = 0) {
 /** Cache trong bộ nhớ có TTL và giới hạn kích thước (LRU đơn giản). */
 export class TtlCache<V> {
   private map = new Map<string, { value: V; expires: number }>();
-  constructor(
-    private ttlMs: number,
-    private max = 500,
-  ) {}
+  private ttlMs: number;
+  private max: number;
+  // Không dùng "parameter property" để Node chạy được file .ts trực tiếp (chế độ strip-types)
+  constructor(ttlMs: number, max = 500) {
+    this.ttlMs = ttlMs;
+    this.max = max;
+  }
 
   get(key: string): V | undefined {
     const hit = this.map.get(key);
