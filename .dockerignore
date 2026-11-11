@@ -20,7 +20,6 @@ backend/data/recordings
 tools
 
 # Không cần cho image
-charts
 scripts
 *.md
 !backend/data/ngsl/README.md

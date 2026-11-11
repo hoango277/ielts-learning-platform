@@ -36,7 +36,7 @@ App học tiếng Anh qua video YouTube (shadowing, sổ từ, ôn tập FSRS, l
 
 Khi hoàn thành một tính năng (hoặc người dùng yêu cầu phát hành), làm **đủ và đúng thứ tự** các bước sau, không bỏ bước nào:
 
-1. **Phiên bản (semver)** — tăng `version` trong `package.json` (gốc), `backend/package.json`, `frontend/package.json`, và `version` + `appVersion` trong `charts/ielts-learn-chart/Chart.yaml`. Có tính năng mới → tăng số giữa (1.1.0 → 1.2.0); chỉ sửa lỗi → tăng số cuối (1.1.0 → 1.1.1). Chạy `npm install` để `package-lock.json` cập nhật theo.
+1. **Phiên bản (semver)** — tăng `version` trong `package.json` (gốc), `backend/package.json`, `frontend/package.json`. Có tính năng mới → tăng số giữa (1.1.0 → 1.2.0); chỉ sửa lỗi → tăng số cuối (1.1.0 → 1.1.1). Chạy `npm install` để `package-lock.json` cập nhật theo.
 2. **Kiểm tra** — `npm run typecheck && npm test && npm run build` qua hết; chạy thử các trang bị ảnh hưởng (desktop, điện thoại, giao diện tối).
 3. **Tài liệu** — cập nhật `README.md` (mục Tính năng, API, Cấu trúc thư mục, biến môi trường, hướng dẫn chạy/deploy); cập nhật `backend/.env.example`, `.env.docker.example` và `docker-compose.yml` nếu thêm/đổi biến môi trường; thêm mục vào `frontend/src/lib/glossary.ts` nếu có thuật ngữ mới.
 4. **Commit** lên nhánh `main` (git identity đã đặt sẵn trong repo: `hoango277` / `xuanhoa2772004@gmail.com`), message tiếng Việt tóm tắt thay đổi.
@@ -60,4 +60,4 @@ Khi hoàn thành một tính năng (hoặc người dùng yêu cầu phát hành
 Lưu ý khi phát hành:
 
 - Không bao giờ tự nhập, đọc hay in mật khẩu/token/file đăng nhập (vd. `~/.docker/config.json`). Docker Hub dùng phiên `docker login` có sẵn (tài khoản `xuanhoa2772004`); GitHub dùng Git Credential Manager. Nếu push báo chưa đăng nhập → dừng lại và nhờ người dùng tự đăng nhập.
-- Cách deploy được hỗ trợ là **Docker Compose**; không cần chạy/kiểm thử Helm (chart trong `charts/` chỉ cần tăng phiên bản ở bước 1).
+- Cách deploy duy nhất được hỗ trợ là **Docker Compose** (repo không dùng Helm/Kubernetes).

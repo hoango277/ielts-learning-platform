@@ -96,8 +96,6 @@ docker compose start app
 
 **Đưa lên máy chủ thật:** đặt app sau một reverse proxy có **HTTPS** (Caddy, Nginx, Traefik…) trỏ tới cổng 4000. Thông báo đẩy, ghi âm/micro và cài app (PWA) chỉ hoạt động trên HTTPS hoặc `localhost`. Cookie đăng nhập tự thêm `Secure` khi proxy gửi `X-Forwarded-Proto: https`. Image chạy an toàn: user không phải root, root filesystem chỉ đọc, bỏ mọi Linux capability, có `HEALTHCHECK` (`/api/health` trả về cả số phiên bản).
 
-> Kubernetes: có Helm chart mẫu ở [charts/ielts-learn-chart](charts/ielts-learn-chart) (tuỳ chọn — cách chạy được hỗ trợ chính là Docker Compose).
-
 ---
 
 ## Tài khoản & đăng nhập
@@ -325,7 +323,6 @@ frontend/
 scripts/                     hymt.mjs (tải/chạy model Hy-MT), dev-hymt.mjs (npm run dev:hymt)
 Dockerfile, .dockerignore    image production nhiều nền tảng (amd64/arm64)
 docker-compose.yml           chạy app; docker-compose.hymt.yml thêm model dịch Hy-MT
-charts/ielts-learn-chart/    Helm chart mẫu (tuỳ chọn)
 ```
 
 ## API chính
