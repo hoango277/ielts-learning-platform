@@ -1,0 +1,25 @@
+{
+  "name": "ielts-learn",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ứng dụng học tiếng Anh: shadowing YouTube, sổ từ vựng, flashcard SRS, luyện tập và bộ từ theo chủ đề",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c magenta,cyan \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w frontend",
+    "start": "npm run start -w backend",
+    "crawl": "npm run crawl -w backend",
+    "seed": "npm run seed -w backend",
+    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
+    "test": "npm run test -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

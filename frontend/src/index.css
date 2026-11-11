@@ -1,0 +1,189 @@
+@import 'tailwindcss';
+@import '@fontsource/be-vietnam-pro/400.css';
+@import '@fontsource/be-vietnam-pro/500.css';
+@import '@fontsource/be-vietnam-pro/600.css';
+@import '@fontsource/be-vietnam-pro/700.css';
+@import '@fontsource/be-vietnam-pro/800.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------- Design tokens ---------- */
+:root {
+  --bg: #f6f5fb;
+  --surface: #ffffff;
+  --surface-2: #f2f0f9;
+  --surface-3: #e9e6f4;
+  --border: #e4e0ef;
+  --text: #1b1530;
+  --muted: #6a6382;
+  --ring: #8b5cf6;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0b0912;
+  --surface: #14111d;
+  --surface-2: #1b1727;
+  --surface-3: #252034;
+  --border: #2a2438;
+  --text: #ece9f7;
+  --muted: #a49dba;
+  --ring: #a78bfa;
+  color-scheme: dark;
+}
+
+@theme {
+  --font-sans: 'Be Vietnam Pro', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-shake: shake 0.4s ease-in-out both;
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-slide-up: slide-up 0.3s ease-out both;
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes pop {
+    0% { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+}
+
+/* ---------- Base ---------- */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--ring) 30%, transparent);
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  /* Edge tự thêm nút hiện mật khẩu — app đã có nút riêng */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+}
+
+/* ---------- Tiện ích dùng chung ---------- */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility text-gradient {
+  background-image: linear-gradient(100deg, #7c3aed 0%, #d946ef 50%, #fb923c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-brand {
+  background-image: linear-gradient(120deg, #7c3aed 0%, #c026d3 55%, #f97316 110%);
+}
+
+@utility card {
+  @apply rounded-2xl border border-line bg-surface shadow-[0_1px_2px_rgba(20,10,50,0.04),0_8px_24px_-12px_rgba(20,10,50,0.08)] dark:shadow-none;
+}
+
+/* Thẻ lật 3D (flashcard) */
+@utility perspective {
+  perspective: 1400px;
+}
+@utility preserve-3d {
+  transform-style: preserve-3d;
+}
+@utility backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+@utility rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Từ trong transcript có thể bấm để tra */
+.word-token {
+  border-radius: 4px;
+  padding: 0 1px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.word-token:hover {
+  background: color-mix(in oklab, #8b5cf6 18%, transparent);
+}
+.word-token[data-status='new'],
+.word-token[data-status='learning'] {
+  background: color-mix(in oklab, #f59e0b 26%, transparent);
+}
+.word-token[data-status='reviewing'] {
+  background: color-mix(in oklab, #8b5cf6 22%, transparent);
+}
+.word-token[data-status='mastered'],
+.word-token[data-status='known'] {
+  text-decoration: underline dotted color-mix(in oklab, #10b981 70%, transparent);
+  text-underline-offset: 3px;
+}
+.word-token[data-spoken='true'] {
+  color: #7c3aed;
+}
+.dark .word-token[data-spoken='true'] {
+  color: #c4b5fd;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

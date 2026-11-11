@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Học tiếng Anh qua video YouTube: shadowing, chép chính tả, sổ từ vựng, flashcard lặp lại ngắt quãng và bộ từ IELTS theo chủ đề." />
+    <meta name="theme-color" content="#7c3aed" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>IELTS Learn — Học tiếng Anh qua video</title>
+    <script>
+      // Áp dụng theme trước khi render để tránh nháy màn hình
+      try {
+        var t = localStorage.getItem('theme') || 'system';
+        var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
