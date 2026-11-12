@@ -5,6 +5,7 @@ import { currentUserId } from '../lib/context.ts';
 import { ngslLemmas, ngslRank } from '../lib/ngsl.ts';
 import { shuffle } from '../lib/text.ts';
 import { updateSettings, type Settings } from './settings.service.ts';
+import { SHARED_LEXICON_SQL } from './topics.service.ts';
 
 /**
  * Bài test ước lượng vốn từ ~3 phút, dạng "Biết / Không biết" có trộn từ giả (Meara & Buxton 1987; LexTALE):
@@ -50,7 +51,8 @@ function bandOfWord(word: string, lexFreq: Map<string, number>): Band['key'] | '
 
 function lexiconOutsideNgsl() {
   const rows = all<{ word: string; frequency: number }>(
-    "SELECT word, frequency FROM lexicon WHERE instr(word, ' ') = 0 AND frequency IS NOT NULL AND length(word) >= 4",
+    // Chỉ từ của bộ chung — từ người học tự thêm vào bộ riêng không thành đề test của người khác
+    `SELECT word, frequency FROM lexicon WHERE instr(word, ' ') = 0 AND frequency IS NOT NULL AND length(word) >= 4 AND id IN (${SHARED_LEXICON_SQL})`,
   );
   return rows.filter((r) => /^[a-z]+$/.test(r.word) && ngslRank(r.word) === null);
 }

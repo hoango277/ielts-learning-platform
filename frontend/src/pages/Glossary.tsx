@@ -1,7 +1,8 @@
-import { BookA, Search, SearchX } from 'lucide-react';
+import { Search, SearchX } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import { Input } from '../components/ui/primitives';
+import { HeroArt } from '../components/ui/HeroArt';
 import { CATEGORY_LABEL, GLOSSARY_LIST, type GlossaryCategory } from '../lib/glossary';
 import { cn } from '../lib/utils';
 
@@ -49,15 +50,11 @@ export default function Glossary() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <section className="relative overflow-hidden rounded-3xl bg-brand-animated p-6 text-white shadow-glow sm:p-8">
-        <div aria-hidden="true" className="absolute -right-10 -top-12 h-44 w-44 animate-float-slow rounded-full bg-white/15 blur-2xl" />
-        <div aria-hidden="true" className="absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-amber-300/25 blur-2xl [animation-delay:-4s]" />
+      <section className="relative overflow-hidden rounded-3xl bg-hero p-6 text-white shadow-glow sm:p-8">
+        <HeroArt items={['💡', '📖', '🔎']} />
         <div className="relative flex items-start gap-4">
-          <div className="hidden h-14 w-14 shrink-0 animate-float items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur sm:flex">
-            <BookA className="h-7 w-7" />
-          </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Giải thích thuật ngữ</h1>
+            <h1 className="pr-14 xl:pr-0 text-2xl font-black tracking-tight sm:text-3xl">Giải thích thuật ngữ</h1>
             <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/90 sm:text-[15px]">
               Những từ chuyên môn trong app, giải thích bằng tiếng Việt dễ hiểu. Gặp chữ có <span className="term decoration-white/80">gạch chân chấm</span> ở
               bất kỳ đâu, rê chuột hoặc chạm vào để xem nhanh.
@@ -66,7 +63,7 @@ export default function Glossary() {
         </div>
       </section>
 
-      <div className="sticky top-14 z-10 -mx-4 mt-5 bg-bg/85 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+      <div className="sticky top-14 z-10 -mx-4 mt-5 bg-bg px-4 py-3  sm:-mx-6 sm:px-6">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <Input
@@ -89,7 +86,7 @@ export default function Glossary() {
                 onClick={() => setCat(c)}
                 className={cn(
                   'shrink-0 rounded-full border px-3.5 py-1.5 font-display text-sm font-bold transition',
-                  active ? 'border-transparent bg-ink text-bg shadow-card' : 'border-line bg-surface text-muted hover:border-violet-300 hover:text-ink',
+                  active ? 'border-transparent bg-ink text-bg shadow-card' : 'border-line bg-surface text-muted hover:border-brand-300 hover:text-ink',
                 )}
               >
                 {c === 'all' ? 'Tất cả' : `${CATEGORY_LABEL[c].emoji} ${CATEGORY_LABEL[c].label}`}
@@ -120,7 +117,7 @@ export default function Glossary() {
                     id={`g-${e.key}`}
                     className={cn(
                       'card scroll-mt-40 p-5 transition-[box-shadow,border-color] duration-500',
-                      flash === e.key && 'border-violet-400 ring-4 ring-violet-500/25 dark:border-violet-400',
+                      flash === e.key && 'border-brand-400 ring-4 ring-brand-500/25 dark:border-brand-400',
                     )}
                   >
                     <h3 className="font-display text-[17px] font-extrabold leading-snug text-ink">{e.term}</h3>

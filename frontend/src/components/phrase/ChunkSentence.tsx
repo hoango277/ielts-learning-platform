@@ -6,11 +6,11 @@ export function ChunkSentence({ sentence, chunk, hidden, className }: { sentence
     <span className={className}>
       {sentence.slice(0, i)}
       {hidden ? (
-        <span className="mx-0.5 inline-block min-w-20 rounded-md border-b-4 border-violet-400 bg-violet-100/60 px-2 text-center text-violet-500 dark:bg-violet-500/15">
+        <span className="mx-0.5 inline-block min-w-20 rounded-md border-b-4 border-brand-400 bg-brand-100/60 px-2 text-center text-brand-500 dark:bg-brand-500/15">
           {chunk.split(' ').map((w) => w[0] + '…').join(' ')}
         </span>
       ) : (
-        <span className="rounded-md bg-violet-100 px-1 font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">{sentence.slice(i, i + chunk.length)}</span>
+        <span className="rounded-md bg-brand-100 px-1 font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-200">{sentence.slice(i, i + chunk.length)}</span>
       )}
       {sentence.slice(i + chunk.length)}
     </span>

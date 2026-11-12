@@ -1,4 +1,4 @@
-import express, { Router, type Request } from 'express';
+import express, { Router, type Request, type Response } from 'express';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import * as difficulty from '../services/difficulty.service.ts';
@@ -9,7 +9,10 @@ import * as placement from '../services/placement.service.ts';
 import * as practice from '../services/practice.service.ts';
 import * as push from '../services/push.service.ts';
 import * as review from '../services/review.service.ts';
+import { listUsers, setUserRole } from '../services/auth.service.ts';
+import { getServerSettings, hymtKeyFor, publicServerSettings, updateServerSettings } from '../services/server-settings.service.ts';
 import { getSettings, publicSettings, updateSettings } from '../services/settings.service.ts';
+import { requireAdmin } from './auth.ts';
 import { upgradeBasics, wordProfile } from '../services/profile.service.ts';
 import * as speaking from '../services/speaking.service.ts';
 import { overview } from '../services/stats.service.ts';
@@ -27,6 +30,8 @@ export const api = Router();
 
 const videoId = z.string().regex(/^[\w-]{11}$/, 'ID video không hợp lệ');
 const idParam = (req: Request) => z.coerce.number().int().positive().parse(req.params.id);
+/** Người gọi là quản trị viên? (phiên đăng nhập do middleware xác thực gắn vào res.locals) */
+const isAdmin = (res: Response) => (res.locals.session as { user?: { role?: string } } | undefined)?.user?.role === 'admin';
 
 // ---------- YouTube ----------
 
@@ -185,7 +190,8 @@ api.get('/translate/providers', (_req, res) => {
   });
 });
 
-api.post('/translate/hymt/test', async (req, res) => {
+// Kiểm tra kết nối mô hình AI: chỉ admin (máy chủ sẽ gọi tới địa chỉ được nhập)
+api.post('/translate/hymt/test', requireAdmin, async (req, res) => {
   const body = z
     .object({
       hymtBaseUrl: z.string().optional(),
@@ -194,12 +200,13 @@ api.post('/translate/hymt/test', async (req, res) => {
       hymtPromptStyle: z.enum(['hymt2', 'hymt15']).optional(),
     })
     .parse(req.body ?? {});
-  const s = getSettings();
+  const s = getServerSettings();
+  const baseUrl = (body.hymtBaseUrl ?? s.hymtBaseUrl).trim();
   res.json(
     await hymtHealth({
-      hymtBaseUrl: body.hymtBaseUrl ?? s.hymtBaseUrl,
+      hymtBaseUrl: baseUrl,
       hymtModel: body.hymtModel ?? s.hymtModel,
-      hymtApiKey: body.hymtApiKey && !body.hymtApiKey.startsWith('••••') ? body.hymtApiKey : s.hymtApiKey,
+      hymtApiKey: hymtKeyFor(baseUrl, body.hymtApiKey),
       hymtPromptStyle: body.hymtPromptStyle ?? s.hymtPromptStyle,
     }),
   );
@@ -466,11 +473,45 @@ api.post('/practice/complete', (req, res) => {
 // ---------- Bộ từ theo chủ đề ----------
 
 api.get('/topics', (_req, res) => {
-  res.json(topics.listTopics());
+  res.json(topics.listTopics(isAdmin(res)));
+});
+
+const topicInput = z.object({
+  name: z.string().trim().min(1, 'Hãy đặt tên cho bộ từ').max(60),
+  nameVi: z.string().trim().max(60).optional(),
+  description: z.string().trim().max(200).optional(),
+  icon: z.string().trim().max(16).optional(),
+  color: z.string().trim().max(20).optional(),
+});
+
+// "Bộ từ của tôi" (mặc định) hoặc bộ chung cho mọi người (shared — chỉ admin)
+api.post('/topics', (req, res) => {
+  const body = topicInput.extend({ shared: z.boolean().optional() }).parse(req.body ?? {});
+  res.status(201).json(topics.createTopic(body, isAdmin(res)));
 });
 
 api.get('/topics/:slug', (req, res) => {
-  res.json(topics.getTopic(String(req.params.slug)));
+  res.json(topics.getTopic(String(req.params.slug), isAdmin(res)));
+});
+
+api.patch('/topics/:slug', (req, res) => {
+  res.json(topics.updateTopic(String(req.params.slug), topicInput.partial().parse(req.body ?? {}), isAdmin(res)));
+});
+
+api.delete('/topics/:slug', (req, res) => {
+  res.json(topics.deleteTopic(String(req.params.slug), isAdmin(res)));
+});
+
+// Thêm một từ/cụm từ vào bộ (tự tra nghĩa, phiên âm, ví dụ nếu kho từ chưa có)
+api.post('/topics/:slug/entries', async (req, res) => {
+  const body = z
+    .object({ term: z.string().trim().min(1).max(80), group: z.enum(['core', 'related', 'advanced']).optional() })
+    .parse(req.body ?? {});
+  res.json(await topics.addTopicEntry(String(req.params.slug), body.term, { group: body.group }, isAdmin(res)));
+});
+
+api.delete('/topics/:slug/entries/:id', (req, res) => {
+  res.json(topics.removeTopicEntry(String(req.params.slug), idParam(req), isAdmin(res)));
 });
 
 api.post('/topics/:slug/words', (req, res) => {
@@ -486,6 +527,24 @@ api.get('/lexicon/:id', (req, res) => {
 
 api.get('/stats/overview', (_req, res) => {
   res.json(overview());
+});
+
+// ---------- Quản trị (chỉ admin) ----------
+
+api.get('/admin/settings', requireAdmin, (_req, res) => {
+  res.json(publicServerSettings());
+});
+
+api.put('/admin/settings', requireAdmin, (req, res) => {
+  res.json(updateServerSettings(req.body ?? {}));
+});
+
+api.get('/admin/users', requireAdmin, (_req, res) => {
+  res.json(listUsers());
+});
+
+api.patch('/admin/users/:id', requireAdmin, (req, res) => {
+  res.json(setUserRole(Number(req.params.id), req.body ?? {}));
 });
 
 api.get('/settings', (_req, res) => {

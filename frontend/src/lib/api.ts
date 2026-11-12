@@ -33,7 +33,10 @@ import type {
   ReviewResult,
   ReviewSummary,
   Settings,
+  ServerSettings,
+  AdminUser,
   Topic,
+  TopicInput,
   Transcript,
   User,
   VideoDetails,
@@ -155,7 +158,7 @@ export const api = {
     post<{ translation: string; provider: string; contextual: boolean }>('/translate', { text, ...opts }),
   translateBatch: (texts: string[]) => post<{ translations: string[]; provider: string }>('/translate/batch', { texts }),
   providers: () => request<{ active: string; setting: string; hymtConfigured: boolean }>('/translate/providers'),
-  testHymt: (cfg: Partial<Settings>) =>
+  testHymt: (cfg: Partial<ServerSettings>) =>
     post<{ ok: boolean; message: string; latencyMs?: number; sample?: string }>('/translate/hymt/test', cfg),
 
   // Sổ từ vựng
@@ -207,6 +210,14 @@ export const api = {
   addTopicWords: (slug: string, body: { lexiconIds?: number[]; known?: boolean }) =>
     post<{ added: number; updated: number; total: number }>(`/topics/${slug}/words`, body),
   lexicon: (id: number) => request<LexiconEntry & { topics: { slug: string; name: string; icon: string }[] }>(`/lexicon/${id}`),
+  /** Tạo "Bộ từ của tôi" (shared = bộ chung cho mọi người — chỉ quản trị viên) */
+  createTopic: (body: TopicInput & { shared?: boolean }) => post<Topic>('/topics', body),
+  updateTopic: (slug: string, body: Partial<TopicInput>) => request<Topic>(`/topics/${slug}`, { method: 'PATCH', body }),
+  deleteTopic: (slug: string) => request<{ ok: true }>(`/topics/${slug}`, { method: 'DELETE' }),
+  /** Thêm từ/cụm từ vào bộ: máy chủ tự tra nghĩa, phiên âm, ví dụ nếu kho từ chưa có (vài giây) */
+  addTopicEntry: (slug: string, body: { term: string; group?: 'core' | 'related' | 'advanced' }) =>
+    post<{ word: LexiconEntry; created: boolean; alreadyInTopic: boolean }>(`/topics/${slug}/entries`, body),
+  removeTopicEntry: (slug: string, lexiconId: number) => request<{ ok: true }>(`/topics/${slug}/entries/${lexiconId}`, { method: 'DELETE' }),
 
   // Hồ sơ từ
   wordProfile: (term: string) => request<WordProfile>(`/words/profile/${encodeURIComponent(term)}`),
@@ -275,6 +286,11 @@ export const api = {
 
   // Thống kê & cài đặt
   overview: () => request<Overview>('/stats/overview'),
+  // Quản trị (chỉ admin; người dùng thường nhận lỗi 403)
+  adminSettings: () => request<ServerSettings>('/admin/settings'),
+  updateAdminSettings: (body: Partial<ServerSettings>) => request<ServerSettings>('/admin/settings', { method: 'PUT', body }),
+  adminUsers: () => request<AdminUser[]>('/admin/users'),
+  setUserRole: (id: number, role: AdminUser['role']) => request<User>(`/admin/users/${id}`, { method: 'PATCH', body: { role } }),
   settings: () => request<Settings>('/settings'),
   updateSettings: (body: Partial<Settings>) => request<Settings>('/settings', { method: 'PUT', body }),
 };

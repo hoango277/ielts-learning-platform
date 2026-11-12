@@ -1,7 +1,8 @@
 import { get } from '../db/index.ts';
 import { currentUserId } from '../lib/context.ts';
+import { composePhraseIpa, isMultiPart, type IpaPair } from '../lib/ipa.ts';
 import { isSingleWord, lemmaCandidates, termKey } from '../lib/text.ts';
-import { lookupDictionary, type DictEntry } from './dictionary.service.ts';
+import { lookupDictionary, wiktionaryIpa, type DictEntry } from './dictionary.service.ts';
 import { getSettings } from './settings.service.ts';
 import { lookupGoogle, resolveProvider, translateText, type Provider } from './translate/index.ts';
 
@@ -26,14 +27,15 @@ export interface LookupResult {
   meanings: DictEntry['meanings'];
   synonyms: string[];
   examples: string[];
-  saved: { id: number; status: string } | null;
+  /** Từ đã có trong sổ (có thể khớp qua dạng gốc) — `term` là từ đã lưu, dùng khi bổ sung ví dụ để không tạo trùng. */
+  saved: { id: number; status: string; term: string } | null;
   lexiconId: number | null;
 }
 
 function savedWord(keys: string[]) {
   for (const k of keys) {
-    const row = get<{ id: number; status: string }>(
-      `SELECT id, CASE WHEN known = 1 THEN 'known' WHEN state = 0 THEN 'new' WHEN state IN (1,3) THEN 'learning'
+    const row = get<{ id: number; status: string; term: string }>(
+      `SELECT id, term, CASE WHEN known = 1 THEN 'known' WHEN state = 0 THEN 'new' WHEN state IN (1,3) THEN 'learning'
               WHEN stability >= 21 THEN 'mastered' ELSE 'reviewing' END AS status
          FROM words WHERE user_id = ? AND term_key = ?`,
       currentUserId(),
@@ -121,6 +123,35 @@ function pickSense(context: string, meanings: DictEntry['meanings'], term: strin
   return best as { pos: string; definition: string; example?: string } | null;
 }
 
+/** IPA lưu sẵn trong bộ từ theo chủ đề */
+function lexiconIpa(...words: string[]): IpaPair | null {
+  for (const w of words) {
+    const r = get<{ ipa: string | null; ipa_us: string | null }>('SELECT ipa, ipa_us FROM lexicon WHERE word = ?', w);
+    if (r?.ipa || r?.ipa_us) return { uk: r.ipa ?? r.ipa_us, us: r.ipa_us ?? r.ipa };
+  }
+  return null;
+}
+
+/** IPA một chữ: bộ từ chủ đề → Free Dictionary API → Wiktionary */
+async function singleWordIpa(word: string): Promise<IpaPair | null> {
+  const lex = lexiconIpa(word);
+  if (lex) return lex;
+  const d = await lookupDictionary(word);
+  if (d?.ipa || d?.ipaUk || d?.ipaUs) return { uk: d.ipaUk ?? d.ipa ?? null, us: d.ipaUs ?? d.ipa ?? null };
+  return wiktionaryIpa(word);
+}
+
+/**
+ * Phiên âm khi Free Dictionary API không có: lấy trong bộ từ chủ đề, rồi Wiktionary ("impact", "healthcare"…);
+ * cụm từ ("global warming") thì ghép IPA của từng chữ.
+ */
+async function fallbackIpa(key: string, lemma: string): Promise<IpaPair | null> {
+  const saved = lexiconIpa(key, lemma);
+  if (saved) return saved;
+  if (!isMultiPart(key)) return wiktionaryIpa(key);
+  return composePhraseIpa(key, singleWordIpa, 4);
+}
+
 /** Tra cứu đầy đủ cho popup: IPA + audio + nghĩa (theo ngữ cảnh nếu có Hy-MT) + định nghĩa + ví dụ. */
 export async function lookupTerm(rawTerm: string, context?: string): Promise<LookupResult> {
   const term = rawTerm.trim().replace(/\s+/g, ' ');
@@ -203,6 +234,7 @@ export async function lookupTerm(rawTerm: string, context?: string): Promise<Loo
   const sense = context ? pickSense(context, meanings, lemma, ctxPos) : null;
 
   const lexicon = get<{ id: number }>('SELECT id FROM lexicon WHERE word = ? OR word = ?', key, lemma);
+  const ipaFallback = dict?.ipa || dict?.ipaUk || dict?.ipaUs ? null : await fallbackIpa(key, lemma).catch(() => null);
   const examples = [
     ...((dict?.meanings.flatMap((m) => m.definitions.map((d) => d.example).filter(Boolean)) as string[]) ?? []),
     ...(google?.examples ?? []),
@@ -212,9 +244,9 @@ export async function lookupTerm(rawTerm: string, context?: string): Promise<Loo
     term,
     lemma,
     // Không dùng src_translit của Google: đó là phiên âm kiểu từ điển Mỹ, không phải IPA
-    ipa: dict?.ipa,
-    ipaUk: dict?.ipaUk,
-    ipaUs: dict?.ipaUs,
+    ipa: dict?.ipa ?? ipaFallback?.uk ?? undefined,
+    ipaUk: dict?.ipaUk ?? ipaFallback?.uk ?? undefined,
+    ipaUs: dict?.ipaUs ?? ipaFallback?.us ?? undefined,
     audio: dict?.audio,
     audioUk: dict?.audioUk,
     audioUs: dict?.audioUs,

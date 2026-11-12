@@ -514,6 +514,42 @@ export const MIGRATIONS: { id: number; sql: string }[] = [
       CREATE INDEX idx_placement_user ON placement_results(user_id, created_at);
     `,
   },
+  {
+    // Bài 4/3/2: thời điểm hoàn thành (buổi làm xong vào hôm sau vẫn được tính cho đúng ngày hoàn thành)
+    id: 5,
+    sql: /* sql */ `
+      ALTER TABLE fluency_sessions ADD COLUMN completed_at TEXT;
+      UPDATE fluency_sessions SET completed_at = created_at WHERE completed = 1;
+    `,
+  },
+  {
+    // Vai trò quản trị viên (admin) / người dùng. Tài khoản đầu tiên là admin.
+    // Cấu hình dịch & mô hình AI thành cấu hình chung của máy chủ (chỉ admin sửa): giữ nguyên cấu hình admin đang dùng.
+    id: 6,
+    sql: /* sql */ `
+      ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user';
+      UPDATE users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM users);
+      INSERT OR IGNORE INTO app_kv (key, value)
+        SELECT 'server.' || key, value FROM user_settings
+         WHERE user_id = (SELECT MIN(id) FROM users)
+           AND key IN ('translateProvider', 'hymtBaseUrl', 'hymtModel', 'hymtApiKey', 'hymtPromptStyle');
+      DELETE FROM user_settings WHERE key IN ('translateProvider', 'hymtBaseUrl', 'hymtModel', 'hymtApiKey', 'hymtPromptStyle');
+    `,
+  },
+  {
+    // "Bộ từ của tôi": topics.user_id = chủ bộ từ (NULL = bộ chung cho mọi người).
+    // source: 'seed' (dữ liệu crawl sẵn) | 'admin' (quản trị viên thêm) | 'user' (người học tự tạo/thêm).
+    // Nạp lại dữ liệu crawl chỉ thay các dòng 'seed' → từ do admin/người học thêm không bị mất.
+    id: 7,
+    sql: /* sql */ `
+      ALTER TABLE topics ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE topics ADD COLUMN source TEXT NOT NULL DEFAULT 'seed';
+      ALTER TABLE topics ADD COLUMN created_at TEXT;
+      ALTER TABLE topic_words ADD COLUMN source TEXT NOT NULL DEFAULT 'seed';
+      ALTER TABLE topic_words ADD COLUMN added_at TEXT;
+      CREATE INDEX idx_topics_user ON topics(user_id);
+    `,
+  },
 ];
 
 /** Các bảng có cột user_id — dùng khi chuyển dữ liệu cũ (user_id = 0) cho tài khoản đầu tiên. */
@@ -534,4 +570,5 @@ export const USER_TABLES = [
   'push_subscriptions',
   'push_log',
   'placement_results',
+  'topics',
 ] as const;

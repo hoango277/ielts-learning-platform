@@ -9,42 +9,249 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ---------- Design tokens ---------- */
+/* ---------- Bảng màu (luôn xuất ra :root để CSS tự viết dùng được var(--color-*)) ---------- */
+@theme static {
+  /* Màu thương hiệu “Mực ngọc”: xanh ngọc đậm như mực bút máy (thay cho tím violet cũ) */
+  --color-brand-50: oklch(96.9% 0.014 157.4);
+  --color-brand-100: oklch(94.3% 0.026 157.4);
+  --color-brand-200: oklch(89.4% 0.049 171.5);
+  --color-brand-300: oklch(81.1% 0.080 179.4);
+  --color-brand-400: oklch(70.2% 0.098 183.7);
+  --color-brand-500: oklch(60.6% 0.092 186.7);
+  --color-brand-600: oklch(54.1% 0.084 186.9);
+  --color-brand-700: oklch(49.1% 0.076 187.5);
+  --color-brand-800: oklch(43.2% 0.066 187.1);
+  --color-brand-900: oklch(38.0% 0.056 187.1);
+  --color-brand-950: oklch(28.3% 0.036 186.5);
+
+  /* Thang màu mặc định của Tailwind được làm dịu: giữ nguyên độ sáng (L) từng bậc để tương phản chữ/nền không đổi,
+     sắc độ và độ rực lấy theo bảng Flexoki (https://stephango.com/flexoki, MIT) */
+  --color-red-50: oklch(97.1% 0.015 43.1);
+    --color-red-100: oklch(93.6% 0.034 43.1);
+    --color-red-200: oklch(88.5% 0.062 36.8);
+    --color-red-300: oklch(80.8% 0.102 31.5);
+    --color-red-400: oklch(70.4% 0.144 29.9);
+    --color-red-500: oklch(63.7% 0.161 29.0);
+    --color-red-600: oklch(57.7% 0.169 28.2);
+    --color-red-700: oklch(50.5% 0.165 27.8);
+    --color-red-800: oklch(44.4% 0.144 27.8);
+    --color-red-900: oklch(39.6% 0.123 27.3);
+    --color-red-950: oklch(25.8% 0.058 24.9);
+  --color-rose-50: oklch(96.9% 0.016 43.1);
+    --color-rose-100: oklch(94.1% 0.032 43.1);
+    --color-rose-200: oklch(89.2% 0.058 37.8);
+    --color-rose-300: oklch(81.0% 0.101 31.6);
+    --color-rose-400: oklch(71.2% 0.141 30.0);
+    --color-rose-500: oklch(64.5% 0.160 29.2);
+    --color-rose-600: oklch(58.6% 0.169 28.3);
+    --color-rose-700: oklch(51.4% 0.165 27.8);
+    --color-rose-800: oklch(45.5% 0.148 27.8);
+    --color-rose-900: oklch(41.0% 0.129 27.4);
+    --color-rose-950: oklch(27.1% 0.065 25.3);
+  --color-orange-50: oklch(98.0% 0.014 68.4);
+    --color-orange-100: oklch(95.4% 0.033 68.4);
+    --color-orange-200: oklch(90.1% 0.064 62.6);
+    --color-orange-300: oklch(83.7% 0.100 58.5);
+    --color-orange-400: oklch(75.0% 0.135 53.7);
+    --color-orange-500: oklch(70.5% 0.147 51.6);
+    --color-orange-600: oklch(64.6% 0.154 48.8);
+    --color-orange-700: oklch(55.3% 0.149 45.0);
+    --color-orange-800: oklch(47.0% 0.125 45.2);
+    --color-orange-900: oklch(40.8% 0.104 46.3);
+    --color-orange-950: oklch(26.6% 0.049 50.9);
+  --color-amber-50: oklch(98.7% 0.014 93.3);
+    --color-amber-100: oklch(96.2% 0.040 93.3);
+    --color-amber-200: oklch(92.4% 0.077 93.2);
+    --color-amber-300: oklch(87.9% 0.113 92.8);
+    --color-amber-400: oklch(82.8% 0.137 91.3);
+    --color-amber-500: oklch(76.9% 0.147 88.7);
+    --color-amber-600: oklch(66.6% 0.135 86.5);
+    --color-amber-700: oklch(55.5% 0.113 85.8);
+    --color-amber-800: oklch(47.3% 0.096 86.5);
+    --color-amber-900: oklch(41.4% 0.084 87.4);
+    --color-amber-950: oklch(27.9% 0.050 91.6);
+  --color-yellow-50: oklch(98.7% 0.014 93.3);
+    --color-yellow-100: oklch(97.3% 0.028 93.3);
+    --color-yellow-200: oklch(94.5% 0.057 93.3);
+    --color-yellow-300: oklch(90.5% 0.093 93.1);
+    --color-yellow-400: oklch(85.2% 0.130 92.3);
+    --color-yellow-500: oklch(79.5% 0.145 89.7);
+    --color-yellow-600: oklch(68.1% 0.138 86.8);
+    --color-yellow-700: oklch(55.4% 0.113 85.8);
+    --color-yellow-800: oklch(47.6% 0.097 86.5);
+    --color-yellow-900: oklch(42.1% 0.085 87.2);
+    --color-yellow-950: oklch(28.6% 0.053 91.2);
+  --color-lime-50: oklch(98.6% 0.010 108.7);
+    --color-lime-100: oklch(96.7% 0.023 108.7);
+    --color-lime-200: oklch(93.8% 0.042 108.9);
+    --color-lime-300: oklch(89.7% 0.063 112.5);
+    --color-lime-400: oklch(84.1% 0.086 114.5);
+    --color-lime-500: oklch(76.8% 0.108 116.3);
+    --color-lime-600: oklch(64.8% 0.125 119.5);
+    --color-lime-700: oklch(53.2% 0.127 123.0);
+    --color-lime-800: oklch(45.3% 0.107 122.7);
+    --color-lime-900: oklch(40.5% 0.094 122.2);
+    --color-lime-950: oklch(27.4% 0.054 120.7);
+  --color-green-50: oklch(98.2% 0.012 108.7);
+    --color-green-100: oklch(96.2% 0.026 108.7);
+    --color-green-200: oklch(92.5% 0.049 110.0);
+    --color-green-300: oklch(87.1% 0.074 113.4);
+    --color-green-400: oklch(79.2% 0.102 115.8);
+    --color-green-500: oklch(72.3% 0.118 117.2);
+    --color-green-600: oklch(62.7% 0.128 120.3);
+    --color-green-700: oklch(52.7% 0.126 123.0);
+    --color-green-800: oklch(44.8% 0.106 122.7);
+    --color-green-900: oklch(39.3% 0.091 122.1);
+    --color-green-950: oklch(26.6% 0.050 120.5);
+  --color-emerald-50: oklch(97.9% 0.014 150.0);
+    --color-emerald-100: oklch(95.0% 0.034 150.0);
+    --color-emerald-200: oklch(90.5% 0.059 150.0);
+    --color-emerald-300: oklch(84.5% 0.085 150.0);
+    --color-emerald-400: oklch(76.5% 0.108 150.0);
+    --color-emerald-500: oklch(69.6% 0.120 150.0);
+    --color-emerald-600: oklch(59.6% 0.132 150.0);
+    --color-emerald-700: oklch(50.8% 0.121 150.0);
+    --color-emerald-800: oklch(43.2% 0.102 150.0);
+    --color-emerald-900: oklch(37.8% 0.087 150.0);
+    --color-emerald-950: oklch(26.2% 0.048 150.0);
+  --color-teal-50: oklch(98.4% 0.007 157.4);
+    --color-teal-100: oklch(95.3% 0.021 157.4);
+    --color-teal-200: oklch(91.0% 0.041 167.0);
+    --color-teal-300: oklch(85.5% 0.065 176.4);
+    --color-teal-400: oklch(77.7% 0.087 180.0);
+    --color-teal-500: oklch(70.4% 0.098 183.5);
+    --color-teal-600: oklch(60.0% 0.092 186.7);
+    --color-teal-700: oklch(51.1% 0.079 187.3);
+    --color-teal-800: oklch(43.7% 0.067 187.2);
+    --color-teal-900: oklch(38.6% 0.058 186.9);
+    --color-teal-950: oklch(27.7% 0.034 186.3);
+  --color-cyan-50: oklch(98.4% 0.007 157.4);
+    --color-cyan-100: oklch(95.6% 0.020 157.4);
+    --color-cyan-200: oklch(91.7% 0.038 164.7);
+    --color-cyan-300: oklch(86.5% 0.061 175.1);
+    --color-cyan-400: oklch(78.9% 0.084 179.8);
+    --color-cyan-500: oklch(71.5% 0.098 182.5);
+    --color-cyan-600: oklch(60.9% 0.093 186.7);
+    --color-cyan-700: oklch(52.0% 0.081 187.2);
+    --color-cyan-800: oklch(45.0% 0.069 187.3);
+    --color-cyan-900: oklch(39.8% 0.060 186.8);
+    --color-cyan-950: oklch(30.2% 0.040 187.3);
+  --color-sky-50: oklch(97.7% 0.004 232.0);
+    --color-sky-100: oklch(95.1% 0.009 232.0);
+    --color-sky-200: oklch(90.1% 0.023 232.0);
+    --color-sky-300: oklch(82.8% 0.049 232.0);
+    --color-sky-400: oklch(74.6% 0.070 232.0);
+    --color-sky-500: oklch(68.5% 0.084 232.0);
+    --color-sky-600: oklch(58.8% 0.112 232.0);
+    --color-sky-700: oklch(50.0% 0.102 232.0);
+    --color-sky-800: oklch(44.3% 0.090 232.0);
+    --color-sky-900: oklch(39.1% 0.080 232.0);
+    --color-sky-950: oklch(29.3% 0.060 232.0);
+  --color-blue-50: oklch(97.0% 0.005 190.4);
+    --color-blue-100: oklch(93.2% 0.013 192.3);
+    --color-blue-200: oklch(88.2% 0.030 228.2);
+    --color-blue-300: oklch(80.9% 0.054 233.4);
+    --color-blue-400: oklch(70.7% 0.079 238.8);
+    --color-blue-500: oklch(62.3% 0.103 244.9);
+    --color-blue-600: oklch(54.6% 0.120 250.9);
+    --color-blue-700: oklch(48.8% 0.130 254.4);
+    --color-blue-800: oklch(42.4% 0.114 254.6);
+    --color-blue-900: oklch(37.9% 0.097 254.4);
+    --color-blue-950: oklch(28.2% 0.058 253.4);
+  --color-indigo-50: oklch(96.2% 0.007 268.0);
+    --color-indigo-100: oklch(93.0% 0.013 268.0);
+    --color-indigo-200: oklch(87.0% 0.034 268.0);
+    --color-indigo-300: oklch(78.5% 0.061 268.0);
+    --color-indigo-400: oklch(67.3% 0.087 268.0);
+    --color-indigo-500: oklch(58.5% 0.113 268.0);
+    --color-indigo-600: oklch(51.1% 0.126 268.0);
+    --color-indigo-700: oklch(45.7% 0.124 268.0);
+    --color-indigo-800: oklch(39.8% 0.104 268.0);
+    --color-indigo-900: oklch(35.9% 0.090 268.0);
+    --color-indigo-950: oklch(25.7% 0.047 268.0);
+  --color-purple-50: oklch(97.7% 0.003 354.8);
+    --color-purple-100: oklch(94.6% 0.007 354.8);
+    --color-purple-200: oklch(90.2% 0.022 315.4);
+    --color-purple-300: oklch(82.7% 0.049 298.9);
+    --color-purple-400: oklch(71.4% 0.080 295.1);
+    --color-purple-500: oklch(62.7% 0.112 291.1);
+    --color-purple-600: oklch(55.8% 0.129 292.3);
+    --color-purple-700: oklch(49.6% 0.139 293.7);
+    --color-purple-800: oklch(43.8% 0.139 294.8);
+    --color-purple-900: oklch(38.1% 0.116 295.0);
+    --color-purple-950: oklch(29.1% 0.074 296.7);
+  --color-fuchsia-50: oklch(97.7% 0.011 15.0);
+    --color-fuchsia-100: oklch(95.2% 0.023 15.0);
+    --color-fuchsia-200: oklch(90.3% 0.049 3.9);
+    --color-fuchsia-300: oklch(83.3% 0.087 356.1);
+    --color-fuchsia-400: oklch(74.0% 0.126 354.9);
+    --color-fuchsia-500: oklch(66.7% 0.148 352.1);
+    --color-fuchsia-600: oklch(59.1% 0.159 350.1);
+    --color-fuchsia-700: oklch(51.8% 0.161 349.8);
+    --color-fuchsia-800: oklch(45.2% 0.145 349.5);
+    --color-fuchsia-900: oklch(40.1% 0.125 349.2);
+    --color-fuchsia-950: oklch(29.3% 0.077 346.9);
+  --color-pink-50: oklch(97.1% 0.014 355.0);
+    --color-pink-100: oklch(94.8% 0.025 355.0);
+    --color-pink-200: oklch(89.9% 0.051 355.0);
+    --color-pink-300: oklch(82.3% 0.092 355.0);
+    --color-pink-400: oklch(71.8% 0.135 355.0);
+    --color-pink-500: oklch(65.6% 0.151 355.0);
+    --color-pink-600: oklch(59.2% 0.159 355.0);
+    --color-pink-700: oklch(52.5% 0.161 355.0);
+    --color-pink-800: oklch(45.9% 0.148 355.0);
+    --color-pink-900: oklch(40.8% 0.128 355.0);
+    --color-pink-950: oklch(28.4% 0.072 355.0);
+  --color-slate-50: oklch(98.4% 0.005 98.3);
+    --color-slate-100: oklch(96.8% 0.010 98.3);
+    --color-slate-200: oklch(92.9% 0.015 98.3);
+    --color-slate-300: oklch(86.9% 0.014 99.1);
+    --color-slate-400: oklch(70.4% 0.011 93.9);
+    --color-slate-500: oklch(55.4% 0.008 95.6);
+    --color-slate-600: oklch(44.6% 0.005 89.6);
+    --color-slate-700: oklch(37.2% 0.004 69.5);
+    --color-slate-800: oklch(27.9% 0.003 69.7);
+    --color-slate-900: oklch(20.8% 0.002 67.7);
+    --color-slate-950: oklch(12.9% 0.002 67.7);
+}
+
+/* ---------- Design tokens: nền giấy kem, chữ mực đen ấm (dịu mắt hơn trắng tinh / đen tuyền) ---------- */
 :root {
-  --bg: #f7f5ff;
-  --surface: #ffffff;
-  --surface-2: #f3f0fb;
-  --surface-3: #e9e4f6;
-  --border: #e6e1f2;
-  --text: #1b1530;
-  --muted: #6a6382;
-  --ring: #8b5cf6;
-  /* Màu "đáy" của nút/thẻ nổi khối (bóng đặc phía dưới) */
-  --edge: #d8d1ec;
-  /* Bóng đổ nhiều lớp, pha sắc tím cho ấm */
-  --shadow-color: 260 60% 30%;
+  --bg: #f6f4eb;
+  --surface: #fffdf7;
+  --surface-2: #f2f0e5;
+  --surface-3: #e6e4d9;
+  --border: #e3e0d4;
+  --text: #1c1b1a;
+  --muted: #6f6e69;
+  --ring: var(--color-brand-500);
+  /* Màu "đáy" của nút/thẻ nổi khối (bóng đặc phía dưới); --edge-base là đáy trung tính dùng chung */
+  --edge-base: #d8d5c9;
+  --edge: var(--edge-base);
+  /* Bóng đổ nhiều lớp, pha sắc nâu ấm theo màu giấy */
+  --shadow-color: 40 25% 22%;
   --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 2px 6px -2px hsl(var(--shadow-color) / 0.06);
-  --shadow-md: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 6px 16px -4px hsl(var(--shadow-color) / 0.1), 0 18px 36px -18px hsl(var(--shadow-color) / 0.18);
-  --shadow-lg: 0 2px 4px hsl(var(--shadow-color) / 0.05), 0 12px 28px -6px hsl(var(--shadow-color) / 0.16), 0 32px 64px -24px hsl(var(--shadow-color) / 0.28);
-  --glow: 0 10px 30px -8px rgb(124 58 237 / 0.55);
+  --shadow-md: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 6px 16px -4px hsl(var(--shadow-color) / 0.09), 0 18px 36px -18px hsl(var(--shadow-color) / 0.16);
+  --shadow-lg: 0 2px 4px hsl(var(--shadow-color) / 0.05), 0 12px 28px -6px hsl(var(--shadow-color) / 0.14), 0 32px 64px -24px hsl(var(--shadow-color) / 0.24);
+  --glow: 0 14px 30px -16px color-mix(in oklab, var(--color-brand-700) 60%, transparent);
   color-scheme: light;
 }
 
 .dark {
-  --bg: #0b0912;
-  --surface: #15111f;
-  --surface-2: #1c1729;
-  --surface-3: #272036;
-  --border: #2b2440;
-  --text: #ece9f7;
-  --muted: #a49dba;
-  --ring: #a78bfa;
-  --edge: #0a0810;
-  --shadow-color: 260 80% 2%;
+  --bg: #100f0f;
+  --surface: #1c1b1a;
+  --surface-2: #252423;
+  --surface-3: #343331;
+  --border: #2e2d2b;
+  --text: #cecdc3;
+  --muted: #8f8d87;
+  --ring: var(--color-brand-400);
+  --edge-base: #0a0909;
+  --shadow-color: 30 20% 2%;
   --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.5);
   --shadow-md: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 8px 24px -10px hsl(var(--shadow-color) / 0.7);
   --shadow-lg: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 18px 48px -16px hsl(var(--shadow-color) / 0.85);
-  --glow: 0 10px 34px -10px rgb(167 139 250 / 0.55);
+  --glow: 0 14px 30px -16px rgb(0 0 0 / 0.75);
   color-scheme: dark;
 }
 
@@ -54,15 +261,15 @@
   /* Phiên âm IPA cần font có đủ ký hiệu ə ʊ ɪ θ ð ʃ ŋ ː */
   --font-ipa: 'Segoe UI', 'Lucida Sans Unicode', 'Noto Sans', 'DejaVu Sans', 'Arial Unicode MS', sans-serif;
 
+  /* Hiệu ứng trang trí chạy một số lần rồi dừng: animation lặp vô hạn bắt trình duyệt vẽ lại liên tục (tốn CPU kể cả khi
+     người dùng không làm gì). Chỉ chỉ báo trạng thái tạm thời (đang ghi âm, đang tải) mới lặp vô hạn. */
   --animate-fade-in: fade-in 0.25s ease-out both;
   --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --animate-shake: shake 0.4s ease-in-out both;
-  --animate-float: float 3s ease-in-out infinite;
-  --animate-float-slow: float-slow 9s ease-in-out infinite;
+  --animate-float: float 3s ease-in-out 3;
   --animate-slide-up: slide-up 0.3s ease-out both;
   --animate-rise: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-gradient: gradient-pan 12s ease infinite;
-  --animate-flicker: flicker 1.6s ease-in-out infinite;
+  --animate-flicker: flicker 1.6s ease-in-out 3;
   --animate-wiggle: wiggle 0.5s ease-in-out;
   --animate-bounce-in: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   /* Chuyển trang: kết thúc bằng transform: none để không ảnh hưởng phần tử fixed/sticky bên trong */
@@ -86,11 +293,6 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
   }
-  @keyframes float-slow {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    33% { transform: translate(14px, -18px) scale(1.06); }
-    66% { transform: translate(-10px, 10px) scale(0.96); }
-  }
   @keyframes slide-up {
     from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: none; }
@@ -98,10 +300,6 @@
   @keyframes rise {
     from { opacity: 0; transform: translateY(14px) scale(0.985); }
     to { opacity: 1; transform: none; }
-  }
-  @keyframes gradient-pan {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
   }
   @keyframes flicker {
     0%, 100% { transform: scale(1) rotate(-3deg); }
@@ -161,17 +359,21 @@
     @apply bg-bg text-ink font-sans antialiased;
     min-height: 100dvh;
     line-height: 1.6;
-    /* Mảng màu loang rất nhẹ ở hai góc tạo chiều sâu cho nền */
-    background-image:
-      radial-gradient(900px 520px at 105% -8%, rgb(217 70 239 / 0.09), transparent 60%),
-      radial-gradient(760px 480px at -8% 12%, rgb(124 58 237 / 0.08), transparent 60%),
-      radial-gradient(700px 420px at 50% 115%, rgb(251 146 60 / 0.07), transparent 60%);
-    background-attachment: fixed;
   }
-  .dark body {
+  /* Quầng màu rất nhẹ ở hai góc tạo chiều sâu cho nền. Đặt ở lớp position: fixed riêng (trình duyệt chỉ vẽ một lần)
+     thay cho background-attachment: fixed — kiểu cũ buộc vẽ lại toàn màn hình mỗi lần cuộn. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background-image:
-      radial-gradient(900px 520px at 105% -8%, rgb(217 70 239 / 0.08), transparent 60%),
-      radial-gradient(760px 480px at -8% 12%, rgb(124 58 237 / 0.1), transparent 60%);
+      radial-gradient(900px 500px at 100% -10%, color-mix(in oklab, var(--color-brand-300) 16%, transparent), transparent 60%),
+      radial-gradient(700px 420px at -10% 10%, color-mix(in oklab, var(--color-orange-300) 12%, transparent), transparent 60%);
+  }
+  .dark body::before {
+    background-image: radial-gradient(900px 500px at 100% -10%, color-mix(in oklab, var(--color-brand-700) 14%, transparent), transparent 60%);
   }
   h1,
   h2,
@@ -221,22 +423,46 @@
   font-family: var(--font-ipa);
 }
 
-@utility text-gradient {
-  background-image: linear-gradient(100deg, #7c3aed 0%, #d946ef 50%, #fb923c 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
+/* Nền màu thương hiệu (nút chính, ô biểu tượng đang chọn): cùng một tông, sáng phía trên → đậm phía dưới cho cảm giác khối */
 @utility bg-brand {
-  background-image: linear-gradient(120deg, #7c3aed 0%, #c026d3 55%, #f97316 110%);
+  background-color: var(--color-brand-600);
+  background-image: linear-gradient(180deg, var(--color-brand-500), var(--color-brand-600));
 }
 
-/* Nền gradient chuyển màu chậm (hero, banner) */
-@utility bg-brand-animated {
-  background-image: linear-gradient(120deg, #6d28d9, #a21caf, #db2777, #f97316, #7c3aed);
-  background-size: 300% 300%;
-  animation: var(--animate-gradient);
+/* Nền khối chào (hero): xanh ngọc tĩnh + quầng sáng mềm. Mỗi khu vực đổi màu quầng ở góc dưới qua biến --hero-glow
+   (vd. [--hero-glow:var(--color-amber-400)]). Không animate nền: animate gradient buộc vẽ lại cả khối mỗi khung hình. */
+@utility bg-hero {
+  background-color: var(--color-brand-700);
+  /* Lớp thứ 3: lưới chấm rất mờ như trang giấy kẻ chấm của cuốn sổ học */
+  background-image:
+    radial-gradient(520px 260px at 92% -20%, rgb(255 255 255 / 0.16), transparent 60%),
+    radial-gradient(440px 260px at -5% 120%, color-mix(in oklab, var(--hero-glow, var(--color-orange-400)) 42%, transparent), transparent 65%),
+    radial-gradient(circle, rgb(255 255 255 / 0.1) 1px, transparent 1.6px),
+    linear-gradient(135deg, var(--color-brand-600), var(--color-brand-700) 55%, var(--color-brand-800));
+  background-size: auto, auto, 18px 18px, auto;
+  @variant dark {
+    background-color: var(--color-brand-800);
+    background-image:
+      radial-gradient(520px 260px at 92% -20%, rgb(255 255 255 / 0.1), transparent 60%),
+      radial-gradient(440px 260px at -5% 120%, color-mix(in oklab, var(--hero-glow, var(--color-orange-400)) 24%, transparent), transparent 65%),
+      radial-gradient(circle, rgb(255 255 255 / 0.07) 1px, transparent 1.6px),
+      linear-gradient(135deg, var(--color-brand-700), var(--color-brand-800) 55%, var(--color-brand-900));
+  }
+}
+
+/* Lưới chấm "giấy kẻ chấm" phủ lên nền màu bất kỳ (hero chủ đề…) */
+@utility bg-dots {
+  pointer-events: none;
+  background-image:
+    radial-gradient(520px 260px at 92% -20%, rgb(255 255 255 / 0.18), transparent 60%),
+    radial-gradient(circle, rgb(255 255 255 / 0.11) 1px, transparent 1.6px);
+  background-size: auto, 18px 18px;
+}
+
+/* Quầng sáng tròn mờ dần (thay cho filter: blur — blur tốn GPU, gradient thì không). Màu lấy từ text-*, vd. "blob text-amber-300/30" */
+@utility blob {
+  pointer-events: none;
+  background: radial-gradient(closest-side, currentColor, transparent);
 }
 
 /* Bóng đi qua biến --tw-shadow của Tailwind (shadow-card / shadow-lift) để vẫn ghép được với ring-* (viền chọn, viền nháy) */
@@ -262,12 +488,12 @@
   }
 }
 
-/* Ô biểu tượng nổi khối (nền gradient, icon trắng): viền sáng phía trên, cạnh tối phía dưới, bóng đổ mềm */
+/* Ô biểu tượng nổi khối (nền màu, icon trắng): viền sáng phía trên, cạnh tối phía dưới, bóng đổ mềm */
 @utility icon-tile {
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
     inset 0 -3px 0 rgb(0 0 0 / 0.14),
-    0 8px 16px -8px rgb(20 10 50 / 0.45);
+    0 8px 16px -8px rgb(28 27 26 / 0.4);
 }
 
 /* Khối "nổi" kiểu Duolingo: bóng đặc phía dưới, bấm thì lún xuống. Màu đáy đặt qua --edge */
@@ -301,7 +527,7 @@
   & > *:nth-child(n + 11) { animation-delay: 400ms; }
 }
 
-/* Vệt sáng chạy qua (thanh tiến độ, nút nổi bật) */
+/* Vệt sáng chạy qua (thanh tiến độ, nút nổi bật) — chạy 2 lần khi xuất hiện rồi dừng */
 @utility shine {
   position: relative;
   overflow: hidden;
@@ -310,18 +536,17 @@
     position: absolute;
     inset: 0;
     width: 40%;
-    background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
-    animation: shine 2.6s ease-in-out infinite;
+    background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.4), transparent);
+    transform: translateX(-120%);
+    animation: shine 2.6s ease-in-out 0.4s 2;
     pointer-events: none;
   }
 }
 
-/* Khung kính mờ (thanh trên cùng, panel nổi).
-   Chỉ viết thuộc tính chuẩn: trình build tự thêm tiền tố -webkit- cho Safari. Viết tay cả hai thì bản rút gọn
-   giữ lại mỗi bản -webkit- (Chrome/Edge bỏ qua → mất hiệu ứng mờ). */
+/* Thanh nổi (thanh trên cùng, thanh điều hướng dưới): nền gần đặc, không dùng backdrop-filter —
+   làm mờ phần nội dung cuộn phía sau phải tính lại mỗi khung hình khi cuộn (đo được: tốn gấp đôi CPU lúc cuộn). */
 @utility glass {
-  background: color-mix(in oklab, var(--surface) 78%, transparent);
-  backdrop-filter: blur(14px) saturate(1.4);
+  background: color-mix(in oklab, var(--bg) 94%, transparent);
 }
 
 /* Thuật ngữ có giải thích: gạch chân chấm */
@@ -362,28 +587,47 @@
   transition: background-color 0.15s;
 }
 .word-token:hover {
-  background: color-mix(in oklab, #8b5cf6 18%, transparent);
+  background: color-mix(in oklab, var(--color-brand-500) 18%, transparent);
 }
 .word-token[data-status='new'],
 .word-token[data-status='learning'] {
-  background: color-mix(in oklab, #f59e0b 26%, transparent);
+  background: color-mix(in oklab, var(--color-amber-400) 30%, transparent);
 }
 .word-token[data-status='reviewing'] {
-  background: color-mix(in oklab, #8b5cf6 22%, transparent);
+  background: color-mix(in oklab, var(--color-brand-400) 24%, transparent);
 }
 .word-token[data-status='mastered'],
 .word-token[data-status='known'] {
-  text-decoration: underline dotted color-mix(in oklab, #10b981 70%, transparent);
+  text-decoration: underline dotted color-mix(in oklab, var(--color-emerald-500) 70%, transparent);
   text-underline-offset: 3px;
 }
 .word-token[data-spoken='true'] {
-  color: #7c3aed;
+  color: var(--color-brand-600);
 }
 .dark .word-token[data-spoken='true'] {
-  color: #c4b5fd;
+  color: var(--color-brand-300);
+}
+
+/* Chuyển trang (React <ViewTransition> trong AppShell): trang cũ mờ nhanh, trang mới trượt nhẹ lên */
+::view-transition-old(.page-out) {
+  animation: vt-fade-out 120ms ease-out both;
+}
+::view-transition-new(.page-in) {
+  animation: vt-rise-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+@keyframes vt-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
   *,
   *::before,
   *::after {

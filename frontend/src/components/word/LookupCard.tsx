@@ -66,11 +66,14 @@ export function LookupCard({
   if (query.isPending) return <LookupSkeleton />;
   if (query.error) return <ErrorBox error={query.error} onRetry={() => query.refetch()} />;
   const r: LookupResult = query.data;
+  // Từ đã lưu có thể khớp qua dạng gốc (bấm "mitigated" khi sổ có "mitigate") → bổ sung ví dụ vào đúng từ đó,
+  // gửi dạng đang bấm sẽ tạo thêm một từ trùng
+  const savedTerm = (r.saved as (LookupResult['saved'] & { term?: string }) | null)?.term;
 
   const onSave = () =>
     save.mutate(
       {
-        term: r.lemma && r.lemma !== r.term.toLowerCase() && !context ? r.lemma : r.term,
+        term: savedTerm ?? (r.lemma && r.lemma !== r.term.toLowerCase() && !context ? r.lemma : r.term),
         context,
         contextVi: r.contextTranslation,
         videoId,
@@ -89,7 +92,7 @@ export function LookupCard({
             {r.lemma && r.lemma !== r.term.toLowerCase() && <span className="text-sm text-muted">← {r.lemma}</span>}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted">
-            {r.pos && <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{posLabel(r.pos)}</Badge>}
+            {r.pos && <Badge className="bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{posLabel(r.pos)}</Badge>}
             {(r.ipaUk || r.ipa) && <span className="font-ipa text-[13px]">UK {r.ipaUk ?? r.ipa}</span>}
             <AudioButton term={r.lemma || r.term} audio={r.audioUk ?? (r.audioUs ? undefined : r.audio)} accent="uk" label="UK" size="sm" />
             {r.ipaUs && r.ipaUs !== r.ipaUk && <span className="font-ipa text-[13px]">US {r.ipaUs}</span>}
@@ -100,8 +103,8 @@ export function LookupCard({
       </div>
 
       {r.contextual && (
-        <div className="rounded-xl bg-linear-to-r from-violet-500/10 via-fuchsia-500/10 to-orange-400/10 p-3">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-300">
+        <div className="rounded-xl bg-linear-to-r from-brand-500/10 to-orange-400/10 p-3">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-300">
             <Sparkles className="h-3.5 w-3.5" />
             Nghĩa trong câu
             <span className="font-medium normal-case text-muted">
@@ -121,7 +124,7 @@ export function LookupCard({
         ) : (
           <p className="mt-0.5 text-sm text-muted">
             Chưa dịch được (dịch vụ dịch đang bận).{' '}
-            <button type="button" onClick={() => query.refetch()} className="font-semibold text-violet-600 underline underline-offset-2">
+            <button type="button" onClick={() => query.refetch()} className="font-semibold text-brand-600 underline underline-offset-2">
               Thử lại
             </button>
           </p>
@@ -143,7 +146,7 @@ export function LookupCard({
             .slice(0, compact ? 1 : 2)
             .map((m, i) => (
               <div key={i} className="text-sm">
-                <span className="font-semibold italic text-violet-600 dark:text-violet-300">{m.pos}</span>
+                <span className="font-semibold italic text-brand-600 dark:text-brand-300">{m.pos}</span>
                 {r.sense && <span className="ml-1.5 text-xs text-muted">(nghĩa phù hợp ngữ cảnh)</span>}
                 <ol className="ml-4 mt-0.5 list-decimal space-y-1 text-ink marker:text-muted">
                   {m.definitions.slice(0, compact ? 1 : 2).map((d, k) => (

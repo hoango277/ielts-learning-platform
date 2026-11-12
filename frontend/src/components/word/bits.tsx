@@ -41,7 +41,7 @@ export function AudioButton({
       aria-label={`Phát âm ${term}${label ? ` (${label})` : ''}`}
       title={audio ? 'Nghe phát âm (giọng người thật)' : 'Nghe phát âm (giọng đọc máy)'}
       className={cn(
-        'inline-flex items-center gap-1 rounded-full font-semibold text-violet-600 transition hover:bg-violet-100 active:scale-95 dark:text-violet-300 dark:hover:bg-violet-500/15',
+        'inline-flex items-center gap-1 rounded-full font-semibold text-brand-600 transition hover:bg-brand-100 active:scale-95 dark:text-brand-300 dark:hover:bg-brand-500/15',
         size === 'sm' ? 'h-7 px-1.5 text-xs' : 'h-8 px-2 text-xs',
         className,
       )}

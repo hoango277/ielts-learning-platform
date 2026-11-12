@@ -91,7 +91,7 @@ export function SubtitleBar({
   return (
     <div className="card relative min-h-[96px] px-5 py-4" aria-live="polite">
       {autoPaused && (
-        <div className="-mx-5 -mt-4 mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-t-2xl bg-violet-50 px-4 py-2 text-xs font-medium text-violet-700 dark:bg-violet-500/10 dark:text-violet-200">
+        <div className="-mx-5 -mt-4 mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-t-2xl bg-brand-50 px-4 py-2 text-xs font-medium text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">
           <span>⏸ Đã tự dừng ở cuối câu để bạn nhại lại</span>
           <button type="button" onClick={onResume} className="font-bold underline underline-offset-2">
             Nghe tiếp (Space)

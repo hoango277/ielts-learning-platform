@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import confetti from 'canvas-confetti';
-import { ArrowLeft, Check, GalleryHorizontalEnd, Layers, Plus, Search, Target, X } from 'lucide-react';
+import { ArrowLeft, Check, GalleryHorizontalEnd, Layers, Pencil, Plus, Search, Target, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
+import { AddWordsPanel } from '../components/topics/AddWordsPanel';
+import { TopicForm } from '../components/topics/TopicForm';
 import { Button, LinkButton } from '../components/ui/Button';
+import { Emoji3D } from '../components/ui/Emoji3D';
 import { Modal } from '../components/ui/Modal';
 import { Badge, EmptyState, ErrorBox, Input, Kbd, Progress, Segmented, Skeleton } from '../components/ui/primitives';
 import { AudioButton, Highlight, LevelBadge, StatusBadge, useAccent } from '../components/word/bits';
@@ -12,7 +15,7 @@ import { useHotkeys } from '../hooks/useHotkeys';
 import { api } from '../lib/api';
 import { pronounce } from '../lib/speech';
 import type { LexiconEntry } from '../lib/types';
-import { cn, colorOf, LEVEL_BAND, posLabel } from '../lib/utils';
+import { cn, colorOf, LEVEL_BAND, posLabel, CONFETTI_COLORS } from '../lib/utils';
 
 function useAddWords(slug: string) {
   const qc = useQueryClient();
@@ -32,8 +35,18 @@ function useAddWords(slug: string) {
   });
 }
 
-function WordCard({ w, slug }: { w: LexiconEntry; slug: string }) {
+function WordCard({ w, slug, removable }: { w: LexiconEntry; slug: string; removable?: boolean }) {
   const add = useAddWords(slug);
+  const qc = useQueryClient();
+  const remove = useMutation({
+    mutationFn: () => api.removeTopicEntry(slug, w.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['topic', slug] });
+      qc.invalidateQueries({ queryKey: ['topics'] });
+      toast.success(`Đã bỏ “${w.word}” khỏi bộ`);
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
   const [open, setOpen] = useState(false);
   const ex = w.examples[0];
   return (
@@ -55,6 +68,11 @@ function WordCard({ w, slug }: { w: LexiconEntry; slug: string }) {
               Cốt lõi
             </Badge>
           )}
+          {w.group === 'advanced' && (
+            <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" title="Từ ít gặp hơn (C1–C2) — dùng đúng chỗ sẽ ghi điểm từ vựng">
+              Nâng cao
+            </Badge>
+          )}
         </div>
       </div>
       <p className="mt-2 font-semibold text-ink">{w.meaning}</p>
@@ -70,7 +88,7 @@ function WordCard({ w, slug }: { w: LexiconEntry; slug: string }) {
         <div className="mt-2 space-y-2 text-sm">
           {w.definitions.slice(0, 2).map((d, i) => (
             <p key={i} className="text-muted">
-              <i className="text-violet-600 dark:text-violet-300">{d.pos}</i> {d.definition}
+              <i className="text-brand-600 dark:text-brand-300">{d.pos}</i> {d.definition}
             </p>
           ))}
           {w.meanings.length > 0 && <p className="text-muted">{w.meanings.map((m) => `${m.pos}: ${m.terms.slice(0, 4).join(', ')}`).join(' · ')}</p>}
@@ -99,9 +117,21 @@ function WordCard({ w, slug }: { w: LexiconEntry; slug: string }) {
             </Button>
           </>
         )}
-        <button type="button" onClick={() => setOpen((v) => !v)} className="ml-auto text-xs font-semibold text-muted hover:text-ink">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="ml-auto whitespace-nowrap text-xs font-semibold text-muted hover:text-ink">
           {open ? 'Thu gọn' : 'Chi tiết'}
         </button>
+        {removable && (
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            className="text-muted hover:text-rose-600"
+            loading={remove.isPending}
+            onClick={() => remove.mutate()}
+            aria-label={`Bỏ “${w.word}” khỏi bộ`}
+            title="Bỏ khỏi bộ"
+            icon={<Trash2 className="h-4 w-4" />}
+          />
+        )}
       </div>
     </article>
   );
@@ -109,7 +139,9 @@ function WordCard({ w, slug }: { w: LexiconEntry; slug: string }) {
 
 /** Lướt thẻ kiểu Quizlet: biết rồi → đánh dấu đã thuộc; chưa biết → thêm vào sổ để học. */
 function BrowseDeck({ words, slug, onClose }: { words: LexiconEntry[]; slug: string; onClose: () => void }) {
-  const deck = useMemo(() => words.filter((w) => !w.status), [words]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Đóng băng bộ thẻ lúc mở: mỗi lần chọn Biết/Chưa biết làm danh sách từ tải lại (từ vừa chọn biến mất khỏi danh sách),
+  // nếu tính lại thì thẻ kế tiếp bị nhảy cóc và người học bỏ sót một nửa số từ
+  const [deck] = useState(() => words.filter((w) => !w.status));
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [tally, setTally] = useState({ known: 0, learn: 0 });
@@ -121,7 +153,7 @@ function BrowseDeck({ words, slug, onClose }: { words: LexiconEntry[]; slug: str
     if (w) pronounce(w.word, { audio: w.audioUs ?? w.audio, accent });
   }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (deck.length && i >= deck.length) confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    if (deck.length && i >= deck.length) confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: CONFETTI_COLORS });
   }, [i, deck.length]);
 
   const decide = (known: boolean) => {
@@ -130,7 +162,7 @@ function BrowseDeck({ words, slug, onClose }: { words: LexiconEntry[]; slug: str
     setTally((t) => (known ? { ...t, known: t.known + 1 } : { ...t, learn: t.learn + 1 }));
     setI((x) => x + 1);
   };
-  useHotkeys({ space: () => setFlipped((f) => !f), ArrowLeft: () => decide(false), ArrowRight: () => decide(true) });
+  useHotkeys({ space: () => setFlipped((f) => !f), ArrowLeft: () => decide(false), ArrowRight: () => decide(true) }, true, 'dialog');
 
   return (
     <Modal open onClose={onClose} title="Lướt thẻ chủ đề" description="Biết rồi → đánh dấu đã thuộc · Chưa biết → thêm vào sổ để ôn" size="lg">
@@ -162,7 +194,7 @@ function BrowseDeck({ words, slug, onClose }: { words: LexiconEntry[]; slug: str
                 <p className="text-xs text-muted">Bấm để xem nghĩa</p>
               </div>
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-y-auto rounded-3xl border border-line bg-surface p-6 text-center shadow-card backface-hidden rotate-y-180">
-                <p className="text-2xl font-bold text-violet-700 dark:text-violet-300">{w.meaning}</p>
+                <p className="text-2xl font-bold text-brand-700 dark:text-brand-300">{w.meaning}</p>
                 {w.definitions[0] && <p className="text-sm text-muted">{w.definitions[0].definition}</p>}
                 {w.examples[0] && (
                   <p className="text-sm italic text-ink">
@@ -193,7 +225,20 @@ export default function TopicDetail() {
   const { slug = '' } = useParams();
   const { data, error, isPending, refetch } = useQuery({ queryKey: ['topic', slug], queryFn: () => api.topic(slug) });
   const add = useAddWords(slug);
-  const [group, setGroup] = useState<'all' | 'core' | 'related'>('all');
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [group, setGroup] = useState<'all' | 'core' | 'related' | 'advanced'>('all');
+  const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState<boolean | null>(null);
+  const del = useMutation({
+    mutationFn: () => api.deleteTopic(slug),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['topics'] });
+      toast.success('Đã xoá bộ từ');
+      navigate('/topics');
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
   const [level, setLevel] = useState('all');
   const [status, setStatus] = useState<'all' | 'todo' | 'in'>('all');
   const [q, setQ] = useState('');
@@ -211,6 +256,11 @@ export default function TopicDetail() {
     [data, group, level, status, q],
   );
   const levels = useMemo(() => [...new Set((data?.words ?? []).map((w) => w.level).filter(Boolean) as string[])].sort(), [data]);
+  const groups = useMemo(() => new Set((data?.words ?? []).map((w) => w.group)), [data]);
+  // Bộ trống → mở sẵn khung thêm từ và GIỮ mở (không tự đóng khi từ đầu tiên vừa được thêm, mất danh sách kết quả)
+  useEffect(() => {
+    if (data?.topic.editable && data.words.length === 0) setAdding((v) => v ?? true);
+  }, [data]);
 
   if (error) return <ErrorBox error={error} onRetry={() => refetch()} />;
   if (isPending)
@@ -228,28 +278,61 @@ export default function TopicDetail() {
   const t = data.topic;
   const c = colorOf(t.color);
   const todo = data.words.filter((w) => !w.status).length;
+  const empty = data.words.length === 0;
+  // Bộ riêng / bộ chung do admin tạo: sửa tên, xoá được; bộ IELTS có sẵn: admin chỉ thêm/bỏ từ
+  const custom = t.editable && t.source !== 'seed';
+  const showAdd = t.editable && Boolean(adding);
+  const groupOptions = [
+    { value: 'all' as const, label: 'Tất cả' },
+    ...(groups.has('core') ? [{ value: 'core' as const, label: 'Cụm từ cốt lõi' }] : []),
+    ...(groups.has('related') && !t.mine ? [{ value: 'related' as const, label: 'Từ liên quan' }] : []),
+    ...(groups.has('advanced') ? [{ value: 'advanced' as const, label: 'Từ nâng cao' }] : []),
+  ];
 
   return (
     <div className="space-y-6">
       <Link to="/topics" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink">
         <ArrowLeft className="h-4 w-4" /> Tất cả chủ đề
       </Link>
-      <section className={cn('relative overflow-hidden rounded-3xl bg-linear-to-br p-6 text-white shadow-card sm:p-8', c.gradient)}>
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 animate-float-slow rounded-full bg-white/20 blur-2xl" />
-        <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <span className="flex h-20 w-20 animate-float items-center justify-center rounded-3xl bg-white/20 text-5xl shadow-[inset_0_1px_0_rgb(255_255_255/0.4)] ring-1 ring-white/30 backdrop-blur">{t.icon}</span>
-            <div>
-              <h1 className="text-3xl font-black">{t.name}</h1>
-              <p className="text-lg font-semibold text-white/90">{t.nameVi}</p>
-              <p className="mt-1 max-w-xl text-sm text-white/85">{t.description}</p>
+      <section className={cn('relative isolate overflow-hidden rounded-3xl bg-linear-to-br p-6 text-white shadow-card sm:p-8', c.hero)}>
+        <div aria-hidden="true" className="bg-dots absolute inset-0 -z-10" />
+        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <Emoji3D emoji={t.icon} size={84} className="shrink-0 drop-shadow-[0_14px_16px_rgb(0_0_0/0.4)]" />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h1 className="text-3xl font-black text-balance">{t.name}</h1>
+                {custom && (
+                  <span className="flex gap-1">
+                    <Button size="icon-sm" className="bg-white/15 text-white hover:bg-white/30" aria-label="Sửa bộ từ" title="Sửa tên, biểu tượng" onClick={() => setEditing(true)} icon={<Pencil className="h-4 w-4" />} />
+                    <Button
+                      size="icon-sm"
+                      className="bg-white/15 text-white hover:bg-rose-500"
+                      aria-label="Xoá bộ từ"
+                      title="Xoá bộ từ"
+                      loading={del.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Xoá bộ “${t.name}”? Từ đã đưa vào sổ vẫn được giữ.`)) del.mutate();
+                      }}
+                      icon={<Trash2 className="h-4 w-4" />}
+                    />
+                  </span>
+                )}
+              </div>
+              {t.nameVi && <p className="text-lg font-semibold text-white/90">{t.nameVi}</p>}
+              {t.description && <p className="mt-1 max-w-xl text-sm text-white/85">{t.description}</p>}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button className="bg-white text-ink hover:bg-white/90" icon={<GalleryHorizontalEnd className="h-4 w-4" />} onClick={() => setBrowse(true)} disabled={!todo}>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {t.editable && (
+              <Button className="bg-white text-slate-800 hover:bg-white/90" icon={<Plus className="h-4 w-4" />} onClick={() => setAdding(!showAdd)} aria-expanded={showAdd}>
+                Thêm từ vào bộ
+              </Button>
+            )}
+            <Button className="bg-white text-slate-800 hover:bg-white/90" icon={<GalleryHorizontalEnd className="h-4 w-4" />} onClick={() => setBrowse(true)} disabled={!todo}>
               Lướt thẻ ({todo})
             </Button>
-            <LinkButton to={`/practice/play?mode=mixed&source=topic&topicId=${t.id}&count=10`} className="bg-white/20 text-white hover:bg-white/30" icon={<Target className="h-4 w-4" />}>
+            <LinkButton to={`/practice?source=topic&topicId=${t.id}`} className="bg-white/20 text-white hover:bg-white/30" icon={<Target className="h-4 w-4" />}>
                 Luyện tập
               </LinkButton>
             <Button className="bg-white/20 text-white hover:bg-white/30" icon={<Plus className="h-4 w-4" />} loading={add.isPending} onClick={() => add.mutate({})} disabled={!todo}>
@@ -268,17 +351,12 @@ export default function TopicDetail() {
         </div>
       </section>
 
+      {showAdd && <AddWordsPanel slug={slug} groups={!t.mine && t.source !== 'user'} />}
+
       <div className="flex flex-wrap items-center gap-3">
-        <Segmented
-          value={group}
-          onChange={setGroup}
-          options={[
-            { value: 'all', label: 'Tất cả' },
-            { value: 'core', label: 'Cụm từ cốt lõi' },
-            { value: 'related', label: 'Từ liên quan' },
-          ]}
-          ariaLabel="Nhóm từ"
-        />
+        {groupOptions.length > 2 && (
+          <Segmented value={group} onChange={setGroup} options={groupOptions} ariaLabel="Nhóm từ" className="no-scrollbar max-w-full overflow-x-auto" />
+        )}
         <Segmented
           value={status}
           onChange={setStatus}
@@ -308,16 +386,23 @@ export default function TopicDetail() {
         ))}
       </div>
 
-      {words.length === 0 ? (
+      {empty ? (
+        <EmptyState
+          icon="📝"
+          title="Bộ từ còn trống"
+          description={t.editable ? 'Gõ hoặc dán danh sách từ vào ô “Thêm từ” ở trên — app tự điền nghĩa, phiên âm và câu ví dụ.' : undefined}
+        />
+      ) : words.length === 0 ? (
         <EmptyState icon="🔍" title="Không có từ phù hợp" />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {words.map((w) => (
-            <WordCard key={w.id} w={w} slug={slug} />
+            <WordCard key={w.id} w={w} slug={slug} removable={t.editable && w.addedBy !== 'seed'} />
           ))}
         </div>
       )}
       {browse && <BrowseDeck words={data.words} slug={slug} onClose={() => setBrowse(false)} />}
+      {editing && <TopicForm open topic={t} onClose={() => setEditing(false)} />}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { FLUENCY_TOPICS } from '../data/fluency-topics.ts';
 import { all, get, parseJson, run, tx } from '../db/index.ts';
 import { currentUserId } from '../lib/context.ts';
 import { countFillers, countWords, roundMetrics } from '../lib/fluency.ts';
-import { startOfLocalDay } from '../lib/time.ts';
+import { localDay, startOfLocalDay } from '../lib/time.ts';
 import { addActivity, XP } from './activity.service.ts';
 
 /** Bản ghi âm 4/3/2 lưu trên máy (không commit), mỗi người dùng một thư mục. */
@@ -147,7 +147,12 @@ export function saveRound(sessionId: number, input: z.infer<typeof roundSchema>)
   const fillers = countFillers(transcript);
   const m = roundMetrics({ ...input, wordCount });
   const planLen = parseJson<number[]>(s.rounds_plan, [...PLANS.standard]).length;
+  let isNew = false;
+  // Làm lại một lượt: bỏ ghi âm cũ (bản ghi mới, nếu có, được tải lên ngay sau) để số liệu và âm thanh luôn khớp nhau
+  const old = get<{ audio_file: string | null }>('SELECT audio_file FROM fluency_rounds WHERE session_id = ? AND round = ?', sessionId, input.round);
   tx(() => {
+    // Lưu lại một lượt đã có (nút "Làm lại lượt này") thì cập nhật số liệu, không cộng XP / số lượt lần nữa
+    isNew = !old;
     run(
       `INSERT INTO fluency_rounds (session_id, user_id, round, target_sec, duration_sec, speech_sec, word_count, wpm, pause_count,
                                    long_pauses, pause_sec, mean_run, filler_count, fillers, transcript)
@@ -155,7 +160,7 @@ export function saveRound(sessionId: number, input: z.infer<typeof roundSchema>)
        ON CONFLICT(session_id, round) DO UPDATE SET target_sec = excluded.target_sec, duration_sec = excluded.duration_sec,
          speech_sec = excluded.speech_sec, word_count = excluded.word_count, wpm = excluded.wpm, pause_count = excluded.pause_count,
          long_pauses = excluded.long_pauses, pause_sec = excluded.pause_sec, mean_run = excluded.mean_run,
-         filler_count = excluded.filler_count, fillers = excluded.fillers, transcript = excluded.transcript,
+         filler_count = excluded.filler_count, fillers = excluded.fillers, transcript = excluded.transcript, audio_file = NULL,
          created_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')`,
       {
         sid: sessionId,
@@ -175,11 +180,16 @@ export function saveRound(sessionId: number, input: z.infer<typeof roundSchema>)
         transcript,
       },
     );
-    if (input.round >= planLen) run('UPDATE fluency_sessions SET completed = 1 WHERE id = ?', sessionId);
-    addActivity({ fluency_rounds: 1, xp: XP.fluencyRound });
+    // Hoàn thành khi đã có đủ mọi lượt 1..planLen (không phải chỉ cần gửi lượt cuối)
+    const done = get<{ n: number }>('SELECT COUNT(DISTINCT round) AS n FROM fluency_rounds WHERE session_id = ? AND round BETWEEN 1 AND ?', sessionId, planLen)!.n;
+    if (done >= planLen && !s.completed) {
+      run(`UPDATE fluency_sessions SET completed = 1, completed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, sessionId);
+    }
+    if (isNew) addActivity({ fluency_rounds: 1, xp: XP.fluencyRound });
   });
+  if (old?.audio_file) fs.rmSync(path.join(RECORDINGS_DIR, String(currentUserId()), old.audio_file), { force: true });
   const round = get<RoundRow>('SELECT * FROM fluency_rounds WHERE session_id = ? AND round = ?', sessionId, input.round)!;
-  return { round: roundDTO(round), xp: XP.fluencyRound };
+  return { round: roundDTO(round), xp: isNew ? XP.fluencyRound : 0 };
 }
 
 function roundRow(roundId: number) {
@@ -243,7 +253,7 @@ export function trend(limit = 20) {
     const last = s.rounds[s.rounds.length - 1];
     return {
       id: s.id,
-      day: s.createdAt.slice(0, 10),
+      day: localDay(new Date(s.createdAt)),
       topic: s.topic,
       firstWpm: first.wpm,
       lastWpm: last.wpm,
@@ -260,7 +270,8 @@ export function todayRounds() {
 
 export function completedToday() {
   return get<{ n: number }>(
-    'SELECT COUNT(*) AS n FROM fluency_sessions WHERE user_id = ? AND completed = 1 AND created_at >= ?',
+    // Theo thời điểm HOÀN THÀNH (buổi bắt đầu hôm qua, xong hôm nay vẫn tính cho hôm nay)
+    'SELECT COUNT(*) AS n FROM fluency_sessions WHERE user_id = ? AND completed = 1 AND COALESCE(completed_at, created_at) >= ?',
     currentUserId(),
     startOfLocalDay().toISOString(),
   )!.n;

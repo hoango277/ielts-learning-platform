@@ -5,13 +5,16 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { ZodError } from 'zod';
 import { config } from './config.ts';
 import { db, get } from './db/index.ts';
-import { seedTopics } from './db/seed.ts';
+import { syncSeed } from './db/seed.ts';
 import { authRouter, requireAuth, sameOriginGuard } from './routes/auth.ts';
 import { api } from './routes/index.ts';
 import { startPushScheduler } from './services/push.service.ts';
 
 const app = express();
 app.disable('x-powered-by');
+// Chạy sau reverse proxy / Docker: tin X-Forwarded-For từ proxy trong mạng riêng để req.ip là IP thật của người dùng
+// (nếu không, mọi người dùng chung một IP → gõ sai mật khẩu 8 lần là khoá luôn chủ tài khoản thật).
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 app.use(cors({ origin: config.corsOrigins, credentials: true }));
 app.use(express.json({ limit: '3mb' }));
 
@@ -59,12 +62,9 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(status).json({ error: e.message || 'Lỗi máy chủ' });
 });
 
-// Lần chạy đầu: nạp bộ từ theo chủ đề đã crawl sẵn
-const topicCount = get<{ n: number }>('SELECT COUNT(*) AS n FROM topics')!.n;
-if (!topicCount && fs.existsSync(config.seedPath)) {
-  const r = seedTopics();
-  console.log(`[seed] đã nạp ${r.topics} chủ đề, ${r.lexicon} từ`);
-}
+// Nạp bộ từ theo chủ đề đã crawl sẵn: lần chạy đầu, hoặc khi file dữ liệu có bản mới
+const seeded = syncSeed();
+if (seeded) console.log(`[seed] ${seeded.first ? 'đã nạp' : 'đã cập nhật'} ${seeded.topics} chủ đề, ${seeded.lexicon} từ`);
 
 const server = app.listen(config.port, config.host, () => {
   console.log(`🚀 API sẵn sàng tại http://${config.host}:${config.port}/api`);

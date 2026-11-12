@@ -63,7 +63,7 @@ function TtsClip({ text, playSignal, onEnded, className, rate }: { text: string;
       type="button"
       onClick={play}
       className={cn(
-        'inline-flex items-center gap-2 rounded-xl bg-violet-100 px-3 py-2 text-sm font-semibold text-violet-700 transition hover:bg-violet-200 dark:bg-violet-500/15 dark:text-violet-200',
+        'inline-flex items-center gap-2 rounded-xl bg-brand-100 px-3 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-200 dark:bg-brand-500/15 dark:text-brand-200',
         className,
       )}
       title="Câu nhập tay — đọc bằng giọng máy"
@@ -150,7 +150,7 @@ function VideoClip({
           aria-label={active ? 'Phát lại đoạn gốc' : 'Nghe đoạn gốc trong video'}
           className={cn('absolute inset-0 flex items-center justify-center transition', active ? 'bg-transparent opacity-0 hover:opacity-100' : 'bg-black/35 hover:bg-black/25')}
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-violet-700 shadow-lg">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-brand-700 shadow-lg">
             {!player.ready && pending.current ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : active ? (

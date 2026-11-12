@@ -103,13 +103,12 @@ export function overview() {
 
   const streak = streakInfo();
   const level = levelInfo(totals.xp);
-  const mastered = statusCounts.mastered + statusCounts.known;
 
   const achievements = [
     { key: 'first-word', icon: '🌱', title: 'Hạt giống', desc: 'Lưu từ đầu tiên', progress: totalWords, target: 1 },
     { key: 'words-100', icon: '📚', title: 'Mọt sách', desc: 'Có 100 từ trong sổ', progress: totalWords, target: 100 },
     { key: 'words-500', icon: '🏛️', title: 'Thư viện sống', desc: 'Có 500 từ trong sổ', progress: totalWords, target: 500 },
-    { key: 'mastered-50', icon: '🧠', title: 'Trí nhớ thép', desc: 'Thành thạo 50 từ', progress: mastered, target: 50 },
+    { key: 'mastered-50', icon: '🧠', title: 'Trí nhớ thép', desc: 'Thành thạo 50 từ', progress: statusCounts.mastered, target: 50 }, // chỉ từ ôn tới thành thạo, không tính từ đánh dấu "đã biết"
     { key: 'streak-7', icon: '🔥', title: 'Bền bỉ', desc: 'Chuỗi học 7 ngày', progress: streak.best, target: 7 },
     { key: 'streak-30', icon: '🌋', title: 'Không thể cản', desc: 'Chuỗi học 30 ngày', progress: streak.best, target: 30 },
     { key: 'shadow-100', icon: '🎙️', title: 'Cái bóng', desc: 'Shadowing 100 câu', progress: totals.shadow, target: 100 },

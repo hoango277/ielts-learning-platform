@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes, ReactNode, Ref, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { useCountUp } from '../../hooks/misc';
 import { cn, formatNumber } from '../../lib/utils';
+import { Emoji3D } from './Emoji3D';
 
 export function Spinner({ className }: { className?: string }) {
   return (
@@ -47,7 +48,7 @@ export function Kbd({ children, className }: { children: ReactNode; className?: 
 }
 
 const field =
-  'w-full rounded-xl border border-line bg-surface px-3.5 text-sm text-ink placeholder:text-muted/70 transition focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-500/15 disabled:opacity-60';
+  'w-full rounded-xl border border-line bg-surface px-3.5 text-sm text-ink placeholder:text-muted/70 transition focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/15 disabled:opacity-60';
 
 export function Input({ className, ref, ...rest }: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
   return <input ref={ref} className={cn(field, 'h-10', className)} {...rest} />;
@@ -92,7 +93,7 @@ export function Switch({ checked, onChange, label, id }: { checked: boolean; onC
       onClick={() => onChange(!checked)}
       className={cn(
         'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full shadow-[inset_0_1px_3px_rgb(0_0_0/0.18)] transition-colors duration-200',
-        checked ? 'bg-violet-500' : 'bg-surface-3',
+        checked ? 'bg-brand-500' : 'bg-surface-3',
       )}
     >
       <span
@@ -190,9 +191,9 @@ export function Ring({
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         <defs>
           <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#8b5cf6" />
-            <stop offset="60%" stopColor="#d946ef" />
-            <stop offset="100%" stopColor="#fb923c" />
+            <stop offset="0%" style={{ stopColor: 'var(--color-brand-400)' }} />
+            <stop offset="60%" style={{ stopColor: 'var(--color-brand-500)' }} />
+            <stop offset="100%" style={{ stopColor: 'var(--color-orange-400)' }} />
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className={trackClass} />
@@ -238,9 +239,14 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('flex animate-rise flex-col items-center justify-center px-6 py-14 text-center', className)}>
-      <div className="relative mb-5">
-        <div className="absolute inset-0 -z-10 scale-125 rounded-full bg-brand opacity-20 blur-2xl" />
-        <div className="flex h-20 w-20 animate-float items-center justify-center rounded-3xl border border-line bg-surface text-4xl shadow-card">{icon}</div>
+      <div className="relative isolate mb-5">
+        <div className="blob absolute inset-0 -z-10 scale-[1.8] text-brand-400/35" />
+        {typeof icon === 'string' ? (
+          // Emoji → ảnh 3D lớn, không khung
+          <Emoji3D emoji={icon} size={96} className="animate-float drop-shadow-[0_12px_14px_rgb(28_27_26/0.18)]" />
+        ) : (
+          <div className="flex h-20 w-20 animate-float items-center justify-center rounded-3xl border border-line bg-surface text-4xl shadow-card">{icon}</div>
+        )}
       </div>
       <h3 className="text-xl font-extrabold text-ink">{title}</h3>
       {description && <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted">{description}</p>}

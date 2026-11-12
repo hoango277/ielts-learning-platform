@@ -208,7 +208,17 @@ export function startPushScheduler() {
     console.warn('[push] tắt nhắc ôn — cấu hình VAPID không hợp lệ:', (err as Error).message);
     return;
   }
-  const tick = () => void checkAll().catch((err) => console.warn('[push] lỗi kiểm tra nhắc ôn:', (err as Error).message));
+  // Không chạy chồng: một lượt gửi chậm hơn chu kỳ (hoặc lượt đầu trùng nhịp hẹn giờ) sẽ gửi trùng và phá luật "cách nhau ≥ 3 giờ"
+  let running = false;
+  const tick = () => {
+    if (running) return;
+    running = true;
+    void checkAll()
+      .catch((err) => console.warn('[push] lỗi kiểm tra nhắc ôn:', (err as Error).message))
+      .finally(() => {
+        running = false;
+      });
+  };
   timer = setInterval(tick, minutes * 60_000);
   timer.unref();
   setTimeout(tick, 60_000).unref();

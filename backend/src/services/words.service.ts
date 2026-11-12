@@ -351,7 +351,10 @@ export async function createWord(input: CreateWordInput): Promise<{ word: WordDT
   examples = mergeExample(examples, contextExample);
 
   const sourceType = input.sourceType ?? (input.videoId ? 'video' : input.topicId || lex ? 'topic' : 'manual');
-  const id = tx(() => {
+  const saved = tx(() => {
+    // Bấm lưu 2 lần: yêu cầu sau tới đây khi yêu cầu đầu đã lưu xong (giữa chừng có chờ tra từ qua mạng) → trả về từ đã có, không lỗi 500
+    const dup = get<{ id: number }>('SELECT id FROM words WHERE user_id = ? AND term_key = ?', uid, key);
+    if (dup) return { id: dup.id, existed: true };
     const res = run(
       `INSERT INTO words (user_id, term, term_key, pos, ipa, audio, meaning, definition, examples, synonyms, collocations, note, tags,
                           source_type, video_id, video_time, topic_id, lexicon_id, known)
@@ -380,9 +383,9 @@ export async function createWord(input: CreateWordInput): Promise<{ word: WordDT
       },
     );
     addActivity({ new_words: 1, xp: XP.newWord });
-    return Number(res.lastInsertRowid);
+    return { id: Number(res.lastInsertRowid), existed: false };
   });
-  return { word: getWord(id), existed: false };
+  return { word: getWord(saved.id), existed: saved.existed };
 }
 
 // ---------- Sửa / xoá / trạng thái ----------

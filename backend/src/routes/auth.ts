@@ -55,6 +55,15 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   runWithUser(session.user.id, () => next());
 }
 
+/** Chỉ quản trị viên (dùng sau requireAuth): cấu hình dịch & mô hình AI, đăng ký tài khoản, người dùng. */
+export function requireAdmin(_req: Request, res: Response, next: NextFunction) {
+  if ((res.locals.session as { user?: { role?: string } } | undefined)?.user?.role !== 'admin') {
+    res.status(403).json({ error: 'Chỉ quản trị viên mới dùng được chức năng này.', code: 'FORBIDDEN' });
+    return;
+  }
+  next();
+}
+
 /**
  * Chặn yêu cầu thay đổi dữ liệu đến từ trang khác (CSRF). Cookie đã SameSite=Lax;
  * kiểm tra thêm header Origin cho chắc.

@@ -53,7 +53,7 @@ function AddWordButton({ word }: { word: string }) {
       type="button"
       onClick={() => add.mutate()}
       disabled={add.isPending}
-      className="rounded-md p-0.5 text-muted transition hover:bg-violet-100 hover:text-violet-700 disabled:opacity-50 dark:hover:bg-violet-500/15"
+      className="rounded-md p-0.5 text-muted transition hover:bg-brand-100 hover:text-brand-700 disabled:opacity-50 dark:hover:bg-brand-500/15"
       aria-label={`Thêm ${word} vào sổ từ`}
       title="Thêm vào sổ từ"
     >
@@ -123,7 +123,7 @@ function ProfileBody({ p, compact }: { p: WordProfile; compact: boolean }) {
       )}
 
       {!compact && p.senses.length > 0 && (
-        <Section title="Các nghĩa chính" icon={<Info className="h-4 w-4 text-violet-500" />}>
+        <Section title="Các nghĩa chính" icon={<Info className="h-4 w-4 text-brand-500" />}>
           <ol className="space-y-2">
             {p.senses.map((s, i) => (
               <li key={i} className="rounded-xl bg-surface-2 p-3 text-sm">
@@ -151,7 +151,7 @@ function ProfileBody({ p, compact }: { p: WordProfile; compact: boolean }) {
             {p.synonyms.map((s) => (
               <div key={s.word} className="rounded-xl border border-line bg-surface p-3 shadow-soft">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <Link to={`/profile/${encodeURIComponent(s.word)}`} className="font-bold text-ink hover:text-violet-600 hover:underline">
+                  <Link to={`/profile/${encodeURIComponent(s.word)}`} className="font-bold text-ink hover:text-brand-600 hover:underline">
                     {s.word}
                   </Link>
                   <AudioButton term={s.word} size="sm" />

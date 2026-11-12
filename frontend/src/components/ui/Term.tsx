@@ -163,9 +163,9 @@ export function Term({ k, children, icon, className }: { k: string; children?: R
         onPointerLeave={(e) => e.pointerType === 'mouse' && hoverClose()}
         className={cn(
           icon
-            ? 'inline-flex h-5 w-5 shrink-0 -translate-y-px cursor-help items-center justify-center rounded-full align-middle text-muted/80 transition hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300'
-            : 'term rounded-sm transition-colors hover:text-violet-700 dark:hover:text-violet-300',
-          open && (icon ? 'bg-violet-500/10 text-violet-600 dark:text-violet-300' : 'text-violet-700 dark:text-violet-300'),
+            ? 'inline-flex h-5 w-5 shrink-0 -translate-y-px cursor-help items-center justify-center rounded-full align-middle text-muted/80 transition hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300'
+            : 'term rounded-sm transition-colors hover:text-brand-700 dark:hover:text-brand-300',
+          open && (icon ? 'bg-brand-500/10 text-brand-600 dark:text-brand-300' : 'text-brand-700 dark:text-brand-300'),
           className,
         )}
       >
@@ -218,7 +218,7 @@ export function Term({ k, children, icon, className }: { k: string; children?: R
                     setExpanded(true);
                     setPinned(true);
                   }}
-                  className="inline-flex items-center gap-0.5 text-violet-600 hover:underline dark:text-violet-300"
+                  className="inline-flex items-center gap-0.5 text-brand-600 hover:underline dark:text-brand-300"
                 >
                   Giải thích thêm <ChevronDown className="h-4 w-4" />
                 </button>

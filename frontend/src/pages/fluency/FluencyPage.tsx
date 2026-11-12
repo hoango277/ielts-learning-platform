@@ -1,17 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import confetti from 'canvas-confetti';
-import { ArrowDown, ArrowLeft, ArrowUp, Dice5, Mic, Play, Square, Timer, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Dice5, Mic, Play, RotateCcw, Square, Timer, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../../components/ui/Button';
+import { HeroArt } from '../../components/ui/HeroArt';
 import { ConfirmDialog } from '../../components/ui/Modal';
 import { Card, EmptyState, ErrorBox, Input, Segmented, Skeleton, Textarea } from '../../components/ui/primitives';
 import { Term } from '../../components/ui/Term';
 import { LONG_PAUSE, useFluencyCapture } from '../../hooks/useFluencyCapture';
 import { api } from '../../lib/api';
 import type { FluencyRound, FluencySession, FluencyTopic } from '../../lib/types';
-import { cn, relativeTime } from '../../lib/utils';
+import { cn, relativeTime, CONFETTI_COLORS } from '../../lib/utils';
 
 const CATEGORIES: { key: FluencyTopic['category'] | 'all'; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
@@ -77,7 +78,10 @@ function Runner({ session }: { session: FluencySession }) {
   const cap = useFluencyCapture();
   const nextRound = session.rounds.length + 1;
   const finished = nextRound > session.plan.length;
-  const target = session.plan[nextRound - 1] ?? 0;
+  // Đang làm lại một lượt đã lưu (máy chủ ghi đè theo số lượt) — null = lượt mới
+  const [redo, setRedo] = useState<number | null>(null);
+  const curRound = redo ?? nextRound;
+  const target = session.plan[curRound - 1] ?? 0;
   const [phase, setPhase] = useState<'prep' | 'ready' | 'recording' | 'saving' | 'result'>(session.rounds.length === 0 ? 'prep' : 'result');
   const [prepLeft, setPrepLeft] = useState(PREP_SEC);
   const [elapsed, setElapsed] = useState(0);
@@ -106,7 +110,7 @@ function Runner({ session }: { session: FluencySession }) {
       const r = await cap.stop();
       const longPauses = r.pauses.filter((p) => p >= LONG_PAUSE).length;
       const saved = await api.saveFluencyRound(session.id, {
-        round: nextRound,
+        round: curRound,
         targetSec: target,
         durationSec: Math.max(1, Math.round(r.durationSec * 10) / 10),
         speechSec: Math.round(r.speechSec * 10) / 10,
@@ -120,7 +124,8 @@ function Runner({ session }: { session: FluencySession }) {
       qc.invalidateQueries({ queryKey: ['fluency-sessions'] });
       qc.invalidateQueries({ queryKey: ['today'] });
       qc.invalidateQueries({ queryKey: ['overview'] });
-      if (nextRound === session.plan.length) confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+      if (curRound === session.plan.length) confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: CONFETTI_COLORS });
+      setRedo(null);
       setPhase('result');
     } catch (e) {
       toast.error((e as Error).message);
@@ -173,7 +178,13 @@ function Runner({ session }: { session: FluencySession }) {
             key={i}
             className={cn(
               'flex-1 rounded-xl px-3 py-2 text-center text-sm font-bold',
-              i < session.rounds.length ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : i === session.rounds.length && !finished ? 'bg-violet-500 text-white' : 'bg-surface-2 text-muted',
+              redo !== null && phase !== 'result' && i === redo - 1
+                ? 'bg-brand-500 text-white'
+                : i < session.rounds.length
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                  : i === session.rounds.length && !finished
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-surface-2 text-muted',
             )}
           >
             Lượt {i + 1} · {mmss(sec)}
@@ -214,19 +225,34 @@ function Runner({ session }: { session: FluencySession }) {
           </div>
         )}
 
-        {phase === 'ready' && !finished && (
+        {phase === 'ready' && (!finished || redo !== null) && (
           <div className="flex flex-col items-center gap-3 py-2 text-center">
             <p className="text-lg font-bold text-ink">
-              Lượt {nextRound}: nói về đề này trong {minutesLabel(target)}
+              {redo !== null ? 'Làm lại lượt' : 'Lượt'} {curRound}: nói về đề này trong {minutesLabel(target)}
             </p>
             <p className="max-w-lg text-sm text-muted">
-              {nextRound === 1
+              {curRound === 1
                 ? 'Cứ nói tự nhiên, đủ ý. Đừng dừng lại sửa lỗi — mục tiêu là nói trôi chảy.'
                 : 'Nói lại cùng nội dung nhưng ít thời gian hơn: cố nói nhanh hơn, ít ngập ngừng hơn, dùng lại những cụm bạn vừa nói.'}
             </p>
-            <Button size="lg" variant="primary" icon={<Mic className="h-5 w-5" />} onClick={() => void startRound()}>
-              Bắt đầu nói
-            </Button>
+            {redo !== null && <p className="text-xs text-amber-600">Bản ghi mới sẽ thay cho lượt {redo} đã lưu.</p>}
+            <div className="flex flex-wrap justify-center gap-2">
+              {redo !== null && (
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={() => {
+                    setRedo(null);
+                    setPhase('result');
+                  }}
+                >
+                  Huỷ làm lại
+                </Button>
+              )}
+              <Button size="lg" variant="primary" icon={<Mic className="h-5 w-5" />} onClick={() => void startRound()}>
+                Bắt đầu nói
+              </Button>
+            </div>
             {!cap.srSupported && <p className="text-xs text-amber-600">Trình duyệt không hỗ trợ nhận dạng giọng nói — vẫn ghi âm và đo quãng ngừng, nhưng không đếm được số từ.</p>}
             {cap.error && <p className="text-sm text-rose-500">{cap.error}</p>}
           </div>
@@ -264,16 +290,28 @@ function Runner({ session }: { session: FluencySession }) {
               Lượt {last.round} — {last.wordCount} từ trong {mmss(last.durationSec)}
             </p>
             <RoundStats round={last} prev={prev} />
-            {last.hasAudio && <audio src={api.fluencyAudioUrl(last.id)} controls className="w-full" />}
-            {!finished ? (
-              <div className="flex justify-center">
+            {/* ?v=: làm lại lượt giữ nguyên id → thêm mốc thời gian để trình duyệt tải bản ghi mới */}
+            {last.hasAudio && <audio src={`${api.fluencyAudioUrl(last.id)}?v=${encodeURIComponent(last.createdAt)}`} controls className="w-full" />}
+            <div className="flex flex-wrap justify-center gap-2">
+              {/* Lỡ bấm "Dừng sớm" / micro không thu được tiếng → ghi lại đúng lượt này (máy chủ ghi đè theo số lượt) */}
+              <Button
+                size={finished ? 'md' : 'lg'}
+                variant="ghost"
+                icon={<RotateCcw className="h-4 w-4" />}
+                onClick={() => {
+                  setRedo(last.round);
+                  setPhase('ready');
+                }}
+              >
+                Làm lại lượt {last.round}
+              </Button>
+              {!finished && (
                 <Button size="lg" variant="primary" icon={<Play className="h-5 w-5 fill-current" />} onClick={() => setPhase('ready')}>
                   Sang lượt {nextRound} ({minutesLabel(target)})
                 </Button>
-              </div>
-            ) : (
-              <Summary session={session} />
-            )}
+              )}
+            </div>
+            {finished && <Summary session={session} />}
           </div>
         )}
       </Card>
@@ -335,7 +373,7 @@ function Summary({ session }: { session: FluencySession }) {
                   <Term k="filler">Từ đệm</Term>: {Object.entries(r.fillers).map(([k, v]) => `${k} ×${v}`).join(', ')}
                 </p>
               )}
-              {r.hasAudio && <audio src={api.fluencyAudioUrl(r.id)} controls className="h-9 w-full" />}
+              {r.hasAudio && <audio src={`${api.fluencyAudioUrl(r.id)}?v=${encodeURIComponent(r.createdAt)}`} controls className="h-9 w-full" />}
             </div>
           ))}
         </div>
@@ -383,15 +421,13 @@ function Hub() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-sky-500 via-indigo-500 to-violet-600 p-6 text-white shadow-[0_14px_34px_-12px_rgb(99_102_241/0.65)] sm:p-8">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-cyan-200/25 blur-2xl [animation-delay:-4s]" />
-        <h1 className="relative flex items-center gap-2 text-2xl font-black sm:text-3xl">
-          Nói trôi chảy 4/3/2 ⏱️ <Term k="fluency_432" icon className="text-white/80 hover:bg-white/20 hover:text-white dark:hover:text-white" />
+      <section className="relative overflow-hidden rounded-3xl bg-hero [--hero-glow:var(--color-sky-400)] p-6 text-white shadow-glow sm:p-8">
+        <HeroArt items={['⏱️', '🎤', '💪']} />
+        <h1 className="pr-14 xl:pr-0 relative flex items-center gap-2 text-2xl font-black sm:text-3xl">
+          Nói trôi chảy 4/3/2 <Term k="fluency_432" icon className="text-white/80 hover:bg-white/20 hover:text-white dark:hover:text-white" />
         </h1>
-        <p className="relative mt-1 max-w-2xl text-sm text-white/90">
-          Nói cùng một đề 3 lần với thời gian giảm dần (4 → 3 → 2 phút). Nội dung đã quen nên não không phải nghĩ “nói gì” mà tập trung nói nhanh và liền mạch hơn — kỹ thuật
-          luyện trôi chảy của Maurice (1983) và Paul Nation (1989). App ghi âm, đo tốc độ nói, số lần ngừng và từ đệm qua từng lượt.
+        <p className="relative mt-1 max-w-xl text-sm text-white/90">
+          Nói một đề 3 lần với thời gian giảm dần 4 → 3 → 2 phút. App ghi âm, đo tốc độ nói và số lần ngừng qua từng lượt.
         </p>
         <div className="relative mt-4 flex flex-wrap items-center gap-3">
           <Segmented

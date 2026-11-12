@@ -18,10 +18,15 @@ export interface DiffResult {
   score: number;
 }
 
+const UNITS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
+const TENS: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
 const NUMBER_WORDS: Record<string, string> = {
-  zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
-  eleven: '11', twelve: '12', twenty: '20', thirty: '30', forty: '40', fifty: '50', hundred: '100',
+  zero: '0', ...Object.fromEntries(Object.entries(UNITS).map(([k, v]) => [k, String(v)])), ten: '10',
+  eleven: '11', twelve: '12', thirteen: '13', fourteen: '14', fifteen: '15', sixteen: '16', seventeen: '17', eighteen: '18', nineteen: '19',
+  ...Object.fromEntries(Object.entries(TENS).map(([k, v]) => [k, String(v)])), hundred: '100', thousand: '1000',
 };
+// Số ghép đã bỏ gạch nối: twentyfive → 25
+const COMPOUND_NUMBER = new RegExp(`^(${Object.keys(TENS).join('|')})(${Object.keys(UNITS).join('|')})$`);
 
 const CONTRACTIONS: [RegExp, string][] = [
   [/\bwon't\b/g, 'will not'],
@@ -33,6 +38,9 @@ const CONTRACTIONS: [RegExp, string][] = [
   [/'ll\b/g, ' will'],
   [/'ve\b/g, ' have'],
   [/'d\b/g, ' would'],
+  // 's sau đại từ / từ hỏi là "is" (it's = it is); các trường hợp khác có thể là sở hữu nên giữ nguyên
+  [/\b(it|that|there|what|he|she|here|where|who|how)'s\b/g, '$1 is'],
+  [/\blet's\b/g, 'let us'],
   [/\bgonna\b/g, 'going to'],
   [/\bwanna\b/g, 'want to'],
 ];
@@ -41,6 +49,10 @@ export function normalizeWord(w: string): string {
   // Bỏ cả dấu nháy khi so sánh: it's ≈ its (lỗi nhỏ, không tính sai)
   let s = w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
   if (NUMBER_WORDS[s]) s = NUMBER_WORDS[s];
+  else {
+    const m = s.match(COMPOUND_NUMBER);
+    if (m) s = String(TENS[m[1]] + UNITS[m[2]]);
+  }
   return s;
 }
 
@@ -126,8 +138,11 @@ export function diffWords(target: string, attempt: string, opts: { lenient?: boo
   return { tokens: merged, extra: extra.filter(Boolean), correct, total, score: total ? correct / total : 0 };
 }
 
-/** Kiểm tra đáp án gõ tay (cho bài điền từ / nghe / chính tả), chấp nhận sai 1 ký tự với từ dài. */
-export function checkTyped(input: string, answers: string[]): { ok: boolean; close: boolean } {
+/**
+ * Kiểm tra đáp án gõ tay (cho bài điền từ / nghe / chính tả), chấp nhận sai 1 ký tự với từ dài.
+ * fuzzy = false: phải đúng hoàn toàn — dùng cho bài mà khác 1 chữ là từ khác (dạng từ: employer/employee; nghe: affect/effect).
+ */
+export function checkTyped(input: string, answers: string[], { fuzzy = true }: { fuzzy?: boolean } = {}): { ok: boolean; close: boolean } {
   const norm = (s: string) =>
     s
       .toLowerCase()
@@ -141,6 +156,7 @@ export function checkTyped(input: string, answers: string[]): { ok: boolean; clo
     const n = norm(a);
     if (v === n) return { ok: true, close: false };
   }
+  if (!fuzzy) return { ok: false, close: false };
   for (const a of answers) {
     const n = norm(a);
     if (n.length >= 6 && levenshtein(v, n) <= 1) return { ok: true, close: true };

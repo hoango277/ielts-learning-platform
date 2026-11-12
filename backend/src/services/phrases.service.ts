@@ -6,6 +6,7 @@ import { currentUserId } from '../lib/context.ts';
 import { formatInterval, localDay, startOfLocalDay } from '../lib/time.ts';
 import { inflectionRegex, termKey, uniqBy } from '../lib/text.ts';
 import { addActivity, XP } from './activity.service.ts';
+import { getSettings } from './settings.service.ts';
 import { LEARN_AHEAD_MS, previewIntervals, scheduler, toCard } from './review.service.ts';
 import { translateText } from './translate/index.ts';
 
@@ -131,7 +132,10 @@ export async function createPhrase(input: z.infer<typeof createSchema>) {
     input.sentenceVi?.trim() || translateText(sentence).then((r) => r.translation).catch(() => ''),
     translateChunk(chunk, sentence),
   ]);
-  const id = tx(() => {
+  const saved = tx(() => {
+    // Bấm lưu 2 lần: yêu cầu sau tới đây khi yêu cầu đầu đã lưu xong (giữa chừng có chờ dịch) → trả về mẫu câu đã có
+    const dup = get<{ id: number }>('SELECT id FROM phrases WHERE user_id = ? AND sentence_key = ? AND lower(chunk) = lower(?)', uid, key, chunk);
+    if (dup) return { id: dup.id, existed: true };
     const res = run(
       `INSERT INTO phrases (user_id, video_id, start, end, sentence, sentence_key, sentence_vi, chunk, chunk_vi, note)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -147,9 +151,9 @@ export async function createPhrase(input: z.infer<typeof createSchema>) {
       input.note ?? '',
     );
     addActivity({ xp: XP.newWord });
-    return Number(res.lastInsertRowid);
+    return { id: Number(res.lastInsertRowid), existed: false };
   });
-  return { phrase: getPhrase(id), existed: false };
+  return { phrase: getPhrase(saved.id), existed: saved.existed };
 }
 
 export const updateSchema = z.object({
@@ -305,7 +309,8 @@ export function suggestChunks(sentence: string) {
 
 // ---------- Ôn tập FSRS ----------
 
-const NEW_PER_DAY = 10;
+// Thẻ mẫu câu mới mỗi ngày: tối đa 10 và không vượt cài đặt "Số thẻ mới mỗi ngày" (đặt 0 để dồn sức ôn bài cũ thì dừng hẳn thẻ mới)
+const newPerDay = () => Math.min(10, getSettings().newCardsPerDay);
 
 function introducedToday() {
   return get<{ n: number }>(
@@ -325,7 +330,7 @@ export function phraseSummary() {
     ahead,
     currentUserId(),
   )!;
-  const newLimit = Math.max(0, NEW_PER_DAY - introducedToday());
+  const newLimit = Math.max(0, newPerDay() - introducedToday());
   return { dueNow: r.due ?? 0, newAvailable: Math.min(newLimit, r.fresh ?? 0), total: r.total ?? 0 };
 }
 
@@ -334,7 +339,7 @@ export function phraseQueue(limit = 100) {
   const ahead = new Date(now.getTime() + LEARN_AHEAD_MS).toISOString();
   const uid = currentUserId();
   const due = all<PhraseRow>(`${SELECT} WHERE p.user_id = ? AND p.state != 0 AND p.due <= ? ORDER BY p.due LIMIT ?`, uid, ahead, limit);
-  const newLimit = Math.max(0, NEW_PER_DAY - introducedToday());
+  const newLimit = Math.max(0, newPerDay() - introducedToday());
   const fresh = newLimit
     ? all<PhraseRow>(`${SELECT} WHERE p.user_id = ? AND p.state = 0 ORDER BY p.created_at, p.id LIMIT ?`, uid, Math.min(newLimit, limit))
     : [];

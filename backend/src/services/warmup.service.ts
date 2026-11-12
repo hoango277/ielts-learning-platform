@@ -34,18 +34,21 @@ export function warmup() {
 
   // Từ/mẫu câu học lần đầu hôm qua (kể cả chưa đến hạn) — nhớ lại sau một đêm ngủ
   if (morning) {
+    // Bỏ thẻ đã ôn lại hôm nay — nếu không, buổi sáng mở lại app sẽ gặp lại đúng các thẻ đó và thẻ quá hạn thật bị đẩy ra ngoài
     const sleptWords = all<WordRow>(
-      `${WORD_SELECT} WHERE w.user_id = ? AND w.known = 0 AND w.state != 0 AND w.id IN
+      `${WORD_SELECT} WHERE w.user_id = ? AND w.known = 0 AND w.state != 0 AND (w.last_review IS NULL OR w.last_review < ?) AND w.id IN
          (SELECT word_id FROM review_logs WHERE user_id = ? AND state = 0 AND reviewed_at >= ? AND reviewed_at < ?)`,
       uid,
+      todayStart,
       uid,
       yStart,
       todayStart,
     );
     const sleptPhrases = all<PhraseRow>(
-      `${PHRASE_SELECT} WHERE p.user_id = ? AND p.state != 0 AND p.id IN
+      `${PHRASE_SELECT} WHERE p.user_id = ? AND p.state != 0 AND (p.last_review IS NULL OR p.last_review < ?) AND p.id IN
          (SELECT phrase_id FROM phrase_logs WHERE user_id = ? AND state = 0 AND reviewed_at >= ? AND reviewed_at < ?)`,
       uid,
+      todayStart,
       uid,
       yStart,
       todayStart,

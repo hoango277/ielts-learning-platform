@@ -4,6 +4,8 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Chunk three.js (cảnh 3D trang đăng nhập, ~140 KB gzip) chỉ tải lười ở trang đó → nới ngưỡng cảnh báo mặc định 500 KB
+  build: { chunkSizeWarningLimit: 600 },
   server: {
     port: 5173,
     // Backend chạy ở cổng 4000 — mọi request /api được proxy sang

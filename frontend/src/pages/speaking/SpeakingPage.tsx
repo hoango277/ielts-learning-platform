@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../../components/ui/Button';
+import { Celebration } from '../../components/ui/Celebration';
+import { Emoji3D } from '../../components/ui/Emoji3D';
 import { Card, EmptyState, ErrorBox, Input, Kbd, Progress, Segmented, Skeleton } from '../../components/ui/primitives';
+import { HeroArt } from '../../components/ui/HeroArt';
 import { Term } from '../../components/ui/Term';
 import { ClipPlayer } from '../../components/video/ClipPlayer';
 import { AudioButton, useSettings } from '../../components/word/bits';
@@ -14,7 +17,7 @@ import { useSpeakCapture } from '../../hooks/useSpeakCapture';
 import { api } from '../../lib/api';
 import { diffWords } from '../../lib/diff';
 import type { Phrase, SpeakMode, SpeakResult, SpeakWord } from '../../lib/types';
-import { cn, posLabel } from '../../lib/utils';
+import { cn, posLabel, CONFETTI_COLORS } from '../../lib/utils';
 import { DiffView, ScorePill } from '../watch/ShadowingPanel';
 import { ChunkSentence } from '../../components/phrase/ChunkSentence';
 
@@ -24,7 +27,7 @@ export const SPEAK_MODES: { key: SpeakMode; title: string; desc: string; emoji: 
     title: 'Nói câu có chỗ trống',
     desc: 'Nhìn câu đã lưu bị che cụm cần học, nói cả câu. App kiểm tra bạn có nói đúng cụm đó không.',
     emoji: '🧩',
-    tone: 'from-violet-500 to-fuchsia-500',
+    tone: 'from-brand-100 to-brand-200 dark:from-brand-500/25 dark:to-brand-500/10',
     source: 'phrase',
   },
   {
@@ -32,7 +35,7 @@ export const SPEAK_MODES: { key: SpeakMode; title: string; desc: string; emoji: 
     title: 'Nghe – chờ – nói',
     desc: 'Nghe đoạn gốc, chờ vài giây rồi nói lại theo trí nhớ (không nhìn chữ). Chấm theo % từ khớp.',
     emoji: '⏳',
-    tone: 'from-sky-500 to-indigo-500',
+    tone: 'from-sky-100 to-sky-200 dark:from-sky-500/25 dark:to-sky-500/10',
     source: 'phrase',
   },
   {
@@ -40,29 +43,29 @@ export const SPEAK_MODES: { key: SpeakMode; title: string; desc: string; emoji: 
     title: 'Tự đặt câu',
     desc: 'Đặt câu với từ trong sổ. App kiểm tra bạn có dùng từ đó; câu ổn thì lưu làm ví dụ của riêng bạn.',
     emoji: '✍️',
-    tone: 'from-emerald-500 to-teal-400',
+    tone: 'from-emerald-100 to-emerald-200 dark:from-emerald-500/25 dark:to-emerald-500/10',
     source: 'word',
   },
   {
     key: 'vi',
     title: 'Gợi ý tiếng Việt',
-    desc: 'Tuỳ chọn: thấy nghĩa tiếng Việt của một cụm ngắn → nói cụm tiếng Anh, rồi nghe câu gốc và tự chấm.',
+    desc: 'Tuỳ chọn: thấy nghĩa tiếng Việt của một cụm ngắn → nói cụm tiếng Anh. App chỉ tính đạt khi bạn nói đúng cụm gốc đã lưu, rồi cho nghe lại câu gốc.',
     emoji: '🇻🇳',
-    tone: 'from-orange-500 to-amber-400',
+    tone: 'from-orange-100 to-orange-200 dark:from-orange-500/25 dark:to-orange-500/10',
     source: 'phrase',
   },
 ];
 
 const RATINGS = [
-  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-400 [--edge:#be123c]' },
-  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-400 [--edge:#b45309]' },
-  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:#047857]' },
-  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-400 [--edge:#0369a1]' },
+  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-400 [--edge:var(--color-rose-700)]' },
+  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-400 [--edge:var(--color-amber-700)]' },
+  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:var(--color-emerald-700)]' },
+  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-400 [--edge:var(--color-sky-700)]' },
 ];
 
 // ---------- Nút micro + phương án gõ khi trình duyệt không nhận dạng giọng nói ----------
 
-function MicButton({ cap, disabled }: { cap: ReturnType<typeof useSpeakCapture>; disabled?: boolean }) {
+function MicButton({ cap, disabled, onStart }: { cap: ReturnType<typeof useSpeakCapture>; disabled?: boolean; onStart?: () => void }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <span className="relative flex pb-1">
@@ -70,10 +73,10 @@ function MicButton({ cap, disabled }: { cap: ReturnType<typeof useSpeakCapture>;
         <button
           type="button"
           disabled={disabled}
-          onClick={() => (cap.listening ? cap.stop() : void cap.start())}
+          onClick={() => (cap.listening ? cap.stop() : onStart ? onStart() : void cap.start())}
           className={cn(
             'press relative flex h-20 w-20 items-center justify-center rounded-full text-white hover:brightness-110 disabled:opacity-50',
-            cap.listening ? 'bg-rose-500 [--edge:#be123c]' : 'bg-linear-to-br from-violet-500 to-fuchsia-500 [--edge:#6d28d9]',
+            cap.listening ? 'bg-rose-500 [--edge:var(--color-rose-700)]' : 'bg-brand [--edge:var(--color-brand-800)]',
           )}
           aria-label={cap.listening ? 'Dừng (Space)' : 'Bắt đầu nói (Space)'}
         >
@@ -112,13 +115,21 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
   const delay = settings?.speakDelaySec ?? 2;
   const cap = useSpeakCapture();
   const [phase, setPhase] = useState<'prompt' | 'listening' | 'countdown' | 'result'>('prompt');
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  // Nghe – chờ – nói: đã qua bước nghe + đếm ngược (hoặc chọn nói ngay) → hiện micro / ô gõ
+  const [heard, setHeard] = useState(false);
+  const [skipped, setSkipped] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [playSignal, setPlaySignal] = useState(0);
   const [showText, setShowText] = useState(mode !== 'delayed');
   const [hint, setHint] = useState(false);
   const [result, setResult] = useState<(SpeakResult & { transcript: string }) | null>(null);
+  // XP cộng dồn qua mọi lần nói (kể cả các lần thử lại) và lần xếp lịch ôn
+  const xpRef = useRef(0);
   const clip = { videoId: phrase.videoId, start: phrase.start, end: phrase.end, text: phrase.sentence };
   const due = phrase.state === 0 || new Date(phrase.due).getTime() <= Date.now();
+  const delayedIntro = mode === 'delayed' && phase === 'prompt' && !heard && !cap.listening;
 
   const submit = useMutation({
     mutationFn: (transcript: string) => {
@@ -126,6 +137,7 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
       return api.speakAttempt({ mode, phraseId: phrase.id, transcript, score }).then((r) => ({ ...r, transcript }));
     },
     onSuccess: (r) => {
+      xpRef.current += r.xp;
       setResult(r);
       setPhase('result');
       setShowText(true);
@@ -135,9 +147,9 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
     onError: (e) => toast.error((e as Error).message),
   });
 
-  // Kết quả nhận dạng xong → chấm
+  // Kết quả nhận dạng xong → chấm (lượt lỗi / không nghe thấy gì không tạo kết quả nên không bị chấm trượt)
   useEffect(() => {
-    if (cap.result !== null && phase !== 'result' && !submit.isPending) submit.mutate(cap.result);
+    if (cap.result && phase !== 'result' && !submit.isPending) submit.mutate(cap.result);
   }, [cap.result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Đếm ngược rồi tự bật micro (nghe – chờ – nói)
@@ -145,6 +157,7 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
     if (phase !== 'countdown') return;
     if (countdown <= 0) {
       setPhase('prompt');
+      setHeard(true);
       if (cap.supported) void cap.start();
       return;
     }
@@ -152,23 +165,78 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
     return () => clearTimeout(t);
   }, [phase, countdown]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Đoạn gốc không phát được / không báo kết thúc (lỗi video YouTube, giọng máy bị treo) → không kẹt ở bước nghe
+  useEffect(() => {
+    if (phase !== 'listening') return;
+    const clipSec = phrase.videoId && phrase.start != null ? (phrase.end ?? phrase.start + 6) - phrase.start : phrase.sentence.split(/\s+/).length * 0.6;
+    const t = setTimeout(
+      () => {
+        setPhase('prompt');
+        setHeard(true);
+      },
+      (Math.max(0, clipSec) + 15) * 1000,
+    );
+    return () => clearTimeout(t);
+  }, [phase, playSignal]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const rate = useMutation({
     mutationFn: (rating: 1 | 2 | 3 | 4) => api.reviewPhrase(phrase.id, rating, `speak:${mode}`),
-    onSuccess: () => {
+    onSuccess: (r) => {
+      xpRef.current += r.xp;
       qc.invalidateQueries({ queryKey: ['review-queue'] });
-      onDone(result?.passed ?? false, result?.xp ?? 0);
+      onDone(result?.passed ?? false, xpRef.current);
     },
+    onError: (e) => toast.error((e as Error).message),
   });
+
+  const finish = () => onDone(result?.passed ?? false, xpRef.current);
 
   const listenFirst = () => {
     setPhase('listening');
     setPlaySignal((n) => n + 1);
   };
 
+  // Nghe – chờ – nói: bật micro ngay (kể cả khi đoạn gốc đang phát / không phát được), bỏ bước đếm ngược
+  const speakNow = () => {
+    setPhase('prompt');
+    setHeard(true);
+    void cap.start();
+  };
+
+  const retry = () => {
+    setResult(null);
+    setSkipped(false);
+    cap.reset();
+    setPhase('prompt');
+    setHeard(false);
+    setShowText(mode !== 'delayed');
+  };
+
+  // Bỏ qua: hiện đáp án và phát lại đoạn gốc; KHÔNG gửi lượt nói nào lên máy chủ (không XP, không đổi lịch ôn)
+  const skip = () => {
+    cap.cancel();
+    setResult(null);
+    setSkipped(true);
+    setPhase('result');
+    setShowText(true);
+    setTimeout(() => setPlaySignal((n) => n + 1), 300);
+  };
+
+  const onSpace = () => {
+    if (submit.isPending) return;
+    if (cap.listening) return cap.stop();
+    // Space lúc đang đếm ngược = bỏ qua đếm ngược; effect ở trên bật micro đúng một lần
+    if (phase === 'countdown') return setCountdown(0);
+    if (delayedIntro) return listenFirst();
+    if (!cap.supported) return;
+    if (mode === 'delayed') speakNow();
+    else void cap.start();
+  };
+
   useHotkeys(
     phase === 'result'
-      ? { Enter: () => !due && onDone(result?.passed ?? false, result?.xp ?? 0), r: () => setPlaySignal((n) => n + 1) }
-      : { space: () => (cap.listening ? cap.stop() : mode === 'delayed' && phase === 'prompt' && !cap.result ? listenFirst() : void cap.start()) },
+      ? { ...(skipped || !due ? { Enter: finish } : {}), r: () => setPlaySignal((n) => n + 1) }
+      : { space: onSpace },
   );
 
   const diff = result && mode !== 'vi' ? diffWords(phrase.sentence, result.transcript, { lenient: true }) : null;
@@ -211,7 +279,8 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
             clip={clip}
             playSignal={playSignal}
             onEnded={() => {
-              if (mode === 'delayed' && phase === 'listening') {
+              // Đọc phase qua ref: giọng máy giữ callback cũ, có thể báo kết thúc sau khi người học đã bấm nói
+              if (mode === 'delayed' && phaseRef.current === 'listening') {
                 setCountdown(delay);
                 setPhase('countdown');
               }
@@ -220,31 +289,51 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
         </div>
       )}
 
-      {phase !== 'result' &&
-        (phase === 'countdown' ? (
-          <div className="flex flex-col items-center gap-2">
-            <span className="flex h-20 w-20 animate-pop items-center justify-center rounded-full bg-sky-500 text-4xl font-extrabold text-white shadow-xl">{countdown}</span>
-            <p className="text-sm text-muted">Nhớ lại câu vừa nghe… micro sẽ tự bật</p>
-          </div>
-        ) : mode === 'delayed' && phase === 'prompt' && !cap.listening ? (
-          <div className="flex flex-col items-center gap-2">
-            <Button size="lg" variant="primary" icon={<Play className="h-5 w-5 fill-current" />} onClick={listenFirst}>
-              Nghe đoạn gốc
-            </Button>
-            <p className="text-xs text-muted">
-              Sau khi nghe, đếm ngược {delay} giây rồi micro tự bật (đổi trong Cài đặt).{' '}
-              {cap.supported && (
-                <button type="button" className="font-semibold underline" onClick={() => void cap.start()}>
-                  Nói ngay
-                </button>
-              )}
-            </p>
-          </div>
-        ) : cap.supported ? (
-          <MicButton cap={cap} disabled={submit.isPending || phase === 'listening'} />
-        ) : (
-          <TypeFallback onSubmit={(t) => submit.mutate(t)} placeholder="Trình duyệt không hỗ trợ nhận dạng giọng nói — gõ câu bạn nói…" />
-        ))}
+      {phase !== 'result' && (
+        <>
+          {phase === 'countdown' ? (
+            <div className="flex flex-col items-center gap-2">
+              <span className="flex h-20 w-20 animate-pop items-center justify-center rounded-full bg-sky-500 text-4xl font-extrabold text-white shadow-xl">{countdown}</span>
+              <p className="text-sm text-muted">
+                {cap.supported ? (
+                  <>
+                    Nhớ lại câu vừa nghe… micro sẽ tự bật (<Kbd>Space</Kbd> để nói ngay)
+                  </>
+                ) : (
+                  'Nhớ lại câu vừa nghe… rồi gõ lại câu bên dưới'
+                )}
+              </p>
+            </div>
+          ) : delayedIntro ? (
+            <div className="flex flex-col items-center gap-2">
+              <Button size="lg" variant="primary" icon={<Play className="h-5 w-5 fill-current" />} onClick={listenFirst}>
+                Nghe đoạn gốc
+              </Button>
+              <p className="text-xs text-muted">
+                Sau khi nghe, đếm ngược {delay} giây rồi {cap.supported ? 'micro tự bật' : 'gõ lại câu'} (đổi trong Cài đặt).{' '}
+                {cap.supported && (
+                  <button type="button" className="font-semibold underline" onClick={speakNow}>
+                    Nói ngay
+                  </button>
+                )}
+              </p>
+            </div>
+          ) : cap.supported ? (
+            <MicButton cap={cap} disabled={submit.isPending} onStart={mode === 'delayed' ? speakNow : undefined} />
+          ) : null}
+          {/* Không có nhận dạng giọng nói → gõ câu. Giữ cùng vị trí qua các bước nghe / đếm ngược để chữ đã gõ không bị mất */}
+          {!cap.supported && !delayedIntro && (
+            <TypeFallback onSubmit={(t) => submit.mutate(t)} placeholder="Trình duyệt không hỗ trợ nhận dạng giọng nói — gõ câu bạn nói…" />
+          )}
+          {!cap.listening && (
+            <div className="flex justify-center">
+              <Button variant="ghost" size="sm" icon={<Eye className="h-4 w-4" />} disabled={submit.isPending} onClick={skip}>
+                Bỏ qua · xem đáp án
+              </Button>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Kết quả */}
       {result && (
@@ -267,6 +356,9 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
               {result.score != null && mode === 'delayed' && <ScorePill score={result.score} />}
             </p>
             <p className="mt-1 text-sm opacity-90">Bạn nói: “{result.transcript || '…'}”</p>
+            {mode === 'vi' && !result.passed && (
+              <p className="mt-1 text-xs opacity-80">App chỉ nhận đúng cụm gốc đã lưu — nếu bạn nói cách khác mà vẫn đúng nghĩa, hãy tự so với câu gốc bên trên.</p>
+            )}
           </div>
           {diff && <DiffView result={diff} />}
           {phrase.sentenceVi && <p className="text-center text-sm text-muted">{phrase.sentenceVi}</p>}
@@ -293,26 +385,44 @@ function PhraseDrill({ mode, phrase, onDone }: { mode: Exclude<SpeakMode, 'own'>
                   </button>
                 ))}
               </div>
+              <div className="flex justify-center">
+                <Button variant="ghost" size="sm" icon={<RotateCcw className="h-4 w-4" />} disabled={rate.isPending} onClick={retry}>
+                  Thử lại
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-wrap justify-center gap-2">
-              <Button
-                variant="ghost"
-                icon={<RotateCcw className="h-4 w-4" />}
-                onClick={() => {
-                  setResult(null);
-                  cap.reset();
-                  setPhase('prompt');
-                  setShowText(mode !== 'delayed');
-                }}
-              >
+              <Button variant="ghost" icon={<RotateCcw className="h-4 w-4" />} onClick={retry}>
                 Thử lại
               </Button>
-              <Button variant="primary" onClick={() => onDone(result.passed, result.xp)}>
+              <Button variant="primary" onClick={finish}>
                 Tiếp <Kbd className="ml-1 border-white/30 bg-white/20 text-white">Enter</Kbd>
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Đã bỏ qua: chỉ xem đáp án, lượt này không được ghi nhận */}
+      {skipped && (
+        <div className="space-y-4">
+          <div className="animate-pop rounded-2xl bg-surface-2 p-4 text-ink">
+            <p className="flex items-center gap-2 font-bold">
+              <Eye className="h-5 w-5" /> Đã bỏ qua — đáp án ở trên
+            </p>
+            {mode !== 'delayed' && phrase.chunk && <p className="mt-1 text-sm">Cụm cần nói: “{phrase.chunk}”</p>}
+            <p className="mt-1 text-sm text-muted">Lượt bỏ qua không được ghi nhận: không cộng XP, không tính vào kế hoạch hôm nay và không đổi lịch ôn.</p>
+          </div>
+          {phrase.sentenceVi && <p className="text-center text-sm text-muted">{phrase.sentenceVi}</p>}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="ghost" icon={<RotateCcw className="h-4 w-4" />} onClick={retry}>
+              Thử lại
+            </Button>
+            <Button variant="primary" onClick={finish}>
+              Tiếp <Kbd className="ml-1 border-white/30 bg-white/20 text-white">Enter</Kbd>
+            </Button>
+          </div>
         </div>
       )}
     </div>
@@ -329,6 +439,8 @@ function OwnDrill({ word, onDone }: { word: SpeakWord; onDone: (passed: boolean,
   const [result, setResult] = useState<SpeakResult | null>(null);
   const [saved, setSaved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // XP cộng dồn qua mọi lần kiểm tra (kể cả các lần thử lại) và lần lưu ví dụ
+  const xpRef = useRef(0);
 
   // Nhận dạng xong → đưa vào ô để người học sửa lỗi nhận dạng trước khi kiểm tra
   useEffect(() => {
@@ -340,12 +452,16 @@ function OwnDrill({ word, onDone }: { word: SpeakWord; onDone: (passed: boolean,
 
   const check = useMutation({
     mutationFn: () => api.speakAttempt({ mode: 'own', wordId: word.id, transcript: text.trim() }),
-    onSuccess: setResult,
+    onSuccess: (r) => {
+      xpRef.current += r.xp;
+      setResult(r);
+    },
     onError: (e) => toast.error((e as Error).message),
   });
   const save = useMutation({
     mutationFn: () => api.saveOwnExample({ wordId: word.id, sentence: text.trim() }),
     onSuccess: (r) => {
+      xpRef.current += r.xp;
       setSaved(true);
       toast.success(`Đã lưu câu làm ví dụ cho “${word.term}” (+${r.xp} XP)`);
       qc.invalidateQueries({ queryKey: ['words'] });
@@ -353,7 +469,7 @@ function OwnDrill({ word, onDone }: { word: SpeakWord; onDone: (passed: boolean,
     },
   });
 
-  useHotkeys(result ? { Enter: () => onDone(result.passed, result.xp + (saved ? 5 : 0)) } : cap.supported && !text ? { space: () => (cap.listening ? cap.stop() : void cap.start()) } : {});
+  useHotkeys(result ? { Enter: () => onDone(result.passed, xpRef.current) } : cap.supported && !text ? { space: () => (cap.listening ? cap.stop() : void cap.start()) } : {});
 
   return (
     <div className="space-y-5">
@@ -372,7 +488,7 @@ function OwnDrill({ word, onDone }: { word: SpeakWord; onDone: (passed: boolean,
           (showExample ? (
             <p className="mx-auto max-w-lg text-sm italic text-muted">“{word.example}”</p>
           ) : (
-            <button type="button" onClick={() => setShowExample(true)} className="text-sm font-semibold text-violet-600 hover:underline">
+            <button type="button" onClick={() => setShowExample(true)} className="text-sm font-semibold text-brand-600 hover:underline">
               Xem một câu ví dụ
             </button>
           ))}
@@ -399,6 +515,22 @@ function OwnDrill({ word, onDone }: { word: SpeakWord; onDone: (passed: boolean,
             Kiểm tra
           </Button>
         </form>
+      )}
+      {/* Bỏ qua: sang từ tiếp theo, lượt này không được ghi nhận (không XP, không tính vào kế hoạch hôm nay) */}
+      {!result && !cap.listening && (
+        <div className="flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={check.isPending}
+            onClick={() => {
+              cap.cancel();
+              onDone(false, xpRef.current);
+            }}
+          >
+            Bỏ qua từ này
+          </Button>
+        </div>
       )}
 
       {result && (
@@ -443,7 +575,7 @@ function OwnDrill({ word, onDone }: { word: SpeakWord; onDone: (passed: boolean,
                 Thử lại
               </Button>
             )}
-            <Button variant="primary" onClick={() => onDone(result.passed, result.xp + (saved ? 5 : 0))}>
+            <Button variant="primary" onClick={() => onDone(result.passed, xpRef.current)}>
               Tiếp <Kbd className="ml-1 border-white/30 bg-white/20 text-white">Enter</Kbd>
             </Button>
           </div>
@@ -482,7 +614,7 @@ function Session({ mode, count }: { mode: SpeakMode; count: number }) {
     qc.invalidateQueries({ queryKey: ['today'] });
     qc.invalidateQueries({ queryKey: ['overview'] });
     qc.invalidateQueries({ queryKey: ['speaking-stats'] });
-    if (outcomes.filter(Boolean).length / Math.max(1, outcomes.length) >= 0.7) confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } });
+    if (outcomes.filter(Boolean).length / Math.max(1, outcomes.length) >= 0.7) confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 }, colors: CONFETTI_COLORS });
   }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const next = (passed: boolean, gained: number) => {
@@ -497,8 +629,8 @@ function Session({ mode, count }: { mode: SpeakMode; count: number }) {
         <ArrowLeft className="h-5 w-5" />
       </Button>
       <div className="min-w-0 flex-1">
-        <p className="font-bold text-ink">
-          {meta.emoji} {meta.title}
+        <p className="flex items-center gap-2 font-bold text-ink">
+          <Emoji3D emoji={meta.emoji} size={26} /> {meta.title}
         </p>
         {items.length > 0 && <Progress value={Math.min(idx, items.length) / items.length} className="mt-1.5" />}
       </div>
@@ -537,13 +669,28 @@ function Session({ mode, count }: { mode: SpeakMode; count: number }) {
     const passed = outcomes.filter(Boolean).length;
     return (
       <Card className="mx-auto max-w-xl space-y-4 p-8 text-center">
-        <p className="animate-bounce-in text-5xl">🎙️</p>
-        <h2 className="text-2xl font-extrabold text-ink">Xong {items.length} lượt nói!</h2>
-        <p className="text-muted">
-          Đạt {passed}/{items.length} · +{xp} <Term k="xp">XP</Term>
-        </p>
+        <Celebration
+          emoji={passed / Math.max(1, items.length) >= 0.7 ? '🏆' : '💪'}
+          title={`Xong ${items.length} lượt nói!`}
+          description={
+            <>
+              Đạt {passed}/{items.length} · +{xp} <Term k="xp">XP</Term>
+            </>
+          }
+          className="py-0"
+        />
         <div className="flex flex-wrap justify-center gap-2">
-          <Button variant="primary" icon={<RotateCcw className="h-4 w-4" />} onClick={() => setRound((r) => r + 1)}>
+          <Button
+            variant="primary"
+            icon={<RotateCcw className="h-4 w-4" />}
+            onClick={() => {
+              // Đặt lại ngay (không chờ effect) để không hiện lại kết quả cũ / bắn pháo giấy lần nữa khi buổi mới tải xong
+              setIdx(0);
+              setOutcomes([]);
+              setXp(0);
+              setRound((r) => r + 1);
+            }}
+          >
             Luyện tiếp
           </Button>
           <LinkButton to="/speaking" variant="outline">Đổi dạng bài</LinkButton>
@@ -581,13 +728,11 @@ export default function SpeakingPage() {
   const s = stats.data;
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-violet-600 via-fuchsia-500 to-pink-500 p-6 text-white shadow-[0_14px_34px_-12px_rgb(192_38_211/0.6)] sm:p-8">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-amber-300/25 blur-2xl [animation-delay:-4s]" />
-        <h1 className="relative text-2xl font-black sm:text-3xl">Luyện nói lại 🎙️</h1>
-        <p className="relative mt-1 max-w-2xl text-sm text-white/90">
-          Chủ động nói lại những câu và từ bạn đã học — cách tốt để biến vốn từ “hiểu được” thành vốn từ “dùng được”. App không chấm điểm phát âm hay ngữ pháp, chỉ kiểm tra
-          những gì chắc chắn: bạn có nói đúng cụm từ, nhắc lại đúng câu, dùng đúng từ hay không.
+      <section className="relative overflow-hidden rounded-3xl bg-hero [--hero-glow:var(--color-pink-400)] p-6 text-white shadow-glow sm:p-8">
+        <HeroArt items={['🎙️', '💬', '👋']} />
+        <h1 className="pr-14 xl:pr-0 relative text-2xl font-black sm:text-3xl">Luyện nói lại</h1>
+        <p className="relative mt-1 max-w-xl text-sm text-white/90">
+          Nói lại câu và từ đã học để biến vốn từ “hiểu được” thành “dùng được”. App kiểm tra bạn nói đúng cụm, đúng câu — không chấm phát âm.
         </p>
         {s && (
           <div className="relative mt-4 flex flex-wrap gap-2 text-sm font-semibold">
@@ -618,11 +763,11 @@ export default function SpeakingPage() {
             >
               <span
                 className={cn(
-                  'icon-tile flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br text-3xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110',
+                  'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br shadow-[inset_0_-2px_0_rgb(0_0_0/0.05)] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110',
                   m.tone,
                 )}
               >
-                {m.emoji}
+                <Emoji3D emoji={m.emoji} size={40} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
@@ -641,15 +786,16 @@ export default function SpeakingPage() {
 
       <Card className="space-y-2 p-5 text-sm leading-relaxed text-muted">
         <p className="flex items-center gap-2 font-bold text-ink">
-          <MicOff className="h-4 w-4 text-violet-500" /> Lưu ý
+          <MicOff className="h-4 w-4 text-brand-500" /> Lưu ý
         </p>
         <p>
           <Term k="speech_recognition">Nhận dạng giọng nói</Term> dùng tính năng có sẵn của trình duyệt — chạy tốt nhất trên Chrome hoặc Edge và cần kết nối mạng. Bài tự đặt
           câu cho phép sửa lại chữ máy nghe sai trước khi kiểm tra.
         </p>
         <p>
-          Vì sao gợi ý tiếng Việt chỉ là tuỳ chọn? Một câu tiếng Việt có nhiều cách nói đúng bằng tiếng Anh nên máy không chấm từng chữ được; luyện với gợi ý tiếng Anh (câu có
-          chỗ trống, nghe lại đoạn gốc) giúp bạn nghĩ bằng tiếng Anh — theo nguyên tắc <Term k="retrieval">tự nhớ lại</Term> — và được chấm chính xác hơn.
+          Vì sao gợi ý tiếng Việt chỉ là tuỳ chọn? Một câu tiếng Việt có nhiều cách nói đúng bằng tiếng Anh, nhưng app chỉ tính đạt khi bạn nói đúng cụm gốc đã lưu — nói cách
+          khác dù đúng nghĩa vẫn bị tính là chưa đạt. Luyện với gợi ý tiếng Anh (câu có chỗ trống, nghe lại đoạn gốc) giúp bạn nghĩ bằng tiếng Anh — theo nguyên tắc{' '}
+          <Term k="retrieval">tự nhớ lại</Term> — và được chấm công bằng hơn.
         </p>
       </Card>
     </div>

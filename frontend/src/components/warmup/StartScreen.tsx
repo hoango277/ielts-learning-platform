@@ -58,10 +58,10 @@ function isBusyRoute(pathname: string, search: string) {
 // ---------- Ôn nhanh ----------
 
 const RATINGS = [
-  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-400 [--edge:#be123c]' },
-  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-400 [--edge:#b45309]' },
-  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:#047857]' },
-  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-400 [--edge:#0369a1]' },
+  { value: 1 as const, label: 'Quên', className: 'bg-rose-500 hover:bg-rose-400 [--edge:var(--color-rose-700)]' },
+  { value: 2 as const, label: 'Khó', className: 'bg-amber-500 hover:bg-amber-400 [--edge:var(--color-amber-700)]' },
+  { value: 3 as const, label: 'Nhớ', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:var(--color-emerald-700)]' },
+  { value: 4 as const, label: 'Dễ', className: 'bg-sky-500 hover:bg-sky-400 [--edge:var(--color-sky-700)]' },
 ];
 
 function MemoryBadge({ item }: { item: WarmupItem }) {
@@ -104,7 +104,7 @@ function QuickCard({ item, flipped }: { item: WarmupItem; flipped: boolean }) {
         {c.ipa && <p className="font-ipa text-sm text-muted">{c.ipa}</p>}
         {flipped && (
           <div className="animate-fade-in space-y-2">
-            <p className="text-xl font-bold text-violet-700 dark:text-violet-300">{c.meaning}</p>
+            <p className="text-xl font-bold text-brand-700 dark:text-brand-300">{c.meaning}</p>
             {c.definition && <p className="text-sm text-muted">{c.definition}</p>}
             {ex && (
               <p className="text-sm italic text-muted">
@@ -130,7 +130,7 @@ function QuickCard({ item, flipped }: { item: WarmupItem; flipped: boolean }) {
         <div className="animate-fade-in space-y-1 text-sm">
           {p.chunk && (
             <p>
-              <b className="text-violet-700 dark:text-violet-300">{p.chunk}</b>
+              <b className="text-brand-700 dark:text-brand-300">{p.chunk}</b>
               {p.chunkVi && <span className="text-ink"> — {p.chunkVi}</span>}
             </p>
           )}
@@ -178,7 +178,7 @@ function QuickReview({ items, available }: { items: WarmupItem[]; available: num
   });
 
   const doRate = (r: 1 | 2 | 3 | 4) => item && flipped && !rate.isPending && rate.mutate({ target: item, rating: r });
-  useHotkeys(item ? { space: () => setFlipped((f) => !f), Enter: () => (flipped ? doRate(3) : setFlipped(true)), '1': () => doRate(1), '2': () => doRate(2), '3': () => doRate(3), '4': () => doRate(4) } : {});
+  useHotkeys(item ? { space: () => setFlipped((f) => !f), Enter: () => (flipped ? doRate(3) : setFlipped(true)), '1': () => doRate(1), '2': () => doRate(2), '3': () => doRate(3), '4': () => doRate(4) } : {}, true, 'dialog');
 
   if (!item) {
     const more = available - total;
@@ -300,8 +300,8 @@ function NotifyOptIn({ settings }: { settings: Settings | undefined }) {
   if (settings.notifyReviews && Notification.permission === 'granted') return null;
   if (Notification.permission === 'denied') return null;
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-violet-50 p-3 text-sm dark:bg-violet-500/10">
-      <BellRing className="h-5 w-5 shrink-0 text-violet-500" />
+    <div className="flex items-center gap-3 rounded-2xl bg-brand-50 p-3 text-sm dark:bg-brand-500/10">
+      <BellRing className="h-5 w-5 shrink-0 text-brand-500" />
       <p className="flex-1 text-ink">
         Nhắc tôi khi có từ sắp quên{' '}
         <span className="text-muted">{pushSupported() ? '(kể cả khi đã đóng tab, tối đa 2 lần/ngày)' : '(khi app đang mở trong một tab, tối đa 2 lần/ngày)'}</span>

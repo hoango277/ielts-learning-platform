@@ -17,9 +17,19 @@ export function useRecorder() {
     try {
       setError(null);
       if (!streamRef.current) {
-        streamRef.current = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true },
         });
+        // Hai lần gọi chồng nhau: giữ luồng đã có, tắt luồng thừa để micro không bị bật mãi
+        if (streamRef.current) stream.getTracks().forEach((t) => t.stop());
+        else streamRef.current = stream;
+      }
+      // Đang ghi dở mà lại bắt đầu → bỏ bản cũ (gỡ handler để nó không ghi đè dữ liệu của bản mới)
+      const old = recorderRef.current;
+      if (old && old.state !== 'inactive') {
+        old.ondataavailable = null;
+        old.onstop = null;
+        old.stop();
       }
       const rec = new MediaRecorder(streamRef.current);
       chunks.current = [];

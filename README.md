@@ -33,9 +33,9 @@ Chạy kèm **model dịch Hy-MT** trên máy (tự tải model ~1,1 GB lần đ
 npm run dev:hymt     # = tải model (nếu chưa có) + bật llama-server ở cổng 8080 + npm run dev với cấu hình Hy-MT sẵn
 ```
 
-Các lệnh khác: `npm run crawl` (crawl lại bộ từ chủ đề), `npm run seed` (nạp lại seed vào DB), `npm test` (unit test backend), `npm run typecheck`, `npm run hymt` (chỉ chạy Hy-MT), `npm run hymt:download` (chỉ tải model).
+Các lệnh khác: `npm run crawl` (crawl lại bộ từ chủ đề), `npm run crawl:ipa` (bổ sung phiên âm còn thiếu), `npm run crawl:curate` (áp dụng dữ liệu soạn tay: nghĩa, ví dụ, định nghĩa), `npm run seed` (nạp lại seed vào DB), `npm test` (unit test backend), `npm run typecheck`, `npm run hymt` (chỉ chạy Hy-MT), `npm run hymt:download` (chỉ tải model).
 
-Cấu hình tuỳ chọn: sao chép [backend/.env.example](backend/.env.example) thành `backend/.env`. Hầu hết cài đặt (nhà cung cấp dịch, Hy-MT, mục tiêu học…) chỉnh được ngay trong trang **Cài đặt**.
+Cấu hình tuỳ chọn: sao chép [backend/.env.example](backend/.env.example) thành `backend/.env`. Cấu hình máy chủ (nguồn dịch, mô hình AI Hy-MT, cho phép đăng ký) admin chỉnh trong trang **Quản trị**; tuỳ chọn học tập mỗi người chỉnh trong trang **Cài đặt**.
 
 ---
 
@@ -87,7 +87,7 @@ docker compose start app
 | `IELTS_TAG` | `latest` | Phiên bản image |
 | `IELTS_PORT` | `4000` | Cổng mở trên máy chủ |
 | `TZ` | `Asia/Ho_Chi_Minh` | Múi giờ: quyết định “hôm nay”, chuỗi ngày học, giờ gửi nhắc (8h–22h) |
-| `ALLOW_REGISTRATION` | `true` | `false` = khoá đăng ký sau khi đã tạo tài khoản đầu tiên |
+| `ALLOW_REGISTRATION` | `true` | Mặc định cho phép đăng ký; admin bật/tắt lại được trong trang Quản trị |
 | `YT_LOCATION` | `US` | Quốc gia cho kết quả YouTube |
 | `VAPID_SUBJECT` | `mailto:ielts-learn@example.com` | Email liên hệ gửi kèm thông báo đẩy — nên đặt email thật (Safari bắt buộc) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | tự tạo | Khoá thông báo đẩy; bỏ trống thì app tự tạo một lần và lưu trong `/data`. Tạo thủ công: `npx web-push generate-vapid-keys` |
@@ -100,12 +100,13 @@ docker compose start app
 
 ## Tài khoản & đăng nhập
 
-- Mọi trang và API (trừ `/api/auth/*`, `/api/health`) đều cần đăng nhập. Mỗi tài khoản có **sổ từ, lịch ôn FSRS, XP/chuỗi ngày, video đã xem, ghi chú và cài đặt riêng**. Bộ từ chủ đề, phụ đề và cache dịch/từ điển dùng chung.
-- **Tài khoản đầu tiên** đăng ký sẽ nhận toàn bộ dữ liệu học tạo trước khi có tính năng đăng nhập.
+- Mọi trang và API (trừ `/api/auth/*`, `/api/health`) đều cần đăng nhập. Mỗi tài khoản có **sổ từ, lịch ôn FSRS, XP/chuỗi ngày, video đã xem, ghi chú và cài đặt riêng**. Bộ từ chủ đề, phụ đề và cache dịch/từ điển dùng chung; **“Bộ từ của tôi”** là riêng của từng người (người khác không thấy, không luyện được).
+- **Tài khoản đầu tiên** đăng ký là **quản trị viên (admin)** và nhận toàn bộ dữ liệu học tạo trước khi có tính năng đăng nhập. Các tài khoản sau là **học viên**: chỉ học, không thấy và không sửa được cấu hình máy chủ.
+- **Trang Quản trị** (`/admin`, chỉ admin; API `/api/admin/*` trả 403 với học viên): cấu hình **dịch & mô hình AI** dùng chung cho mọi người (nguồn dịch, địa chỉ/model/khoá API Hy-MT, kiểm tra kết nối), **bật/tắt đăng ký tài khoản mới**, danh sách người dùng và **cấp/thu quyền admin** (máy chủ luôn giữ ít nhất một admin), **bộ từ chung** (tạo chủ đề mới cho mọi học viên; thêm từ vào bất kỳ chủ đề nào ngay trên trang chủ đề). Học viên chỉ chỉnh tuỳ chọn học tập của riêng mình (mục tiêu, thẻ mới mỗi ngày, giọng đọc, video…).
 - Mật khẩu băm bằng **scrypt** (salt ngẫu nhiên, so sánh chống timing attack). Phiên đăng nhập là cookie `HttpOnly` + `SameSite=Lax` (thêm `Secure` khi chạy HTTPS); DB chỉ lưu SHA-256 của token. “Ghi nhớ đăng nhập” giữ 30 ngày và tự gia hạn khi còn dùng; không chọn thì là cookie phiên, hết hạn sau 12 giờ không hoạt động.
 - Chống CSRF bằng SameSite + kiểm tra header `Origin`; sai mật khẩu 8 lần trong 15 phút sẽ bị khoá 15 phút.
 - Đổi tên, đổi mật khẩu (tự đăng xuất các thiết bị khác) và đăng xuất trong **Cài đặt → Tài khoản** hoặc menu avatar.
-- Chỉ mình bạn dùng? Đặt `ALLOW_REGISTRATION=false` trong `backend/.env` (hoặc `.env` của Docker Compose) để khoá đăng ký sau khi tạo tài khoản.
+- Khoá đăng ký: tắt trong **Quản trị → Đăng ký tài khoản**, hoặc đặt mặc định bằng `ALLOW_REGISTRATION=false` trong `backend/.env` (hoặc `.env` của Docker Compose). Tài khoản đầu tiên luôn tạo được.
 
 ## Cơ sở dữ liệu
 
@@ -124,7 +125,7 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 ## Tính năng
 
 ### 1. Khám phá & lướt video như YouTube
-- Trang chủ video với **chip danh mục** (IELTS, TED & TED-Ed, Tin tức dễ nghe, Phát âm, Hội thoại, Phim & TV, Khoa học, Diễn thuyết, Podcast…), **cuộn vô hạn**, 17 kênh học tiếng Anh tuyển chọn (BBC Learning English, VOA, TED-Ed, English with Lucy, IELTS Advantage, IELTS Liz, E2 IELTS, Rachel's English…).
+- Trang chủ video với **chip danh mục** (IELTS, TED & TED-Ed, Tin tức dễ nghe, Phát âm, Hội thoại, Phim & TV, Khoa học, Diễn thuyết, Podcast…), **phân trang** (24 video/trang, số trang lưu trên địa chỉ nên bấm Back quay đúng trang), 17 kênh học tiếng Anh tuyển chọn (BBC Learning English, VOA, TED-Ed, English with Lucy, IELTS Advantage, IELTS Liz, E2 IELTS, Rachel's English…).
 - Tìm kiếm có **gợi ý từ khoá**, lọc độ dài, chỉ hiện video có **phụ đề CC chuẩn**; dán link YouTube bất kỳ để mở ngay (hỗ trợ `watch`, `youtu.be`, `shorts`, tham số `t=`).
 - Trang kênh, cột **“Tiếp theo”** (video liên quan, tải thêm khi cuộn) để lướt từ video này sang video khác.
 
@@ -151,17 +152,23 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 
 ### 5. Luyện tập
 - Dạng bài: **trắc nghiệm** (chọn nghĩa / chọn từ / theo định nghĩa), **điền từ vào câu ví dụ thật**, **nghe & gõ**, **chính tả từ**, **ghép cặp tính giờ**, **tổng hợp**.
-- Nguồn từ: đang học, đến hạn, **hay sai**, mới thêm, gần đây, có sao, theo chủ đề, theo video. Trả lời đúng một từ **đang đến hạn** được tính luôn như một lượt ôn.
+- Hai bước: chọn **luyện từ nào** (sổ từ của bạn — lọc tất cả / đến hạn / **hay sai** / mới thêm / gần đây / có sao — hoặc **một bộ chủ đề IELTS**, không cần lưu trước), rồi **bấm vào dạng bài là bắt đầu**. Sổ còn ít từ thì mặc định chọn bộ chủ đề; trang chủ đề mở thẳng tới đây với chủ đề đã chọn. Mọi dạng bài đều dùng được với bộ chủ đề (trừ “Từ hay đi cùng” và “Nâng cấp từ” — bộ câu soạn sẵn). Thiếu từ cho lượt luyện → chọn ngay một chủ đề để luyện tiếp. Trả lời đúng một từ **đang đến hạn** được tính luôn như một lượt ôn.
+- **Không biết — xem đáp án** (phím 0 ở câu trắc nghiệm): không phải đoán mò; câu được tính là chưa nhớ (từ vào nhóm “Hay sai”, nếu đang đến hạn thì lịch ôn xếp lại như “Quên”) và hiện ngay đáp án + giải thích. Ghép cặp cũng có nút này.
+- Trợ giúp khi chưa chắc, chỉ những gì không làm lộ đáp án: **nghe đọc** định nghĩa / câu, **dịch sang tiếng Việt** (bộ dịch trong Cài đặt: Google hoặc mô hình AI Hy-MT). Sau khi trả lời: nghe từ, nghe và dịch câu ví dụ. Nút loa ở đầu phiên bật/tắt **tự đọc từ** sau mỗi câu.
+- Chấm câu gõ chấp nhận sai 1 ký tự với từ dài, trừ bài **dạng từ** và **nghe & gõ** (khác một chữ là từ khác: employer/employee, affect/effect).
 - Combo 🔥, màn hình kết quả, danh sách từ sai cần xem lại.
 
 ### 6. Bộ từ vựng IELTS theo chủ đề
-- 26 chủ đề (Education, Environment, Technology, Health, Work, Crime, Media, Travel, Economy, Society, Family, Cities, Transport, Food, Science, Culture, Sport, Energy, Animals, Business, Space, Language, Shopping, Weather, Personality, Fashion) — **1.163 mục từ** gồm **cụm từ cốt lõi** (collocation hay dùng trong Speaking/Writing) và **từ liên quan** crawl tự động.
-- Mỗi từ: IPA (77%), audio người thật, cấp độ CEFR ước lượng (kèm band IELTS tương ứng), nghĩa tiếng Việt theo từ loại, định nghĩa, **câu ví dụ song ngữ** (88%), collocation, đồng/trái nghĩa.
+- 26 chủ đề (Education, Environment, Technology, Health, Work, Crime, Media, Travel, Economy, Society, Family, Cities, Transport, Food, Science, Culture, Sport, Energy, Animals, Business, Space, Language, Shopping, Weather, Personality, Fashion) — **1.459 mục từ** gồm **cụm từ cốt lõi** (collocation hay dùng trong Speaking/Writing), **từ liên quan** crawl tự động và **từ nâng cao** (12 từ C1–C2 mỗi chủ đề, tuyển chọn thủ công: *recidivism, gentrification, anthropogenic, vernacular…* — cho người muốn lên band 7+).
+- **Bộ từ của tôi**: tự tạo bộ từ riêng (tên, biểu tượng 3D, màu), **gõ hoặc dán cả danh sách** từ/cụm từ — app tự tra nghĩa, phiên âm, câu ví dụ song ngữ và ước lượng cấp độ; lướt thẻ, đưa vào sổ, luyện tập như bộ chủ đề. Tối đa 30 bộ/người, 500 từ/bộ.
+- **Bộ từ chung do quản trị viên mở rộng**: admin tạo chủ đề mới cho mọi học viên hoặc thêm từ (chọn nhóm cốt lõi / liên quan / nâng cao) vào chủ đề có sẵn; từ admin thêm được giữ nguyên khi dữ liệu crawl được nạp lại.
+- Mỗi từ đều có: IPA Anh-Anh / Anh-Mỹ (cụm từ ghép từ IPA từng chữ, từ phái sinh suy theo quy tắc cấu tạo từ), cấp độ CEFR ước lượng (kèm band IELTS tương ứng), **nghĩa tiếng Việt soạn lại theo ngữ cảnh chủ đề** (nghĩa máy dịch hay kèm nghĩa cổ, sai chính tả hoặc lạc ngữ cảnh), định nghĩa tiếng Anh, **câu ví dụ song ngữ**, collocation, đồng/trái nghĩa; audio người thật cho ~43% (còn lại đọc bằng giọng máy).
 - **Lướt thẻ kiểu Quizlet**: “Đã biết” (đánh dấu đã thuộc) / “Chưa biết” (thêm vào sổ để ôn); thêm từng từ hoặc cả chủ đề; luyện tập theo chủ đề.
 
 ### 7. Hôm nay học gì (buổi học có hướng dẫn)
 - Mỗi ngày một kế hoạch 5 bước theo khung **“bốn mảng”** (Paul Nation): ôn thẻ đến hạn → nghe một **video vừa sức** → **nói đuổi** 10 câu → **nói lại câu đã lưu** → một lượt **4/3/2**.
 - Tiến độ tự đánh dấu từ hoạt động thật trong ngày; bỏ qua từng bước; đổi video (gợi ý theo độ khó); chế độ **ngắn ~20 phút** / **chuẩn ~40 phút**.
+- Hiển thị thành **lộ trình 5 trạm** (mỗi trạm một vật thể 3D) ngay trên Trang chủ, kèm **đúng một nút** cho bước tiếp theo; trang `/today` là bản đầy đủ với đường nối dọc giữa các trạm.
 
 ### 8. Sổ mẫu câu (học theo cụm)
 - Lưu câu hay từ phụ đề (nút dấu trang trên mỗi dòng, phím `B`, hoặc “Lưu câu làm mẫu câu” trong popover tra từ), **chọn cụm cần học** bằng cách bấm từ đầu – từ cuối; gợi ý cụm từ sổ từ, bộ chủ đề và danh sách collocation soạn sẵn.
@@ -171,7 +178,7 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 - **Câu có chỗ trống**: nói cả câu đã lưu, app kiểm tra có nói đúng cụm (chấp nhận dạng chia và động từ bất quy tắc).
 - **Nghe – chờ – nói**: nghe đoạn gốc, đếm ngược vài giây rồi nói lại theo trí nhớ, chấm % từ khớp.
 - **Tự đặt câu** với từ trong sổ: kiểm tra có dùng từ đó; câu ổn được **lưu làm ví dụ riêng** của từ.
-- **Gợi ý tiếng Việt** (tuỳ chọn, cụm ngắn): không so từng chữ, nghe câu gốc rồi tự chấm.
+- **Gợi ý tiếng Việt** (tuỳ chọn, cụm ngắn): nhìn nghĩa tiếng Việt rồi nói câu tiếng Anh; chỉ tính đạt khi nói đúng cụm đã lưu (nói ý khác đúng nghĩa thì tự so với câu gốc).
 - Mỗi lượt ghi âm để nghe giọng mình cạnh giọng gốc; tự chấm Quên/Khó/Nhớ/Dễ cập nhật lịch ôn của mẫu câu.
 
 ### 10. Hồ sơ từ & dùng từ tự nhiên
@@ -188,7 +195,9 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 - “Đã biết” = từ trong danh sách **NGSL** theo trình độ bạn chọn (A2/B1/B2/C1) + từ đã thuộc/đang ôn trong sổ. Mục **“Vừa sức với bạn”** ở trang Khám phá phân tích dần video từ lịch sử và các kênh tuyển chọn.
 
 ### 13. Động lực học
-- Trang chủ: **chuỗi ngày học (streak)**, XP & cấp độ, **mục tiêu XP mỗi ngày**, biểu đồ XP 7 ngày, **bản đồ nhiệt cả năm**, phân bố trạng thái từ, **dự báo lịch ôn 7 ngày**, **từ của ngày**, video đang xem dở, 10 huy hiệu thành tích.
+- **Trang chủ** chỉ giữ những gì giúp bắt đầu học ngay (nguyên tắc “tổng quan trước, chi tiết khi cần”): **chuỗi ngày học (streak)**, **mục tiêu XP mỗi ngày**, lộ trình hôm nay, video đang xem dở (thẻ lớn), 4 lối vào nhanh, **từ của ngày** và thẻ tóm tắt tiến độ.
+- **Trang Tiến độ** (`/progress`): XP & cấp độ, biểu đồ XP 7 ngày, **bản đồ nhiệt cả năm**, phân bố trạng thái từ, **dự báo lịch ôn 7 ngày**, từ mới lưu gần đây và 10 **huy hiệu** dạng huy chương 3D (thấy rõ điều kiện và còn thiếu bao nhiêu).
+- Lên cấp hoặc đạt huy hiệu mới → hộp chúc mừng có cúp/huy chương 3D và pháo giấy (mỗi mốc chỉ báo một lần, nhớ theo tài khoản).
 - XP: ôn thẻ +2 (Quên +1), lưu từ mới +3, câu luyện tập đúng +3 (+5/+10 khi xong phiên), câu shadowing +3, câu chính tả đúng +4, mỗi phút xem video +1.
 - Giao diện sáng/tối, responsive (sidebar trên desktop, thanh điều hướng dưới trên mobile), focus ring rõ ràng, điều hướng bằng bàn phím, nhãn ARIA, tôn trọng `prefers-reduced-motion`.
 
@@ -203,7 +212,10 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 
 ### 16. Giải thích thuật ngữ & giao diện
 - Mọi thuật ngữ khó (FSRS, lặp lại ngắt quãng, shadowing, collocation, họ từ, CEFR, độ phủ từ vựng, 4/3/2, từ/phút, từ đệm, Web Push, Hy-MT…) có **gạch chân chấm** hoặc nút (?): rê chuột / chạm để xem giải thích ngắn bằng tiếng Việt, “Giải thích thêm” để đọc đầy đủ kèm ví dụ. Trang **Giải thích thuật ngữ** (`/glossary`) gom toàn bộ, tìm được cả khi gõ không dấu.
-- Font **Be Vietnam Pro** (chữ thường) + **Nunito** (tiêu đề, nút); nút và thẻ “nổi khối” bấm lún xuống, bóng đổ nhiều lớp, hiệu ứng xuất hiện lần lượt, số đếm chạy, nền gradient chuyển màu, ngọn lửa chuỗi ngày “cháy” — tất cả tự tắt khi hệ điều hành bật giảm chuyển động.
+- Bảng màu **“Mực ngọc”**: nền giấy kem, chữ mực đen ấm, màu chính xanh ngọc như mực bút máy, điểm nhấn cam đất; giao diện tối nền than ấm. Thang màu Tailwind được làm dịu theo bảng **Flexoki** nhưng **giữ nguyên độ sáng từng bậc**, nên độ tương phản chữ/nền không đổi. Font **Be Vietnam Pro** (chữ thường) + **Nunito** (tiêu đề, nút).
+- Hình minh hoạ 3D một phong cách xuyên suốt: ảnh 3D **Fluent Emoji** cho chủ đề, dạng bài, huy hiệu, trạng thái trống, khối chào mỗi trang (component `Emoji3D`, emoji chưa có ảnh thì hiện emoji thường); **cảnh 3D WebGL** “4 kỹ năng IELTS” (three.js, tải lười) ở trang đăng nhập/đăng ký — nghiêng theo chuột, giảm còn ~30 khung hình/giây khi để yên và dừng hẳn sau 20 giây, dừng khi ẩn tab; máy không có WebGL thì hiện ảnh 3D tĩnh.
+- Bố cục gọn: thanh bên gom theo việc cần làm (Trang chủ, Ôn tập → Nghe & xem → Từ vựng → Nói → Tiến độ), biểu tượng một màu, mục phụ (Thuật ngữ, Cài đặt) ở dưới cùng; mỗi khối chào chỉ một câu giới thiệu.
+- Hiệu năng: không có animation trang trí lặp vô hạn, không `backdrop-filter`/`filter: blur` trên vùng lớn (đo trên máy thật: CPU khi đứng yên ở Trang chủ từ ~100% một nhân còn ~0%). Nút và thẻ “nổi khối” bấm lún xuống, chuyển trang mượt bằng View Transitions — mọi hiệu ứng tự tắt khi hệ điều hành bật giảm chuyển động.
 
 ---
 
@@ -230,11 +242,13 @@ Lưu ý: InnerTube không phải API công khai nên YouTube có thể thay đ�
 
 Mọi bản dịch được cache trong SQLite nên mỗi câu/từ chỉ dịch một lần. Nếu Hy-MT lỗi, app tự chuyển sang dịch máy trong 60 giây.
 
+Nguồn dịch và mô hình Hy-MT là **cấu hình chung của máy chủ**: admin chỉnh trong trang **Quản trị** (mặc định lấy từ `TRANSLATE_PROVIDER` / `HYMT_*`), áp dụng cho mọi học viên. Khoá API chỉ hiện 4 ký tự cuối và không bao giờ được gửi về trình duyệt của học viên.
+
 ### Chạy Hy-MT trên máy
 
 Cách nhanh nhất: `npm run dev:hymt` (chạy từ mã nguồn) hoặc Docker Compose kèm `docker-compose.hymt.yml` (xem [Chạy bằng Docker](#chạy-bằng-docker-khuyến-nghị-để-deploy)) — cả hai tự tải model HY-MT1.5-1.8B (Q4_K_M) và cấu hình sẵn cho app.
 
-Hoặc tự chạy bằng bất kỳ server tương thích OpenAI (`/v1/chat/completions`) — điền **Base URL** và **Model** trong trang Cài đặt rồi bấm **Kiểm tra kết nối**:
+Hoặc tự chạy bằng bất kỳ server tương thích OpenAI (`/v1/chat/completions`) — admin điền **Base URL** và **Model** trong trang **Quản trị** rồi bấm **Kiểm tra kết nối** (địa chỉ tính từ máy chủ chạy app):
 
 ```bash
 # llama.cpp (khuyến nghị cho HY-MT1.5 GGUF, chạy được trên CPU) → Base URL: http://localhost:8080/v1
@@ -257,13 +271,18 @@ Chọn **mẫu prompt** đúng phiên bản: *HY-MT1.5* cho các bản 1.5, *Hy-
 npm run crawl                                    # crawl 26 chủ đề → backend/data/seed/topics.json → nạp vào SQLite
 npm run crawl -- --topics=education,environment  # chỉ một số chủ đề (gộp vào file seed hiện có)
 npm run crawl -- --per-topic=40 --refresh        # nhiều từ liên quan hơn, bỏ qua cache
+npm run crawl -w backend -- --advanced           # chỉ thêm nhóm "Từ nâng cao" (danh sách soạn tay trong topics.config.ts)
+npm run crawl:ipa                                # chỉ bổ sung phiên âm IPA còn thiếu (không crawl lại)
+npm run crawl:curate                             # áp dụng dữ liệu soạn tay (curated.ts) — crawl cũng tự chạy bước này
 ```
 
 Quy trình ([backend/src/crawler/](backend/src/crawler/)):
-1. Mỗi chủ đề có các từ khoá gốc và danh sách cụm từ cốt lõi ([topics.config.ts](backend/src/crawler/topics.config.ts)).
+1. Mỗi chủ đề có các từ khoá gốc, danh sách cụm từ cốt lõi và **từ nâng cao C1–C2** soạn tay ([topics.config.ts](backend/src/crawler/topics.config.ts)). Từ nâng cao không lấy tự động vì từ hiếm qua Datamuse lẫn quá nhiều từ lạc đề / từ lóng. Crawl lại toàn bộ (`npm run crawl`) sẽ tạo lại file seed → chạy thêm `--advanced` sau đó.
 2. **Datamuse API** tìm từ liên quan (`rel_trg` — từ hay xuất hiện cùng chủ đề, `ml` — từ gần nghĩa), lọc theo tần suất và từ loại, gộp biến thể (sciences → science).
-3. Làm giàu từng mục: **Free Dictionary API** (IPA, audio, định nghĩa, ví dụ — dữ liệu Wiktionary, CC BY-SA), **Google Dịch** (nghĩa tiếng Việt theo từ loại), **Datamuse** (collocation: tính từ đi với danh từ, danh từ đi với động từ…), **Wikipedia** (câu ví dụ cho cụm từ học thuật). IPA của cụm từ được ghép từ IPA từng từ.
-4. Dịch câu ví dụ sang tiếng Việt theo lô; mọi phản hồi được cache trên đĩa (`backend/data/crawl-cache/`) và có giới hạn tốc độ để lịch sự với các API miễn phí.
+3. Làm giàu từng mục: **Free Dictionary API** (IPA, audio, định nghĩa, ví dụ — dữ liệu Wiktionary, CC BY-SA), **Google Dịch** (nghĩa tiếng Việt theo từ loại), **Datamuse** (collocation: tính từ đi với danh từ, danh từ đi với động từ…), **Wikipedia** (câu ví dụ cho cụm từ học thuật). IPA của cụm từ được ghép từ IPA từng từ (hư từ như *a, the, to, for* lấy dạng đọc lướt /ə/, /ðə/, /tə/, /fə/).
+4. Free Dictionary API bỏ sót IPA của khá nhiều từ (“impact”, “healthcare”) → `npm run crawl:ipa` tra thẳng **Wiktionary** (chọn cách đọc theo từ loại: *transport* danh từ /ˈtɹæns.pɔːt/ khác động từ /tɹænsˈpɔːt/; dạng số nhiều/quá khứ suy từ từ gốc). Thẻ tra từ khi xem video cũng tự dùng Wiktionary khi từ điển không có phiên âm.
+5. **Dữ liệu soạn tay** ([curated.ts](backend/src/crawler/curated.ts)) được áp dụng sau mỗi lần crawl: nghĩa tiếng Việt viết lại theo ngữ cảnh chủ đề (Google hay sai: *high street* → “đường cao tốc”, *gentrification* → “sự hiền lành”), câu ví dụ và định nghĩa cho cụm từ, loại từ lạc đề lọt vào chủ đề.
+6. Dịch câu ví dụ sang tiếng Việt theo lô; mọi phản hồi được cache trên đĩa (`backend/data/crawl-cache/`) và có giới hạn tốc độ để lịch sự với các API miễn phí.
 
 Trang *The IELTS Dictionary* là sản phẩm có đăng nhập nên không crawl trực tiếp; app tái tạo mô hình “từ vựng theo chủ đề” của họ từ các nguồn mở trên. Oxford Learner's Dictionaries chặn rõ ràng các bot AI trong `robots.txt` nên cũng không dùng.
 
@@ -306,17 +325,20 @@ backend/
     lib/fluency.ts           đếm từ đệm, chỉ số trôi chảy
     data/                    collocation, nâng cấp từ, đề nói 4/3/2 (soạn tay)
     crawler/                 crawler bộ từ chủ đề
-  data/seed/topics.json      dữ liệu chủ đề đã crawl (nạp tự động lần đầu)
+  data/seed/topics.json      dữ liệu chủ đề đã crawl (nạp tự động lần đầu và mỗi khi file đổi)
   data/ngsl/                 New General Service List 1.2 (CC BY-SA 4.0)
 frontend/
-  public/                    sw.js (service worker nhận thông báo đẩy), manifest.webmanifest, icons/
+  public/                    sw.js (service worker nhận thông báo đẩy), manifest.webmanifest, icons/,
+                             emoji3d/ (ảnh 3D Fluent Emoji, MIT)
   src/
-    pages/                   Dashboard, Today, Explore, Channel, Library, Notebook, Phrases, Review, Topics, TopicDetail, WordProfilePage, Settings, Placement, Glossary
+    pages/                   Dashboard, Today, Progress, Admin (trang Quản trị), Explore, Channel, Library, Notebook, Phrases, Review, Topics, TopicDetail, WordProfilePage, Settings, Placement, Glossary
     pages/speaking/          luyện nói lại
     pages/fluency/           4/3/2
     pages/watch/             trang học video: player, phụ đề, transcript, shadowing, chép chính tả
     pages/practice/          hub, phiên luyện tập, trò ghép cặp
-    components/              UI cơ bản (Button, Term — thẻ giải thích thuật ngữ…), layout, hộp khởi động, thẻ video, popover tra từ, biểu đồ
+    components/              UI cơ bản (Button, Term — thẻ giải thích thuật ngữ, Emoji3D, HeroArt, Celebration…), layout, hộp khởi động, thẻ video, popover tra từ, biểu đồ
+    components/three/        cảnh 3D trang đăng nhập (three.js, tải lười)
+    components/topics/       tạo/sửa bộ từ, khung thêm từ (dán cả danh sách)
     hooks/                   YouTube player, nhận dạng giọng nói, ghi âm, phím tắt
     lib/                     API client, kiểu dữ liệu, so khớp từ (diff), phát âm, push.ts (Web Push), glossary.ts (nội dung giải thích thuật ngữ)
     index.css                design system: màu, font, bóng đổ, hiệu ứng, tiện ích (card, press, stagger…)
@@ -336,7 +358,8 @@ docker-compose.yml           chạy app; docker-compose.hymt.yml thêm model d�
 | Sổ từ | `GET/POST /api/words` · `GET /words/keys` · `GET/PATCH/DELETE /words/:id` · `POST /words/:id/reset` · `POST /words/bulk` · `GET /words/:id/occurrences` · `GET /words/export?format=csv|anki` |
 | Ôn tập | `GET /api/review/queue` · `POST /review/:id {rating}` · `POST /review/undo` · `GET /review/summary` |
 | Luyện tập | `GET /api/practice/session?mode=&source=&count=` · `POST /practice/answer` · `POST /practice/complete` |
-| Chủ đề | `GET /api/topics` · `GET /topics/:slug` · `POST /topics/:slug/words` · `GET /lexicon/:id` |
+| Chủ đề | `GET /api/topics` · `GET /topics/:slug` · `POST /topics/:slug/words` (đưa vào sổ) · `GET /lexicon/:id` |
+| Bộ từ của tôi / bộ chung | `POST /api/topics {name, description?, icon?, color?, shared?}` (shared chỉ admin) · `PATCH/DELETE /topics/:slug` · `POST /topics/:slug/entries {term, group?}` (tự tra nghĩa, phiên âm, ví dụ) · `DELETE /topics/:slug/entries/:lexiconId` |
 | Mẫu câu | `GET/POST /api/phrases` · `GET /phrases/suggest?sentence=` · `GET /phrases/video/:videoId` · `PATCH/DELETE /phrases/:id` · `POST /phrases/:id/review` |
 | Luyện nói | `GET /api/speaking/session?mode=cloze|delayed|own|vi` · `POST /speaking/attempts` · `POST /speaking/own-example` · `GET /speaking/stats` |
 | 4/3/2 | `GET /api/fluency/topics` · `GET/POST /fluency/sessions` · `GET/PATCH/DELETE /fluency/sessions/:id` · `POST /fluency/sessions/:id/rounds` · `PUT/GET /fluency/rounds/:id/audio` |
@@ -345,7 +368,8 @@ docker-compose.yml           chạy app; docker-compose.hymt.yml thêm model d�
 | Hôm nay | `GET /api/today` · `POST /today/skip` · `PUT /today/video` · `GET /review/warmup` (hộp khởi động) |
 | Thông báo đẩy | `GET /api/push/public-key` · `POST /push/subscribe` · `POST /push/unsubscribe` · `POST /push/test` |
 | Test vốn từ | `GET /api/placement/test` · `POST /placement/result` · `GET /placement/last` |
-| Khác | `GET /api/stats/overview` · `GET/PUT /api/settings` · `GET /api/health` (kèm `version`) |
+| Quản trị (chỉ admin) | `GET/PUT /api/admin/settings` · `GET /api/admin/users` · `PATCH /api/admin/users/:id {role}` · `POST /api/translate/hymt/test` |
+| Khác | `GET /api/stats/overview` · `GET/PUT /api/settings` (tuỳ chọn học tập của mỗi người) · `GET /api/health` (kèm `version`) |
 
 ## Ghi chú
 
@@ -353,6 +377,7 @@ docker-compose.yml           chạy app; docker-compose.hymt.yml thêm model d�
 - Nhận dạng giọng nói để chấm shadowing cần **Chrome hoặc Edge**; trình duyệt khác vẫn ghi âm để tự nghe lại.
 - Cấp độ CEFR của từ được ước lượng từ tần suất xuất hiện (Google Books Ngram qua Datamuse) — mang tính tham khảo.
 - Nguồn dữ liệu cho phần cách dùng từ: **WordNet 3.1** (Princeton, gói `wordnet-db`, chạy offline), **Datamuse API**, **Wiktionary** (CC BY-SA, nhãn văn phong), **NGSL 1.2** (Browne, Culligan & Phillips, CC BY-SA 4.0 — xem `backend/data/ngsl/README.md`). Danh sách collocation, nâng cấp từ và đề nói 4/3/2 do app tự soạn.
+- Đồ hoạ: ảnh 3D **Fluent Emoji** (Microsoft, MIT — `frontend/public/emoji3d/LICENSE.txt`), bảng màu dựa trên **Flexoki** (Steph Ango, MIT), cảnh 3D dựng bằng **three.js** (MIT).
 - Ghi âm 4/3/2 nằm trong `backend/data/recordings/<id người dùng>/` (không commit); xoá buổi luyện sẽ xoá luôn file ghi âm.
 
 ## Phát hành phiên bản mới

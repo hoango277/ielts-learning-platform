@@ -19,6 +19,8 @@ const Topics = lazy(() => import('./pages/Topics'));
 const TopicDetail = lazy(() => import('./pages/TopicDetail'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Today = lazy(() => import('./pages/Today'));
+const ProgressPage = lazy(() => import('./pages/Progress'));
+const Admin = lazy(() => import('./pages/Admin'));
 const Phrases = lazy(() => import('./pages/Phrases'));
 const Speaking = lazy(() => import('./pages/speaking/SpeakingPage'));
 const Fluency = lazy(() => import('./pages/fluency/FluencyPage'));
@@ -30,7 +32,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 function FullScreenLoader() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bg text-violet-500" role="status" aria-label="Đang tải">
+    <div className="flex min-h-dvh items-center justify-center bg-bg text-brand-500" role="status" aria-label="Đang tải">
       <Spinner className="h-8 w-8" />
     </div>
   );
@@ -75,6 +77,8 @@ function AppRoutes() {
           <Route path="topics/:slug" element={<TopicDetail />} />
           <Route path="settings" element={<Settings />} />
           <Route path="today" element={<Today />} />
+          <Route path="progress" element={<ProgressPage />} />
+          <Route path="admin" element={<Admin />} />
           <Route path="phrases" element={<Phrases />} />
           <Route path="speaking" element={<Speaking />} />
           <Route path="fluency" element={<Fluency />} />

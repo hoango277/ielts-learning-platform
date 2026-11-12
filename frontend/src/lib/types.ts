@@ -280,6 +280,20 @@ export interface Topic {
   inNotebook: number;
   mastered: number;
   levels?: Record<string, number>;
+  /** "Bộ từ của tôi" — bộ riêng của người đang đăng nhập */
+  mine: boolean;
+  /** seed = bộ từ IELTS có sẵn · admin = bộ chung do quản trị viên tạo · user = bộ riêng */
+  source: 'seed' | 'admin' | 'user';
+  /** Người đang đăng nhập được sửa (bộ của mình; bộ chung nếu là quản trị viên) */
+  editable: boolean;
+}
+
+export interface TopicInput {
+  name: string;
+  nameVi?: string;
+  description?: string;
+  icon?: string;
+  color?: string;
 }
 
 export interface LexiconEntry {
@@ -299,9 +313,11 @@ export interface LexiconEntry {
   collocations: string[];
   frequency: number | null;
   level: string | null;
-  group: 'core' | 'related' | null;
+  group: 'core' | 'related' | 'advanced' | null;
   wordId: number | null;
   status: WordStatus | null;
+  /** Ai thêm từ này vào bộ: seed (dữ liệu sẵn) | admin | user */
+  addedBy?: 'seed' | 'admin' | 'user' | null;
 }
 
 export interface Achievement {
@@ -349,14 +365,20 @@ export interface Overview {
   wordOfTheDay: LexiconEntry | null;
 }
 
-export interface Settings {
+/** Cấu hình chung của máy chủ — chỉ quản trị viên xem/sửa ở trang Quản trị */
+export interface ServerSettings {
   translateProvider: 'auto' | 'google' | 'hymt';
-  targetLang: string;
   hymtBaseUrl: string;
   hymtModel: string;
   hymtApiKey: string;
   hymtPromptStyle: 'hymt2' | 'hymt15';
   hymtConfigured: boolean;
+  allowRegistration: boolean;
+}
+
+/** Cài đặt riêng của người dùng — tuỳ chọn học tập */
+export interface Settings {
+  targetLang: string;
   dailyGoalXp: number;
   newCardsPerDay: number;
   requestRetention: number;
@@ -430,7 +452,14 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  /** admin: quản trị viên (cấu hình máy chủ, người dùng); user: chỉ học */
+  role: 'admin' | 'user';
   createdAt: string;
+}
+
+export interface AdminUser extends User {
+  lastLoginAt: string | null;
+  words: number;
 }
 
 // ---------- Mẫu câu & cụm từ ----------

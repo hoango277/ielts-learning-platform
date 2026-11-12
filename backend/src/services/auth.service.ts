@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import { config } from '../config.ts';
-import { get, run, tx } from '../db/index.ts';
+import { all, get, run, tx } from '../db/index.ts';
 import { USER_TABLES } from '../db/schema.ts';
+import { getServerSettings } from './server-settings.service.ts';
 import { clearSettingsCache } from './settings.service.ts';
 
 // ---------- Mật khẩu: scrypt (có sẵn trong Node), salt ngẫu nhiên, so sánh chống timing attack ----------
@@ -67,10 +68,14 @@ export class AuthError extends Error {
   }
 }
 
+/** admin: quản trị viên — cấu hình dịch & mô hình AI, đăng ký tài khoản, người dùng. user: chỉ học. */
+export type Role = 'admin' | 'user';
+
 export interface PublicUser {
   id: number;
   email: string;
   name: string;
+  role: Role;
   createdAt: string;
 }
 
@@ -78,14 +83,19 @@ interface UserRow {
   id: number;
   email: string;
   name: string;
+  role: string;
   password_hash: string;
   created_at: string;
+  last_login_at: string | null;
 }
 
-const toPublic = (u: Pick<UserRow, 'id' | 'email' | 'name' | 'created_at'>): PublicUser => ({
+const toRole = (r: string | null | undefined): Role => (r === 'admin' ? 'admin' : 'user');
+
+const toPublic = (u: Pick<UserRow, 'id' | 'email' | 'name' | 'role' | 'created_at'>): PublicUser => ({
   id: u.id,
   email: u.email,
   name: u.name,
+  role: toRole(u.role),
   createdAt: u.created_at,
 });
 
@@ -129,8 +139,8 @@ export interface ActiveSession {
 /** Tra phiên từ token cookie; gia hạn khi đã dùng quá nửa thời hạn. */
 export function getSession(token: string): ActiveSession | null {
   const id = hashToken(token);
-  const row = get<{ ttl_sec: number; expires_at: string; user_id: number; email: string; name: string; created_at: string }>(
-    `SELECT s.ttl_sec, s.expires_at, u.id AS user_id, u.email, u.name, u.created_at
+  const row = get<{ ttl_sec: number; expires_at: string; user_id: number; email: string; name: string; role: string; created_at: string }>(
+    `SELECT s.ttl_sec, s.expires_at, u.id AS user_id, u.email, u.name, u.role, u.created_at
        FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?`,
     id,
   );
@@ -142,13 +152,16 @@ export function getSession(token: string): ActiveSession | null {
     return null;
   }
   let renewed = false;
-  if (expires - now < (row.ttl_sec * 1000) / 2) {
+  // Gia hạn khi phiên đã dùng được ≥ 10 phút (hoặc 1/10 thời hạn nếu ngắn hơn) → hết hạn đúng "12 giờ / 30 ngày không hoạt động"
+  // (trước đây chỉ gia hạn khi còn dưới nửa thời hạn, nên phiên 12 giờ có thể hết sau 6 giờ không hoạt động)
+  const ttlMs = row.ttl_sec * 1000;
+  if (ttlMs - (expires - now) > Math.min(10 * 60_000, ttlMs / 10)) {
     run('UPDATE sessions SET expires_at = ? WHERE id = ?', new Date(now + row.ttl_sec * 1000).toISOString(), id);
     renewed = true;
   }
   return {
     sessionId: id,
-    user: toPublic({ id: row.user_id, email: row.email, name: row.name, created_at: row.created_at }),
+    user: toPublic({ id: row.user_id, email: row.email, name: row.name, role: row.role, created_at: row.created_at }),
     ttl: row.ttl_sec,
     persistent: row.ttl_sec === REMEMBER_TTL,
     renewed,
@@ -187,7 +200,8 @@ function recordFailure(key: string) {
 
 export function authStatus() {
   const n = get<{ n: number }>('SELECT COUNT(*) AS n FROM users')!.n;
-  return { hasUsers: n > 0, registrationOpen: n === 0 || config.allowRegistration };
+  // Cho phép đăng ký: admin bật/tắt ở trang Quản trị (mặc định theo ALLOW_REGISTRATION). Tài khoản đầu tiên luôn tạo được.
+  return { hasUsers: n > 0, registrationOpen: n === 0 || getServerSettings().allowRegistration };
 }
 
 /** Dữ liệu học tạo trước khi có tài khoản (user_id = 0) thuộc về tài khoản đầu tiên. */
@@ -206,12 +220,16 @@ export async function register(input: unknown, userAgent?: string) {
   const { userId, claimed } = tx(() => {
     if (get('SELECT 1 FROM users WHERE email = ?', data.email)) throw new AuthError(409, 'Email này đã được đăng ký.');
     const isFirst = get<{ n: number }>('SELECT COUNT(*) AS n FROM users')!.n === 0;
+    // Kiểm tra lại trong transaction: nhiều yêu cầu đăng ký cùng lúc khi đăng ký đang tắt không được lọt qua
+    if (!isFirst && !getServerSettings().allowRegistration) throw new AuthError(403, 'Đăng ký tài khoản mới đang bị tắt trên máy chủ này.');
+    // Tài khoản đầu tiên của máy chủ là quản trị viên
     const res = run(
-      'INSERT INTO users (email, name, password_hash, last_login_at) VALUES (?, ?, ?, ?)',
+      'INSERT INTO users (email, name, password_hash, last_login_at, role) VALUES (?, ?, ?, ?, ?)',
       data.email,
       data.name,
       hash,
       nowIso(),
+      isFirst ? 'admin' : 'user',
     );
     const id = Number(res.lastInsertRowid);
     return { userId: id, claimed: isFirst ? claimLegacyData(id) : 0 };
@@ -224,13 +242,12 @@ export async function login(input: unknown, ip: string, userAgent?: string) {
   const data = loginSchema.parse(input);
   const key = `${ip}|${data.email}`;
   assertNotLocked(key);
+  // Tính lượt thử NGAY (trước khi chờ scrypt): loạt yêu cầu song song không vượt được giới hạn. Đúng mật khẩu thì xoá.
+  recordFailure(key);
   const user = get<UserRow>('SELECT * FROM users WHERE email = ?', data.email);
   // Vẫn chạy scrypt khi email không tồn tại để thời gian phản hồi như nhau (không lộ email nào đã đăng ký)
   const ok = user ? await verifyPassword(data.password, user.password_hash) : (await hashPassword(data.password), false);
-  if (!user || !ok) {
-    recordFailure(key);
-    throw new AuthError(401, 'Email hoặc mật khẩu không đúng.');
-  }
+  if (!user || !ok) throw new AuthError(401, 'Email hoặc mật khẩu không đúng.');
   failures.delete(key);
   run('UPDATE users SET last_login_at = ? WHERE id = ?', nowIso(), user.id);
   run('DELETE FROM sessions WHERE expires_at < ?', nowIso());
@@ -253,4 +270,34 @@ export async function changePassword(userId: number, currentSessionId: string, i
   run('UPDATE users SET password_hash = ? WHERE id = ?', await hashPassword(data.newPassword), userId);
   const res = run('DELETE FROM sessions WHERE user_id = ? AND id != ?', userId, currentSessionId);
   return { ok: true, otherSessionsClosed: Number(res.changes) };
+}
+
+// ---------- Quản trị người dùng (chỉ admin gọi — route đã kiểm tra quyền) ----------
+
+export interface AdminUserRow extends PublicUser {
+  lastLoginAt: string | null;
+  words: number;
+}
+
+export function listUsers(): AdminUserRow[] {
+  return all<UserRow & { words: number }>(
+    `SELECT u.*, (SELECT COUNT(*) FROM words w WHERE w.user_id = u.id) AS words FROM users u ORDER BY u.id`,
+  ).map((u) => ({ ...toPublic(u), lastLoginAt: u.last_login_at, words: u.words }));
+}
+
+export const roleSchema = z.object({ role: z.enum(['admin', 'user']) });
+
+/** Đổi vai trò. Không cho bỏ quyền admin cuối cùng (máy chủ luôn còn người quản trị). */
+export function setUserRole(userId: number, input: unknown) {
+  const { role } = roleSchema.parse(input);
+  return tx(() => {
+    const user = get<UserRow>('SELECT * FROM users WHERE id = ?', userId);
+    if (!user) throw new AuthError(404, 'Không tìm thấy người dùng.');
+    if (toRole(user.role) === 'admin' && role === 'user') {
+      const admins = get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'")!.n;
+      if (admins <= 1) throw new AuthError(400, 'Máy chủ cần ít nhất một quản trị viên — hãy cấp quyền cho người khác trước.');
+    }
+    run('UPDATE users SET role = ? WHERE id = ?', role, userId);
+    return toPublic(get<UserRow>('SELECT * FROM users WHERE id = ?', userId)!);
+  });
 }

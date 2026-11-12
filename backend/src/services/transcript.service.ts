@@ -299,12 +299,29 @@ function load(videoId: string, slot: string): Transcript | undefined {
   return row ? (JSON.parse(row.data) as Transcript) : undefined;
 }
 
+/*
+ * Phụ đề tải lên là của riêng từng tài khoản. Bảng transcripts không có cột user_id (khoá chính video_id + lang)
+ * nên lưu ở ô `upload:<userId>`. Ô 'upload' dùng chung là dữ liệu của bản cũ — chỉ còn đọc để tương thích.
+ */
+const LEGACY_UPLOAD = 'upload';
+const uploadSlot = (userId: number) => `upload:${userId}`;
+
+/** Người dùng của request hiện tại, hoặc null khi chạy ngoài request (vd. hàng đợi phân tích độ khó). */
+function userIdOrNull(): number | null {
+  try {
+    return currentUserId();
+  } catch {
+    return null;
+  }
+}
+
 const once = dedupe<Transcript>();
 
 export async function getTranscript(videoId: string, opts: { trackId?: string; refresh?: boolean } = {}): Promise<Transcript> {
   if (!opts.refresh) {
     if (!opts.trackId) {
-      const uploaded = load(videoId, 'upload');
+      const uid = userIdOrNull();
+      const uploaded = (uid !== null ? load(videoId, uploadSlot(uid)) : undefined) ?? load(videoId, LEGACY_UPLOAD);
       if (uploaded) return uploaded;
     }
     const cached = load(videoId, opts.trackId ?? 'default');
@@ -357,12 +374,37 @@ export function saveUploadedTranscript(videoId: string, content: string): Transc
     tracks: previous?.tracks ?? [],
   };
   upsertVideoMeta({ id: videoId, thumbnail: thumbFor(videoId) });
-  save(transcript, 'upload');
+  save(transcript, uploadSlot(currentUserId()));
   return transcript;
 }
 
 export function deleteUploadedTranscript(videoId: string) {
-  run("DELETE FROM transcripts WHERE video_id = ? AND lang = 'upload'", videoId);
+  const uid = currentUserId();
+  tx(() => {
+    run('DELETE FROM transcripts WHERE video_id = ? AND lang = ?', videoId, uploadSlot(uid));
+    // File tải lên dùng chung của bản cũ: giao lại một bản cho từng tài khoản khác đã mở video này (họ vẫn thấy như trước),
+    // rồi mới bỏ bản chung — để người này chuyển về phụ đề YouTube mà không xoá mất phụ đề của người khác
+    const legacy = get<{ kind: string; track_name: string | null; data: string; fetched_at: string }>(
+      'SELECT kind, track_name, data, fetched_at FROM transcripts WHERE video_id = ? AND lang = ?',
+      videoId,
+      LEGACY_UPLOAD,
+    );
+    if (!legacy) return;
+    const others = all<{ user_id: number }>('SELECT user_id FROM user_videos WHERE video_id = ? AND user_id != ?', videoId, uid);
+    for (const o of others) {
+      run(
+        `INSERT INTO transcripts (video_id, lang, kind, track_name, data, fetched_at) VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(video_id, lang) DO NOTHING`,
+        videoId,
+        uploadSlot(o.user_id),
+        legacy.kind,
+        legacy.track_name,
+        legacy.data,
+        legacy.fetched_at,
+      );
+    }
+    run('DELETE FROM transcripts WHERE video_id = ? AND lang = ?', videoId, LEGACY_UPLOAD);
+  });
 }
 
 /** Tìm câu chứa từ trong các video đã học (giống YouGlish). */

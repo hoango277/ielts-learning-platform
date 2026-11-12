@@ -1,4 +1,4 @@
-import { Timer } from 'lucide-react';
+import { HelpCircle, Timer } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PracticeItem } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -57,7 +57,8 @@ export function MatchGame({ items, onFinish }: { items: PracticeItem[]; onFinish
       setMatched((m) => new Set(m).add(tile.key));
       setSelected(null);
     } else {
-      wrongKeys.current.add(selected.key).add(tile.key);
+      // Chỉ tính sai cho từ bạn đang cố ghép (ô chọn trước) — ô bấm nhầm thứ hai chưa chắc là từ bạn không biết
+      wrongKeys.current.add(selected.key);
       setMistakes((m) => m + 1);
       setWrong([selected.id, tile.id]);
       setTimeout(() => {
@@ -65,6 +66,12 @@ export function MatchGame({ items, onFinish }: { items: PracticeItem[]; onFinish
         setSelected(null);
       }, 600);
     }
+  };
+
+  // Bỏ cuộc: các cặp chưa ghép tính là chưa nhớ → màn kết quả liệt kê từ + nghĩa để xem lại
+  const giveUp = () => {
+    for (const i of items) if (!matched.has(i.key)) wrongKeys.current.add(i.key);
+    onFinish({ seconds: Math.round((Date.now() - startedAt.current) / 1000), mistakes, wrongKeys: wrongKeys.current });
   };
 
   const seconds = (now - startedAt.current) / 1000;
@@ -92,9 +99,9 @@ export function MatchGame({ items, onFinish }: { items: PracticeItem[]; onFinish
               className={cn(
                 'flex min-h-[84px] items-center justify-center rounded-2xl border-2 p-3 text-center text-sm font-semibold shadow-[0_4px_0_0_var(--edge)] transition-all duration-200 [--edge:var(--border)]',
                 done && 'scale-90 border-transparent bg-emerald-100 text-emerald-700 opacity-0 shadow-none dark:bg-emerald-500/15',
-                !done && !isSel && !isWrong && 'border-line bg-surface text-ink hover:border-pink-300 hover:[--edge:#f9a8d4] active:translate-y-[3px] active:shadow-[0_1px_0_0_var(--edge)]',
-                isSel && 'translate-y-[2px] border-pink-500 bg-pink-50 text-pink-700 shadow-[0_2px_0_0_var(--edge)] [--edge:#ec4899] dark:bg-pink-500/15 dark:text-pink-200',
-                isWrong && 'animate-shake border-rose-500 bg-rose-50 text-rose-700 [--edge:#f43f5e] dark:bg-rose-500/15',
+                !done && !isSel && !isWrong && 'border-line bg-surface text-ink hover:border-pink-300 hover:[--edge:var(--color-pink-300)] active:translate-y-[3px] active:shadow-[0_1px_0_0_var(--edge)]',
+                isSel && 'translate-y-[2px] border-pink-500 bg-pink-50 text-pink-700 shadow-[0_2px_0_0_var(--edge)] [--edge:var(--color-pink-500)] dark:bg-pink-500/15 dark:text-pink-200',
+                isWrong && 'animate-shake border-rose-500 bg-rose-50 text-rose-700 [--edge:var(--color-rose-500)] dark:bg-rose-500/15',
                 t.kind === 'term' && !done && 'font-display text-base font-extrabold',
               )}
             >
@@ -103,6 +110,13 @@ export function MatchGame({ items, onFinish }: { items: PracticeItem[]; onFinish
           );
         })}
       </div>
+      {matched.size < items.length && (
+        <div className="flex justify-center">
+          <button type="button" onClick={giveUp} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:bg-surface-2 hover:text-ink">
+            <HelpCircle className="h-4 w-4" /> Không biết — xem đáp án
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -42,7 +42,7 @@ export function DiffView({ result }: { result: DiffResult }) {
 
 export function ScorePill({ score }: { score: number }) {
   const pct = Math.round(score * 100);
-  const tone = pct >= 90 ? 'from-emerald-500 to-teal-400' : pct >= 70 ? 'from-sky-500 to-violet-500' : pct >= 50 ? 'from-amber-500 to-orange-400' : 'from-rose-500 to-pink-500';
+  const tone = pct >= 90 ? 'from-emerald-500 to-emerald-600' : pct >= 70 ? 'from-brand-500 to-brand-600' : pct >= 50 ? 'from-amber-500 to-amber-600' : 'from-rose-500 to-rose-600';
   const label = pct >= 90 ? 'Xuất sắc!' : pct >= 70 ? 'Tốt lắm' : pct >= 50 ? 'Khá ổn' : 'Thử lại nhé';
   return (
     <span className={cn('inline-flex items-center gap-2 rounded-full bg-linear-to-r px-3 py-1 text-sm font-bold text-white', tone)}>
@@ -88,14 +88,18 @@ export function ShadowingPanel({
   const indexRef = useRef(index);
   indexRef.current = index;
   const stopTimer = useRef<number | undefined>(undefined);
+  const advanceTimer = useRef<number | undefined>(undefined);
 
-  // Đổi câu → reset kết quả
+  // Đổi câu → reset kết quả (và huỷ lượt tự chuyển câu còn treo, kẻo nhảy thêm một câu)
   useEffect(() => {
+    window.clearTimeout(advanceTimer.current);
     setResult(null);
     setHeard('');
     setPhase('idle');
     rec.reset();
   }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => window.clearTimeout(advanceTimer.current), []);
 
   const finish = useCallback(
     (text: string) => {
@@ -115,7 +119,12 @@ export function ShadowingPanel({
       setBest((b) => ({ ...b, [indexRef.current]: Math.max(b[indexRef.current] ?? 0, r.score) }));
       api.sentencePractice(videoId, { kind: 'shadow', score: r.score }).catch(() => undefined);
       if (autoRef.current && r.score >= 0.8 && indexRef.current < sentences.length - 1) {
-        window.setTimeout(() => setIndex(indexRef.current + 1), 1400);
+        const from = indexRef.current;
+        window.clearTimeout(advanceTimer.current);
+        // Chỉ chuyển câu nếu người học chưa tự đổi câu trong lúc chờ
+        advanceTimer.current = window.setTimeout(() => {
+          if (indexRef.current === from) setIndex(from + 1);
+        }, 1400);
       }
     },
     [rec, sentences, setIndex, sr.supported, videoId],

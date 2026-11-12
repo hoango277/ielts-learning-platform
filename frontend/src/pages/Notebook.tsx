@@ -25,7 +25,7 @@ import { AudioButton, Highlight, StatusBadge } from '../components/word/bits';
 import { LookupCard } from '../components/word/LookupCard';
 import { WordProfileView } from '../components/word/WordProfileView';
 import { useDebounced } from '../hooks/misc';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import type { Word } from '../lib/types';
 import { cn, formatTime, posLabel, relativeTime, STATUS_META } from '../lib/utils';
 
@@ -47,6 +47,10 @@ function useInvalidateWords() {
     qc.invalidateQueries({ queryKey: ['word'] });
     qc.invalidateQueries({ queryKey: ['word-keys'] });
     qc.invalidateQueries({ queryKey: ['overview'] });
+    // Kết quả tra từ (cache 10 phút) còn ghi "Đã có trong sổ", hàng đợi ôn / kế hoạch hôm nay còn đếm từ cũ
+    qc.invalidateQueries({ queryKey: ['lookup'] });
+    qc.invalidateQueries({ queryKey: ['review-queue'] });
+    qc.invalidateQueries({ queryKey: ['today'] });
   };
 }
 
@@ -94,7 +98,17 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[])
 
 function WordDetail({ id, onClose }: { id: number; onClose: () => void }) {
   const invalidate = useInvalidateWords();
-  const { data: w, isPending } = useQuery({ queryKey: ['word', id], queryFn: () => api.word(id) });
+  const {
+    data: w,
+    isPending,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['word', id],
+    queryFn: () => api.word(id),
+    // Từ không tồn tại (đã xoá, link cũ) → báo ngay, không thử lại
+    retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 1,
+  });
   const occ = useQuery({ queryKey: ['word', id, 'occ'], queryFn: () => api.occurrences(id) });
   const [meaning, setMeaning] = useState('');
   const [note, setNote] = useState('');
@@ -150,7 +164,22 @@ function WordDetail({ id, onClose }: { id: number; onClose: () => void }) {
         )
       }
     >
-      {isPending || !w ? (
+      {!w && error ? (
+        error instanceof ApiError && error.status === 404 ? (
+          <EmptyState
+            icon="🔍"
+            title="Không tìm thấy từ này"
+            description="Có thể từ đã bị xoá khỏi sổ."
+            action={
+              <Button variant="outline" onClick={onClose}>
+                Đóng
+              </Button>
+            }
+          />
+        ) : (
+          <ErrorBox error={error} onRetry={() => refetch()} />
+        )
+      ) : isPending || !w ? (
         <div className="space-y-3">
           <Skeleton className="h-8 w-40" />
           <Skeleton className="h-24" />
@@ -160,7 +189,7 @@ function WordDetail({ id, onClose }: { id: number; onClose: () => void }) {
         <div className="space-y-5">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={w.status} />
-            {w.pos && <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{posLabel(w.pos)}</Badge>}
+            {w.pos && <Badge className="bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">{posLabel(w.pos)}</Badge>}
             {w.ipa && <span className="font-ipa text-sm text-muted">{w.ipa}</span>}
             <AudioButton term={w.term} audio={w.audio} label="Nghe" />
             <button
@@ -370,11 +399,27 @@ export default function Notebook() {
   const counts = list.data?.counts ?? {};
   const totalPages = Math.max(1, Math.ceil((list.data?.total ?? 0) / LIMIT));
   const allSelected = items.length > 0 && items.every((w) => selected.has(w.id));
+  // Xoá/đổi trạng thái làm trang cuối trống → lùi về trang cuối còn từ (nếu không sẽ kẹt ở trang trống, không có thanh chuyển trang)
+  const isPlaceholder = list.isPlaceholderData;
+  useEffect(() => {
+    if (list.data && !isPlaceholder && page > totalPages) setPage(totalPages);
+  }, [list.data, isPlaceholder, page, totalPages]);
+  // Bộ lọc tìm kiếm/nguồn/tag cũng áp vào số đếm → counts.all = 0 chưa chắc là sổ trống
+  const filtering = Boolean(debouncedQ.trim() || source || tag);
+  // Giữ tag đang lọc trong danh sách kể cả khi không còn từ nào mang tag đó, để còn bỏ chọn được
+  const tagOptions = tags.data ?? [];
+  const tagChoices = tag && !tagOptions.includes(tag) ? [tag, ...tagOptions] : tagOptions;
   const setStatus = (s: string) => {
     const next = new URLSearchParams(params);
     if (s === 'all') next.delete('status');
     else next.set('status', s);
     setParams(next);
+  };
+  const clearFilters = () => {
+    setQ('');
+    setSource('');
+    setTag('');
+    setStatus('all');
   };
   const openWord = (id: number | null) => {
     const next = new URLSearchParams(params);
@@ -452,10 +497,10 @@ export default function Notebook() {
           <option value="topic">Từ chủ đề</option>
           <option value="manual">Tự thêm</option>
         </Select>
-        {(tags.data?.length ?? 0) > 0 && (
+        {tagChoices.length > 0 && (
           <Select value={tag} onChange={(e) => setTag(e.target.value)} className="w-auto" aria-label="Tag">
             <option value="">Mọi tag</option>
-            {tags.data!.map((t) => (
+            {tagChoices.map((t) => (
               <option key={t} value={t}>
                 #{t}
               </option>
@@ -472,8 +517,8 @@ export default function Notebook() {
       </div>
 
       {selected.size > 0 && (
-        <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-violet-200 bg-violet-50 p-2.5 shadow-sm dark:border-violet-500/30 dark:bg-violet-950">
-          <span className="px-2 text-sm font-semibold text-violet-700 dark:text-violet-200">Đã chọn {selected.size}</span>
+        <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 p-2.5 shadow-sm dark:border-brand-500/30 dark:bg-brand-950">
+          <span className="px-2 text-sm font-semibold text-brand-700 dark:text-brand-200">Đã chọn {selected.size}</span>
           <Button size="sm" variant="success" icon={<Check className="h-4 w-4" />} onClick={() => bulk.mutate('known')}>
             Đã thuộc
           </Button>
@@ -506,16 +551,22 @@ export default function Notebook() {
       ) : items.length === 0 ? (
         <EmptyState
           icon="📒"
-          title={counts.all ? 'Không có từ nào khớp bộ lọc' : 'Sổ từ còn trống'}
-          description={counts.all ? 'Thử bỏ bớt bộ lọc.' : 'Lưu từ khi xem video, thêm từ bộ chủ đề, hoặc bấm “Thêm từ”.'}
+          title={filtering || counts.all ? 'Không có từ nào khớp bộ lọc' : 'Sổ từ còn trống'}
+          description={filtering || counts.all ? 'Thử bỏ bớt bộ lọc.' : 'Lưu từ khi xem video, thêm từ bộ chủ đề, hoặc bấm “Thêm từ”.'}
           action={
-            !counts.all && (
-              <div className="flex gap-2">
-                <LinkButton to="/topics" variant="soft">Bộ từ chủ đề</LinkButton>
-                <Button variant="primary" onClick={() => setAdding(true)}>
-                  Thêm từ
-                </Button>
-              </div>
+            filtering ? (
+              <Button variant="outline" icon={<X className="h-4 w-4" />} onClick={clearFilters}>
+                Bỏ bộ lọc
+              </Button>
+            ) : (
+              !counts.all && (
+                <div className="flex gap-2">
+                  <LinkButton to="/topics" variant="soft">Bộ từ chủ đề</LinkButton>
+                  <Button variant="primary" onClick={() => setAdding(true)}>
+                    Thêm từ
+                  </Button>
+                </div>
+              )
             )
           }
         />
@@ -527,7 +578,7 @@ export default function Notebook() {
               checked={allSelected}
               onChange={() => setSelected(allSelected ? new Set() : new Set(items.map((w) => w.id)))}
               aria-label="Chọn tất cả"
-              className="h-4 w-4 accent-violet-600"
+              className="h-4 w-4 accent-brand-600"
             />
             <span className="flex-1">Từ</span>
             <span className="hidden w-32 md:block">Trạng thái</span>
@@ -536,7 +587,7 @@ export default function Notebook() {
           </div>
           <ul className="divide-y divide-line">
             {items.map((w) => (
-              <li key={w.id} className={cn('flex items-center gap-3 px-4 py-3 transition hover:bg-surface-2/60', selected.has(w.id) && 'bg-violet-50/60 dark:bg-violet-500/5')}>
+              <li key={w.id} className={cn('flex items-center gap-3 px-4 py-3 transition hover:bg-surface-2/60', selected.has(w.id) && 'bg-brand-50/60 dark:bg-brand-500/5')}>
                 <input
                   type="checkbox"
                   checked={selected.has(w.id)}
@@ -549,7 +600,7 @@ export default function Notebook() {
                     })
                   }
                   aria-label={`Chọn ${w.term}`}
-                  className="h-4 w-4 accent-violet-600"
+                  className="h-4 w-4 accent-brand-600"
                 />
                 <button type="button" onClick={() => openWord(w.id)} className="min-w-0 flex-1 text-left">
                   <span className="flex flex-wrap items-center gap-x-2">

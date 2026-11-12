@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../components/ui/Button';
+import { HeroArt } from '../components/ui/HeroArt';
 import { ConfirmDialog, Modal } from '../components/ui/Modal';
 import { Badge, Card, EmptyState, ErrorBox, Field, Input, Skeleton } from '../components/ui/primitives';
 import { Term } from '../components/ui/Term';
@@ -17,7 +18,7 @@ import { ChunkSentence } from '../components/phrase/ChunkSentence';
 const STATUS: Record<PhraseStatus, { label: string; className: string }> = {
   new: { label: 'Mới', className: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
   learning: { label: 'Đang học', className: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200' },
-  reviewing: { label: 'Đang ôn', className: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200' },
+  reviewing: { label: 'Đang ôn', className: 'bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200' },
   mastered: { label: 'Thành thạo', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
 };
 
@@ -160,6 +161,8 @@ export default function Phrases() {
     onSuccess: () => {
       toast.success('Đã xoá mẫu câu');
       qc.invalidateQueries({ queryKey: ['phrases'] });
+      // Bỏ đánh dấu "đã lưu" trên phụ đề của video chứa câu này
+      qc.invalidateQueries({ queryKey: ['video-phrases'] });
     },
   });
   const counts = list.data?.counts ?? {};
@@ -167,15 +170,13 @@ export default function Phrases() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-fuchsia-500 via-pink-500 to-orange-400 p-6 text-white shadow-[0_14px_34px_-12px_rgb(236_72_153/0.6)] sm:p-8">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 animate-float-slow rounded-full bg-amber-200/30 blur-2xl [animation-delay:-4s]" />
-        <h1 className="relative flex items-center gap-2 text-2xl font-black sm:text-3xl">
-          Sổ mẫu câu 💬 <Term k="phrase" icon className="text-white/80 hover:bg-white/20 hover:text-white dark:hover:text-white" />
+      <section className="relative overflow-hidden rounded-3xl bg-hero [--hero-glow:var(--color-fuchsia-400)] p-6 text-white shadow-glow sm:p-8">
+        <HeroArt items={['💬', '📝', '🔖']} />
+        <h1 className="pr-14 xl:pr-0 relative flex items-center gap-2 text-2xl font-black sm:text-3xl">
+          Sổ mẫu câu <Term k="phrase" icon className="text-white/80 hover:bg-white/20 hover:text-white dark:hover:text-white" />
         </h1>
-        <p className="relative mt-1 max-w-2xl text-sm text-white/90">
-          Học theo cụm từ và theo câu thay vì từ đơn lẻ: lưu câu hay từ phụ đề (nút <BookmarkPlus className="inline h-4 w-4" /> hoặc phím B), chọn cụm cần học. Khi ôn, bạn nghe
-          lại đúng giọng người nói trong video.
+        <p className="relative mt-1 max-w-xl text-sm text-white/90">
+          Lưu câu hay từ phụ đề (nút <BookmarkPlus className="inline h-4 w-4" /> hoặc phím B) để học theo cụm và nghe lại đúng giọng người nói.
         </p>
         <div className="relative mt-4 flex flex-wrap gap-2">
           <LinkButton to="/review" variant="secondary" icon={<Layers className="h-4 w-4" />} className="bg-white/90 text-fuchsia-700 hover:bg-white">

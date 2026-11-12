@@ -31,7 +31,7 @@ function Result({ r, onRetry }: { r: PlacementResult; onRetry: () => void }) {
     <Card className="mx-auto max-w-2xl space-y-5 p-6 sm:p-8">
       <div className="text-center">
         <p className="text-xs font-bold uppercase tracking-widest text-muted">Kết quả ước lượng</p>
-        <p className="mt-1 animate-bounce-in font-display text-6xl font-black text-gradient">{r.level}</p>
+        <p className="mt-1 animate-bounce-in font-display text-6xl font-black text-brand-600 dark:text-brand-300">{r.level}</p>
         <p className="mt-1 text-sm text-muted">
           khoảng <CountUp value={r.size} /> từ (ước tính thô) · <Term k="cefr">mức {r.level} nghĩa là gì?</Term>
         </p>
@@ -113,7 +113,7 @@ export default function Placement() {
     return (
       <Card className="mx-auto max-w-2xl space-y-4 p-6 sm:p-8">
         <div className="flex items-center gap-3">
-          <span className="icon-tile flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-400 text-white">
+          <span className="icon-tile flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-emerald-600 text-white">
             <Gauge className="h-6 w-6" />
           </span>
           <div>
@@ -150,7 +150,17 @@ export default function Placement() {
         </span>
       </div>
       <Card className="flex min-h-64 flex-col items-center justify-center gap-6 p-8">
-        {submit.isPending || !word ? (
+        {submit.isError && !word ? (
+          // Gửi kết quả lỗi (mất mạng, máy chủ lỗi…) → giữ nguyên câu trả lời, cho gửi lại
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="font-semibold text-ink">Chưa tính được kết quả.</p>
+            {submit.error.message && <p className="text-sm text-rose-500">{submit.error.message}</p>}
+            <p className="text-sm text-muted">Câu trả lời của bạn vẫn được giữ lại — bấm Thử lại để gửi lần nữa.</p>
+            <Button variant="primary" icon={<RotateCcw className="h-4 w-4" />} onClick={() => submit.mutate(answers)}>
+              Thử lại
+            </Button>
+          </div>
+        ) : submit.isPending || !word ? (
           <p className="text-muted">Đang tính kết quả…</p>
         ) : (
           <>
@@ -161,7 +171,7 @@ export default function Placement() {
               <button
                 type="button"
                 onClick={() => answer(false)}
-                className={cn('press flex flex-col items-center gap-1 rounded-2xl border-2 border-line bg-surface py-4 font-display font-extrabold text-ink [--edge:var(--border)] hover:border-rose-300 hover:[--edge:#fda4af]')}
+                className={cn('press flex flex-col items-center gap-1 rounded-2xl border-2 border-line bg-surface py-4 font-display font-extrabold text-ink [--edge:var(--border)] hover:border-rose-300 hover:[--edge:var(--color-rose-300)]')}
               >
                 <X className="h-6 w-6 text-rose-500" /> Không biết
                 <span className="text-[11px] font-normal text-muted">
@@ -171,7 +181,7 @@ export default function Placement() {
               <button
                 type="button"
                 onClick={() => answer(true)}
-                className="press flex flex-col items-center gap-1 rounded-2xl border-2 border-emerald-400 bg-emerald-50 py-4 font-display font-extrabold text-emerald-800 [--edge:#34d399] hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:[--edge:#047857]"
+                className="press flex flex-col items-center gap-1 rounded-2xl border-2 border-emerald-400 bg-emerald-50 py-4 font-display font-extrabold text-emerald-800 [--edge:var(--color-emerald-400)] hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:[--edge:var(--color-emerald-700)]"
               >
                 <Check className="h-6 w-6" /> Biết
                 <span className="text-[11px] font-normal opacity-80">

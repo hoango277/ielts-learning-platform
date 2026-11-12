@@ -23,7 +23,8 @@ export default function WordProfilePage() {
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Xem hồ sơ từ khác…" className="pl-9" aria-label="Tra hồ sơ từ" />
       </form>
       <Card className="p-5 sm:p-7">
-        <WordProfileView key={term} term={decodeURIComponent(term)} />
+        {/* react-router đã giải mã tham số đường dẫn; giải mã lần nữa sẽ lỗi với từ có dấu "%" */}
+        <WordProfileView key={term} term={term} />
       </Card>
     </div>
   );

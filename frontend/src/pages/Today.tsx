@@ -1,76 +1,130 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import confetti from 'canvas-confetti';
-import { Check, ChevronRight, Clock, Headphones, Layers, Mic, RefreshCw, SkipForward, Timer, Undo2, Waves } from 'lucide-react';
+import { Check, Clock, RefreshCw, SkipForward, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../components/ui/Button';
+import { Celebration } from '../components/ui/Celebration';
+import { Emoji3D } from '../components/ui/Emoji3D';
+import { HeroArt } from '../components/ui/HeroArt';
 import { Modal } from '../components/ui/Modal';
-import { Card, ErrorBox, Progress, Ring, Segmented, Skeleton } from '../components/ui/primitives';
+import { Card, ErrorBox, Progress, Segmented, Skeleton } from '../components/ui/primitives';
 import { Term } from '../components/ui/Term';
 import { DifficultyPill } from '../components/video/DifficultyBadge';
 import { api } from '../lib/api';
 import type { TodayPlan, TodayStep, TodayStepKey } from '../lib/types';
-import { cn, formatTime } from '../lib/utils';
+import { cn, formatTime, CONFETTI_COLORS } from '../lib/utils';
 
-const STEP_ICON: Record<TodayStepKey, { icon: typeof Layers; tone: string; strand: string }> = {
-  review: { icon: Layers, tone: 'from-fuchsia-500 to-violet-500', strand: 'Học có chủ đích' },
-  watch: { icon: Headphones, tone: 'from-rose-500 to-orange-400', strand: 'Nghe hiểu' },
-  shadow: { icon: Waves, tone: 'from-sky-500 to-indigo-500', strand: 'Phát âm & ngữ điệu' },
-  speak: { icon: Mic, tone: 'from-emerald-500 to-teal-400', strand: 'Tự nói ra' },
-  fluency: { icon: Timer, tone: 'from-amber-500 to-orange-500', strand: 'Luyện trôi chảy' },
+// Mỗi bước là một "trạm" trên lộ trình hôm nay (ảnh 3D + tên ngắn)
+const STEP_META: Record<TodayStepKey, { emoji: string; short: string; strand: string }> = {
+  review: { emoji: '🗂️', short: 'Ôn thẻ', strand: 'Học có chủ đích' },
+  watch: { emoji: '🎧', short: 'Nghe video', strand: 'Nghe hiểu' },
+  shadow: { emoji: '🦜', short: 'Nói đuổi', strand: 'Phát âm & ngữ điệu' },
+  speak: { emoji: '🎙️', short: 'Nói lại', strand: 'Tự nói ra' },
+  fluency: { emoji: '⏱️', short: 'Trôi chảy', strand: 'Luyện trôi chảy' },
 };
 
 export function useTodayPlan() {
   return useQuery({ queryKey: ['today'], queryFn: api.today, staleTime: 15_000 });
 }
 
-/** Thẻ gọn ở Trang chủ: tiến độ + bước tiếp theo. */
+function nextStep(plan: TodayPlan) {
+  return plan.steps.find((s) => !s.done && !s.skipped && !s.blocked) ?? plan.steps.find((s) => !s.done && !s.skipped);
+}
+
+/** Trạm trên lộ trình: xong → viền xanh + dấu tích; bỏ qua → mờ; bước kế tiếp → viền thương hiệu nổi bật. */
+function Station({ step, current, size = 56 }: { step: TodayStep; current: boolean; size?: number }) {
+  return (
+    <span
+      className={cn(
+        'relative flex shrink-0 items-center justify-center rounded-full border-2 transition-transform',
+        step.done
+          ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15'
+          : step.skipped
+            ? 'border-line bg-surface-2 opacity-55 grayscale'
+            : current
+              ? 'border-brand-500 bg-surface shadow-[0_0_0_5px_color-mix(in_oklab,var(--color-brand-500)_18%,transparent)]'
+              : 'border-line bg-surface-2',
+      )}
+      style={{ width: size, height: size }}
+    >
+      <Emoji3D emoji={STEP_META[step.key].emoji} size={Math.round(size * 0.58)} />
+      {step.done && (
+        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-surface">
+          <Check className="h-3 w-3" strokeWidth={3.5} />
+        </span>
+      )}
+      {step.skipped && (
+        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-400 text-white ring-2 ring-surface">
+          <SkipForward className="h-3 w-3" />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Thẻ ở Trang chủ: lộ trình 5 trạm của buổi học hôm nay + đúng một nút chính cho bước kế tiếp. */
 export function TodayCard() {
   const { data } = useTodayPlan();
-  if (!data) return <Skeleton className="h-28 rounded-3xl" />;
-  const next = data.steps.find((s) => !s.done && !s.skipped && !s.blocked) ?? data.steps.find((s) => !s.done && !s.skipped);
+  if (!data) return <Skeleton className="h-56 rounded-3xl" />;
+  const next = nextStep(data);
+  const n = data.steps.length;
+  // Đường tiến độ chạy từ tâm trạm đầu tới trạm cuối cùng đã xong/bỏ qua
+  const lastFinished = data.steps.reduce((acc, s, i) => (s.done || s.skipped ? i : acc), -1);
+  const line = n > 1 && lastFinished > 0 ? (lastFinished / (n - 1)) * 100 : 0;
   return (
-    <Card className="flex flex-wrap items-center gap-4 p-5">
-      <Ring value={data.total ? data.finished / data.total : 0} size={72} stroke={8}>
-        <span className="font-display text-base font-black text-ink">
-          {data.finished}/{data.total}
-        </span>
-      </Ring>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold uppercase tracking-widest text-violet-500">Hôm nay học gì · ~{data.estimatedMinutes} phút</p>
-        <p className="text-lg font-extrabold text-ink">{data.allDone ? 'Đã xong buổi học hôm nay 🎉' : next ? next.title : 'Tiếp tục'}</p>
-        <p className="truncate text-sm text-muted">{data.allDone ? 'Muốn học thêm? Thử một lượt nói trôi chảy 4/3/2 hoặc luyện nói lại.' : next?.desc}</p>
+    <Card className="p-5 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="text-xl font-extrabold text-ink">Buổi học hôm nay</h2>
+        <p className="text-sm font-semibold text-muted">
+          {data.finished}/{data.total} bước · khoảng {data.estimatedMinutes} phút
+        </p>
       </div>
-      <div className="flex gap-2">
-        {next && !data.allDone && (
-          <LinkButton to={next.link} variant="primary">
-            Bắt đầu
-          </LinkButton>
-        )}
-        <LinkButton to="/today" variant="outline" icon={<ChevronRight className="h-4 w-4" />}>
-          Xem kế hoạch
-        </LinkButton>
+      <ol className="relative mt-5 grid" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }} aria-label="Các bước hôm nay">
+        <div aria-hidden="true" className="absolute top-7 h-1 rounded-full bg-surface-3" style={{ left: `${50 / n}%`, right: `${50 / n}%` }} />
+        <div
+          aria-hidden="true"
+          className="absolute top-7 h-1 rounded-full bg-emerald-400 transition-[width] duration-700"
+          style={{ left: `${50 / n}%`, width: `calc(${line}% * ${(n - 1) / n})` }}
+        />
+        {data.steps.map((s) => (
+          <li key={s.key} className="relative flex flex-col items-center px-0.5 text-center">
+            <Link to={s.link} className="rounded-full transition-transform hover:scale-105" aria-label={`${s.title}${s.done ? ' (đã xong)' : s.skipped ? ' (đã bỏ qua)' : ''}`}>
+              <Station step={s} current={next?.key === s.key && !data.allDone} />
+            </Link>
+            <span className={cn('mt-2 text-xs leading-tight font-semibold', next?.key === s.key && !data.allDone ? 'text-ink' : 'text-muted')}>{STEP_META[s.key].short}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl bg-surface-2 p-4">
+        <div className="min-w-0 flex-1 basis-56">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-300">{data.allDone ? 'Hoàn thành' : 'Bước tiếp theo'}</p>
+          <p className="font-extrabold text-ink">{data.allDone ? 'Đã xong buổi học hôm nay 🎉' : (next?.title ?? 'Tiếp tục')}</p>
+          <p className="line-clamp-1 text-sm text-muted">{data.allDone ? 'Muốn học thêm? Thử một lượt nói trôi chảy 4/3/2 hoặc luyện nói lại.' : next?.desc}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/today" className="text-sm font-semibold text-muted hover:text-ink hover:underline">
+            Xem kế hoạch
+          </Link>
+          {next && !data.allDone && (
+            <LinkButton to={next.link} variant="primary" size="lg">
+              {next.value > 0 ? 'Làm tiếp' : 'Bắt đầu'}
+            </LinkButton>
+          )}
+        </div>
       </div>
     </Card>
   );
 }
 
-function StepRow({ step, index, onSkip, children }: { step: TodayStep; index: number; onSkip: (skipped: boolean) => void; children?: React.ReactNode }) {
-  const meta = STEP_ICON[step.key];
-  const Icon = meta.icon;
+function StepRow({ step, index, current, onSkip, children }: { step: TodayStep; index: number; current: boolean; onSkip: (skipped: boolean) => void; children?: React.ReactNode }) {
+  const meta = STEP_META[step.key];
   const finished = step.done || step.skipped;
   return (
-    <li className={cn('card relative flex gap-4 p-4 sm:p-5', finished && 'opacity-75')}>
+    <li className={cn('card relative flex gap-4 p-4 sm:p-5', finished && 'opacity-80', current && 'ring-2 ring-brand-500/40')}>
       <div className="flex flex-col items-center">
-        <span
-          className={cn(
-            'icon-tile flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white',
-            step.done ? 'bg-emerald-500' : step.skipped ? 'bg-slate-400' : cn('bg-linear-to-br', meta.tone),
-          )}
-        >
-          {step.done ? <Check className="h-6 w-6 animate-bounce-in" /> : step.skipped ? <SkipForward className="h-5 w-5" /> : <Icon className="h-6 w-6" />}
-        </span>
+        <Station step={step} current={current} />
       </div>
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -172,9 +226,19 @@ export default function Today() {
   });
 
   const allDone = plan.data?.allDone;
+  const day = plan.data?.day;
+  // Chúc mừng một lần mỗi ngày (không bắn pháo giấy mỗi lần mở lại trang)
   useEffect(() => {
-    if (allDone) confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
-  }, [allDone]);
+    if (!allDone || !day) return;
+    const key = `today-celebrated:${day}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, '1');
+    } catch {
+      /* không lưu được → vẫn chúc mừng */
+    }
+    confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 }, colors: CONFETTI_COLORS });
+  }, [allDone, day]);
 
   if (plan.error) return <ErrorBox error={plan.error} onRetry={() => plan.refetch()} />;
   if (plan.isPending) return <Skeleton className="mx-auto h-[600px] max-w-3xl rounded-3xl" />;
@@ -183,14 +247,11 @@ export default function Today() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <section className="relative overflow-hidden rounded-3xl bg-brand-animated p-6 text-white shadow-glow sm:p-8">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/20 blur-2xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 left-1/4 h-44 w-44 animate-float-slow rounded-full bg-amber-300/25 blur-3xl [animation-delay:-5s]" />
+      <section className="relative overflow-hidden rounded-3xl bg-hero p-6 text-white shadow-glow sm:p-8">
+        <HeroArt items={['🗓️', '🎧', '🌱']} />
         <p className="relative text-sm font-semibold capitalize text-white/80">{dayLabel}</p>
-        <h1 className="relative text-2xl font-black sm:text-3xl">Hôm nay học gì? 🗓️</h1>
-        <p className="relative mt-1 max-w-xl text-sm text-white/90">
-          Một buổi cân bằng: ôn thẻ, nghe một video vừa sức, nói đuổi, nói lại câu đã lưu và luyện trôi chảy. Xong bước nào app tự đánh dấu.
-        </p>
+        <h1 className="pr-14 xl:pr-0 relative text-2xl font-black sm:text-3xl">Hôm nay học gì?</h1>
+        <p className="relative mt-1 max-w-xl text-sm text-white/90">5 trạm cân bằng nghe – nói – từ vựng. Xong bước nào app tự đánh dấu.</p>
         <div className="relative mt-4 flex flex-wrap items-center gap-3">
           <Segmented
             value={p.mode}
@@ -208,16 +269,16 @@ export default function Today() {
       </section>
 
       {p.allDone && (
-        <Card className="animate-rise p-5 text-center">
-          <p className="animate-bounce-in text-4xl">🏆</p>
-          <p className="mt-1 text-lg font-extrabold text-ink">Hoàn thành buổi học hôm nay!</p>
-          <p className="text-sm text-muted">Hẹn gặp lại ngày mai — học đều mỗi ngày hiệu quả hơn học dồn.</p>
+        <Card className="p-2">
+          <Celebration emoji="🏆" title="Hoàn thành buổi học hôm nay!" description="Hẹn gặp lại ngày mai — học đều mỗi ngày hiệu quả hơn học dồn." />
         </Card>
       )}
 
-      <ol className="stagger space-y-3">
+      {/* Lộ trình dọc: đường nối chạy sau các thẻ, chỉ lộ ra ở khe giữa các trạm */}
+      <ol className="stagger relative space-y-3">
+        <div aria-hidden="true" className="absolute bottom-10 left-10.5 top-10 w-1 rounded-full bg-surface-3 sm:left-11.5" />
         {p.steps.map((s, i) => (
-          <StepRow key={s.key} step={s} index={i} onSkip={(skipped) => skip.mutate({ step: s.key, skipped })}>
+          <StepRow key={s.key} step={s} index={i} current={!p.allDone && nextStep(p)?.key === s.key} onSkip={(skipped) => skip.mutate({ step: s.key, skipped })}>
             {s.key === 'watch' && (
               <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-surface-2 p-2.5">
                 {p.video ? (

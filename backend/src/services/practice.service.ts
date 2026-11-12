@@ -5,6 +5,7 @@ import { currentUserId } from '../lib/context.ts';
 import { inflectionRegex, shuffle, termKey, uniqBy } from '../lib/text.ts';
 import { addActivity, XP } from './activity.service.ts';
 import { applyRating } from './review.service.ts';
+import { assertTopicVisible, SHARED_LEXICON_SQL, visibleTopicsSql } from './topics.service.ts';
 import { collocationQuestions, synonymItems, upgradeQuestions, wordFormQuestions } from './practice-extra.service.ts';
 import type { Example } from './words.service.ts';
 
@@ -141,6 +142,8 @@ export function pickItems(source: z.infer<typeof sessionSchema>['source'], count
       rows = all<WordLike>(`SELECT ${WORD_COLS} FROM words WHERE user_id = ${uid} AND video_id = ? ORDER BY random() LIMIT ?`, videoId ?? '', count);
       break;
     case 'topic': {
+      // Bộ riêng của người khác → 404 (không lộ từ trong "Bộ từ của tôi" của ai khác)
+      if (topicId) assertTopicVisible(topicId);
       const lex = all<LexRow>(
         `SELECT l.*, w.id AS word_id FROM topic_words tw JOIN lexicon l ON l.id = tw.lexicon_id
            LEFT JOIN words w ON w.term_key = l.word AND w.user_id = ${uid}
@@ -165,8 +168,10 @@ function distractorPool(exclude: Set<string>, topicId?: number): PracticeItem[] 
   const words = all<WordLike>(`SELECT ${WORD_COLS} FROM words WHERE user_id = ${uid} AND meaning != '' ORDER BY random() LIMIT 150`).map(fromWord);
   const lex = all<LexRow>(
     topicId
-      ? `SELECT l.*, NULL AS word_id FROM topic_words tw JOIN lexicon l ON l.id = tw.lexicon_id WHERE tw.topic_id = ${Number(topicId)} AND l.meaning_vi != '' ORDER BY random() LIMIT 150`
-      : `SELECT l.*, NULL AS word_id FROM lexicon l WHERE l.meaning_vi != '' ORDER BY random() LIMIT 150`,
+      ? `SELECT l.*, NULL AS word_id FROM topic_words tw JOIN lexicon l ON l.id = tw.lexicon_id
+          WHERE tw.topic_id = ${Number(topicId)} AND tw.topic_id IN (${visibleTopicsSql(uid)}) AND l.meaning_vi != '' ORDER BY random() LIMIT 150`
+      : // Chỉ lấy từ của bộ chung (không lấy từ trong bộ riêng của người khác làm đáp án nhiễu)
+        `SELECT l.*, NULL AS word_id FROM lexicon l WHERE l.meaning_vi != '' AND l.id IN (${SHARED_LEXICON_SQL}) ORDER BY random() LIMIT 150`,
   ).map(fromLexicon);
   return uniqBy([...words, ...lex], (i) => termKey(i.term)).filter((i) => !exclude.has(termKey(i.term)));
 }
@@ -299,7 +304,7 @@ export const completeSchema = z.object({
   total: z.number().int().min(0).max(500),
   correct: z.number().int().min(0).max(500),
   durationSec: z.number().int().min(0).max(36000).default(0),
-});
+}).refine((d) => d.correct <= d.total, { message: 'Số câu đúng không thể lớn hơn tổng số câu' });
 
 export function completeSession(input: z.infer<typeof completeSchema>) {
   const accuracy = input.total ? input.correct / input.total : 0;

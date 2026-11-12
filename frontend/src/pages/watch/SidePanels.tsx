@@ -39,7 +39,7 @@ export function SavedWordsPanel({ videoId, onSeek }: { videoId: string; onSeek: 
               <button
                 type="button"
                 onClick={() => onSeek(w.videoTime!)}
-                className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-xs font-semibold text-muted hover:text-violet-600"
+                className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-xs font-semibold text-muted hover:text-brand-600"
                 aria-label={`Tới ${formatTime(w.videoTime)}`}
               >
                 {formatTime(w.videoTime)}
@@ -94,7 +94,7 @@ export function NotesPanel({ videoId, getTime, onSeek }: { videoId: string; getT
           <div key={n.id} className="group rounded-xl border border-line p-3">
             <div className="mb-1 flex items-center justify-between">
               {n.time != null ? (
-                <button type="button" onClick={() => onSeek(n.time!)} className="font-mono text-xs font-semibold text-violet-600 hover:underline">
+                <button type="button" onClick={() => onSeek(n.time!)} className="font-mono text-xs font-semibold text-brand-600 hover:underline">
                   {formatTime(n.time)}
                 </button>
               ) : (

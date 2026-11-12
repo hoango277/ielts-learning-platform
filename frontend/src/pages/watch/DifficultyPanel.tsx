@@ -63,7 +63,7 @@ export function DifficultyPanel({ videoId, onSeek }: { videoId: string; onSeek: 
   if (data.status === 'analyzing')
     return (
       <div className="space-y-3 p-6 text-center">
-        <Gauge className="mx-auto h-10 w-10 animate-pulse text-violet-500" />
+        <Gauge className="mx-auto h-10 w-10 animate-pulse text-brand-500" />
         <p className="font-bold text-ink">Đang đếm từ trong video…</p>
         <p className="text-sm text-muted">Lần đầu phân tích mất khoảng 10–30 giây; video sau sẽ nhanh hơn.</p>
         {data.total > 0 && <Progress value={data.done / data.total} />}
@@ -146,7 +146,7 @@ export function DifficultyPanel({ videoId, onSeek }: { videoId: string; onSeek: 
                 </div>
                 {w.sentence && (
                   <button type="button" onClick={() => w.time != null && onSeek(w.time)} className="mt-1 block text-left text-xs leading-relaxed text-muted hover:text-ink">
-                    {w.time != null && <span className="mr-1 font-mono text-violet-600">{formatTime(w.time)}</span>}
+                    {w.time != null && <span className="mr-1 font-mono text-brand-600">{formatTime(w.time)}</span>}
                     {w.sentence}
                   </button>
                 )}

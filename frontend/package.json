@@ -1,6 +1,6 @@
 {
   "name": "@ielts-learn/frontend",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,6 +21,7 @@
     "react-router": "^7.18.4",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
+    "three": "^0.187.0",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
@@ -28,6 +29,7 @@
     "@types/canvas-confetti": "^1.9.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.1.2",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3",

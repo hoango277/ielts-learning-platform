@@ -229,9 +229,10 @@ export function undoLastReview() {
       run(
         `UPDATE words SET due = :due, stability = :stability, difficulty = :difficulty, elapsed_days = :elapsed_days,
            scheduled_days = :scheduled_days, learning_steps = :learning_steps, reps = :reps, lapses = :lapses,
-           state = :state, last_review = :last_review, correct_count = :correct_count, wrong_count = :wrong_count
+           state = :state, last_review = :last_review
          WHERE id = :id AND user_id = :uid`,
-        { ...prev, id: log.word_id, uid: currentUserId() },
+        // Không khôi phục correct_count/wrong_count: chấm thẻ không đổi hai số này, khôi phục sẽ xoá mất kết quả luyện tập làm sau đó
+        (({ correct_count: _c, wrong_count: _w, ...fsrs }) => ({ ...fsrs, id: log.word_id, uid: currentUserId() }))(prev),
       );
     }
     run('DELETE FROM review_logs WHERE id = ?', log.id);

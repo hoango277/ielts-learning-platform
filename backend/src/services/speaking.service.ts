@@ -44,7 +44,7 @@ export function createSession({ mode, count, videoId }: z.infer<typeof sessionSc
       `SELECT w.id, w.term, w.meaning, w.pos, w.ipa, w.audio, w.collocations, w.examples
          FROM words w
         WHERE w.user_id = ? AND w.known = 0 AND w.meaning != '' AND length(w.term) <= 40
-        ORDER BY (SELECT COUNT(*) FROM speaking_attempts s WHERE s.word_id = w.id AND s.passed = 1),
+        ORDER BY (SELECT COUNT(*) FROM speaking_attempts s WHERE s.word_id = w.id AND s.user_id = w.user_id AND s.passed = 1),
                  CASE WHEN w.state IN (1,2,3) THEN 0 ELSE 1 END, random()
         LIMIT ?`,
       uid,
@@ -84,7 +84,8 @@ export const attemptSchema = z.object({
   mode: z.enum(MODES),
   phraseId: z.number().int().optional(),
   wordId: z.number().int().optional(),
-  transcript: z.string().max(2000),
+  // Không nhận lượt nói rỗng (lỗi micro, không nghe thấy gì) — không được tính là một lần thử
+  transcript: z.string().trim().min(1, 'Chưa nghe thấy câu trả lời — hãy thử lại.').max(2000),
   /** Điểm khớp từng từ (0–1) do máy khách tính cho bài nghe–chờ–nói */
   score: z.number().min(0).max(1).optional(),
 });
@@ -134,13 +135,14 @@ export function recordAttempt(input: z.infer<typeof attemptSchema>) {
       'INSERT INTO speaking_attempts (user_id, mode, phrase_id, word_id, transcript, score, passed) VALUES (?, ?, ?, ?, ?, ?, ?)',
       uid,
       input.mode,
-      input.phraseId ?? null,
-      input.wordId ?? null,
+      // Chỉ lưu id đã kiểm tra thuộc người dùng ở trên (từ ở chế độ tự đặt câu, mẫu câu ở các chế độ còn lại)
+      input.mode === 'own' ? null : (input.phraseId ?? null),
+      input.mode === 'own' ? (input.wordId ?? null) : null,
       input.transcript.trim(),
       score,
       passed ? 1 : 0,
     );
-    if (input.phraseId) {
+    if (input.mode !== 'own' && input.phraseId) {
       run(
         'UPDATE phrases SET speak_count = speak_count + 1, best_score = MAX(COALESCE(best_score, 0), ?) WHERE id = ? AND user_id = ?',
         score ?? 0,

@@ -88,7 +88,7 @@ function TranscriptState({ query, videoId, onUpload }: { query: { isPending: boo
   if (query.isPending)
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-muted">
-        <Spinner className="h-7 w-7 text-violet-500" />
+        <Spinner className="h-7 w-7 text-brand-500" />
         <p className="text-sm">Đang tải phụ đề…</p>
       </div>
     );
@@ -135,6 +135,18 @@ function Player({ player, videoId }: { player: PlayerApi; videoId: string }) {
   );
 }
 
+function ChannelLabel({ channel }: { channel: VideoDetails['channel'] }) {
+  return (
+    <>
+      <ChannelAvatar name={channel.name} src={channel.avatar} size={40} />
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-ink">{channel.name}</p>
+        <p className="text-xs text-muted">{channel.subscribers}</p>
+      </div>
+    </>
+  );
+}
+
 function VideoInfo({
   details,
   state,
@@ -175,13 +187,16 @@ function VideoInfo({
     <div className="space-y-3">
       <h1 className="text-xl font-extrabold leading-snug text-ink sm:text-2xl">{details.title}</h1>
       <div className="flex flex-wrap items-center gap-3">
-        <Link to={details.channel.id ? `/channel/${details.channel.id}` : '#'} className="flex min-w-0 items-center gap-2.5">
-          <ChannelAvatar name={details.channel.name} src={details.channel.avatar} size={40} />
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-ink">{details.channel.name}</p>
-            <p className="text-xs text-muted">{details.channel.subscribers}</p>
+        {details.channel.id ? (
+          <Link to={`/channel/${details.channel.id}`} className="flex min-w-0 items-center gap-2.5">
+            <ChannelLabel channel={details.channel} />
+          </Link>
+        ) : (
+          // Không có id kênh → hiện chữ thường, không tạo link "#" vô dụng
+          <div className="flex min-w-0 items-center gap-2.5">
+            <ChannelLabel channel={details.channel} />
           </div>
-        </Link>
+        )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button
             size="sm"
@@ -207,7 +222,7 @@ function VideoInfo({
         <span className="font-semibold text-ink">Phụ đề:</span>
         {transcript?.kind === 'upload' ? (
           <>
-            <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">File bạn tải lên</Badge>
+            <Badge className="bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">File bạn tải lên</Badge>
             <Button size="sm" variant="ghost" onClick={onResetUpload}>
               Dùng phụ đề YouTube
             </Button>
@@ -302,14 +317,20 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
     if (!player.ready) return;
     let watched = 0;
     let last = Date.now();
-    // Nhớ vị trí gần nhất: lúc rời trang player có thể đã bị huỷ nên không đọc trực tiếp được nữa
-    let position = player.getTime();
+    // Nhớ vị trí gần nhất: lúc rời trang player có thể đã bị huỷ nên không đọc trực tiếp được nữa.
+    // Trước khi phát, getTime() trả 0 dù đã mở ở `start` → bắt đầu từ `start` và chỉ ghi đè khi có thời gian thật,
+    // để mở rồi rời đi ngay không xoá mất vị trí xem dở (undefined = không gửi, máy chủ giữ vị trí cũ).
+    const readTime = () => {
+      const t = player.getTime();
+      return t > 0 ? t : undefined;
+    };
+    let position = readTime() ?? (start > 0 ? start : undefined);
     api.progress(id, { ...meta.current, position, watchedSeconds: 0 }).then(() => qc.invalidateQueries({ queryKey: ['videos'] }));
     const iv = window.setInterval(() => {
       const now = Date.now();
       if (playingRef.current) watched += (now - last) / 1000;
       last = now;
-      position = player.getTime() || position;
+      position = readTime() ?? position;
       if (watched >= 15) {
         api.progress(id, { ...meta.current, position, watchedSeconds: Math.round(watched) }).catch(() => undefined);
         watched = 0;
@@ -325,6 +346,13 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
       window.clearInterval(iv);
       window.removeEventListener('pagehide', flush);
       flush();
+      // Lần mở lại video phải tiếp tục từ vị trí vừa rời: cập nhật ngay cache trạng thái video
+      // và đánh dấu cũ để WatchPage tải lại trước khi dựng trình phát (trình phát chỉ đọc `start` một lần)
+      const lastPosition = position;
+      if (lastPosition !== undefined) {
+        qc.setQueryData<VideoState | null>(['video-state', id], (old) => (old ? { ...old, lastPosition } : old));
+      }
+      qc.invalidateQueries({ queryKey: ['video-state', id] });
       qc.invalidateQueries({ queryKey: ['overview'] });
     };
   }, [player.ready, id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -437,7 +465,7 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="min-w-0 space-y-4">
-        <div className="sticky top-14 z-10 -mx-4 bg-bg/95 px-4 pb-2 pt-1 backdrop-blur sm:-mx-6 sm:px-6 xl:static xl:mx-0 xl:bg-transparent xl:p-0 xl:backdrop-blur-none">
+        <div className="sticky top-14 z-10 -mx-4 bg-bg px-4 pb-2 pt-1  sm:-mx-6 sm:px-6 xl:static xl:mx-0 xl:bg-transparent xl:p-0">
           <Player player={player} videoId={id} />
         </div>
 
@@ -576,7 +604,7 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
                 onClick={() => setSide(t.key)}
                 className={cn(
                   'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-1.5 py-3 text-xs font-semibold transition sm:text-[13px]',
-                  side === t.key ? 'border-violet-500 text-ink' : 'border-transparent text-muted hover:text-ink',
+                  side === t.key ? 'border-brand-500 text-ink' : 'border-transparent text-muted hover:text-ink',
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -658,7 +686,7 @@ function ToggleChip({ on, onClick, icon, label, title }: { on: boolean; onClick:
       title={title}
       className={cn(
         'inline-flex h-9 items-center gap-1.5 rounded-xl px-3 font-display text-sm font-bold transition active:scale-95',
-        on ? 'bg-violet-500 text-white shadow-[inset_0_-2px_0_rgb(0_0_0/0.18),0_4px_10px_-4px_rgb(139_92_246/0.7)]' : 'bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink',
+        on ? 'bg-brand-500 text-white shadow-[inset_0_-2px_0_rgb(0_0_0/0.18),0_4px_10px_-4px_color-mix(in_oklab,var(--color-brand-500)_70%,transparent)]' : 'bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink',
       )}
     >
       {icon}
@@ -671,8 +699,12 @@ export default function WatchPage() {
   const { id = '' } = useParams();
   const [params] = useSearchParams();
   const stateQ = useQuery({ queryKey: ['video-state', id], queryFn: () => api.videoState(id), enabled: /^[\w-]{11}$/.test(id) });
+  // Video đã dựng trình phát — các lần tải lại sau (vd. mạng kết nối lại) không được gỡ trình phát đang xem
+  const shownFor = useRef<string | null>(null);
   if (!/^[\w-]{11}$/.test(id)) return <EmptyState icon="🤔" title="Link video không hợp lệ" />;
-  if (stateQ.isPending) {
+  // Có dữ liệu cũ trong cache mà đang tải lại → chờ bản mới: vị trí xem dở chỉ được đọc một lần khi dựng trình phát
+  const waiting = stateQ.isPending || (stateQ.isFetching && !stateQ.isFetchedAfterMount);
+  if (waiting && shownFor.current !== id) {
     return (
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <Skeleton className="aspect-video w-full rounded-2xl" />
@@ -680,6 +712,7 @@ export default function WatchPage() {
       </div>
     );
   }
+  shownFor.current = id;
   const t = Number(params.get('t'));
   const saved = stateQ.data;
   const resume = saved && saved.lastPosition > 10 && saved.durationSec && saved.lastPosition < saved.durationSec - 15 ? saved.lastPosition : 0;

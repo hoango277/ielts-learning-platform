@@ -22,7 +22,7 @@ export function WeekBars({ data, goal }: { data: { day: string; xp: number }[]; 
             <span className="text-[11px] font-semibold text-muted">{d.xp || ''}</span>
             <div className="relative flex w-full flex-1 items-end">
               <div
-                className="absolute inset-x-0 border-t border-dashed border-violet-300 dark:border-violet-500/40"
+                className="absolute inset-x-0 border-t border-dashed border-brand-300 dark:border-brand-500/40"
                 style={{ bottom: `${(goal / max) * 100}%` }}
                 aria-hidden="true"
               />
@@ -30,13 +30,13 @@ export function WeekBars({ data, goal }: { data: { day: string; xp: number }[]; 
                 title={`${d.day}: ${d.xp} XP`}
                 className={cn(
                   'w-full rounded-lg transition-all duration-700',
-                  reached ? 'bg-linear-to-t from-violet-500 to-fuchsia-400' : d.xp ? 'bg-violet-300 dark:bg-violet-500/50' : 'bg-surface-3',
-                  today && 'ring-2 ring-violet-500/40 ring-offset-2 ring-offset-surface',
+                  reached ? 'bg-linear-to-t from-brand-600 to-brand-400' : d.xp ? 'bg-brand-300 dark:bg-brand-500/50' : 'bg-surface-3',
+                  today && 'ring-2 ring-brand-500/40 ring-offset-2 ring-offset-surface',
                 )}
                 style={{ height: `${Math.max(d.xp ? 6 : 3, h)}%` }}
               />
             </div>
-            <span className={cn('text-xs font-semibold', today ? 'text-violet-600 dark:text-violet-300' : 'text-muted')}>{today ? 'Nay' : dayLabel(d.day)}</span>
+            <span className={cn('text-xs font-semibold', today ? 'text-brand-600 dark:text-brand-300' : 'text-muted')}>{today ? 'Nay' : dayLabel(d.day)}</span>
           </div>
         );
       })}
@@ -46,10 +46,10 @@ export function WeekBars({ data, goal }: { data: { day: string; xp: number }[]; 
 
 const HEAT = [
   'bg-surface-3',
-  'bg-violet-200 dark:bg-violet-900',
-  'bg-violet-300 dark:bg-violet-700',
-  'bg-violet-500 dark:bg-violet-500',
-  'bg-fuchsia-500 dark:bg-fuchsia-400',
+  'bg-brand-200 dark:bg-brand-900',
+  'bg-brand-300 dark:bg-brand-700',
+  'bg-brand-500 dark:bg-brand-500',
+  'bg-brand-700 dark:bg-brand-300',
 ];
 
 function heatLevel(xp: number) {
@@ -159,7 +159,7 @@ export function ForecastBars({ data }: { data: { day: string; count: number }[] 
         <div key={d.day} className="flex h-full flex-1 flex-col items-center gap-1">
           <span className="text-[11px] font-semibold text-muted">{d.count || ''}</span>
           <div className="flex w-full flex-1 items-end">
-            <div className={cn('w-full rounded-md', i === 0 ? 'bg-fuchsia-500' : 'bg-sky-400/70')} style={{ height: `${Math.max(4, (d.count / max) * 100)}%` }} />
+            <div className={cn('w-full rounded-md', i === 0 ? 'bg-orange-500' : 'bg-brand-300/80 dark:bg-brand-500/60')} style={{ height: `${Math.max(4, (d.count / max) * 100)}%` }} />
           </div>
           <span className="text-[11px] font-semibold text-muted">{i === 0 ? 'Nay' : dayLabel(d.day)}</span>
         </div>

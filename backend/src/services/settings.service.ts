@@ -1,15 +1,14 @@
 import { z } from 'zod';
-import { config } from '../config.ts';
 import { all, run, tx } from '../db/index.ts';
 import { currentUserId } from '../lib/context.ts';
+import { getServerSettings, type ServerSettings } from './server-settings.service.ts';
 
+/**
+ * Cài đặt RIÊNG của từng người dùng — chỉ là tuỳ chọn học tập (mục tiêu, thẻ mới, giọng đọc, video…).
+ * Cấu hình dịch & mô hình AI là cấu hình chung của máy chủ, chỉ admin sửa (xem server-settings.service.ts).
+ */
 export const settingsSchema = z.object({
-  translateProvider: z.enum(['auto', 'google', 'hymt']),
   targetLang: z.string().min(2).max(10),
-  hymtBaseUrl: z.string().max(300),
-  hymtModel: z.string().max(200),
-  hymtApiKey: z.string().max(300),
-  hymtPromptStyle: z.enum(['hymt2', 'hymt15']),
   dailyGoalXp: z.number().int().min(10).max(1000),
   newCardsPerDay: z.number().int().min(0).max(200),
   requestRetention: z.number().min(0.7).max(0.99),
@@ -31,17 +30,12 @@ export const settingsSchema = z.object({
   notifyReviews: z.boolean(),
 });
 
-export type Settings = z.infer<typeof settingsSchema>;
+export type UserSettings = z.infer<typeof settingsSchema>;
+/** Cài đặt dùng nội bộ: tuỳ chọn của người dùng + cấu hình dịch chung của máy chủ */
+export type Settings = UserSettings & Pick<ServerSettings, 'translateProvider' | 'hymtBaseUrl' | 'hymtModel' | 'hymtApiKey' | 'hymtPromptStyle'>;
 
-const DEFAULTS: Settings = {
-  translateProvider: (['auto', 'google', 'hymt'].includes(config.translateProvider)
-    ? config.translateProvider
-    : 'auto') as Settings['translateProvider'],
+const DEFAULTS: UserSettings = {
   targetLang: 'vi',
-  hymtBaseUrl: config.hymt.baseUrl,
-  hymtModel: config.hymt.model,
-  hymtApiKey: config.hymt.apiKey,
-  hymtPromptStyle: config.hymt.promptStyle,
   dailyGoalXp: 50,
   newCardsPerDay: 15,
   requestRetention: 0.9,
@@ -61,9 +55,9 @@ const DEFAULTS: Settings = {
 };
 
 // Cài đặt riêng của từng người dùng (cache theo userId)
-const cache = new Map<number, Settings>();
+const cache = new Map<number, UserSettings>();
 
-export function getSettings(): Settings {
+function userSettings(): UserSettings {
   const uid = currentUserId();
   const hit = cache.get(uid);
   if (hit) return hit;
@@ -76,7 +70,7 @@ export function getSettings(): Settings {
     }
   }
   const merged = { ...DEFAULTS };
-  for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
+  for (const key of Object.keys(DEFAULTS) as (keyof UserSettings)[]) {
     if (!(key in stored)) continue;
     const parsed = settingsSchema.shape[key].safeParse(stored[key]);
     if (parsed.success) (merged as Record<string, unknown>)[key] = parsed.data;
@@ -85,22 +79,26 @@ export function getSettings(): Settings {
   return merged;
 }
 
-const MASK = '••••';
-
-export function maskKey(key: string) {
-  return key ? `${MASK}${key.slice(-4)}` : '';
+export function getSettings(): Settings {
+  const s = getServerSettings();
+  return {
+    ...userSettings(),
+    translateProvider: s.translateProvider,
+    hymtBaseUrl: s.hymtBaseUrl,
+    hymtModel: s.hymtModel,
+    hymtApiKey: s.hymtApiKey,
+    hymtPromptStyle: s.hymtPromptStyle,
+  };
 }
 
-/** Cài đặt trả cho client: che API key. */
+/** Cài đặt trả cho client: chỉ tuỳ chọn học tập (không lộ cấu hình máy chủ, địa chỉ hay khoá của mô hình AI). */
 export function publicSettings() {
-  const s = getSettings();
-  return { ...s, hymtApiKey: maskKey(s.hymtApiKey), hymtConfigured: Boolean(s.hymtBaseUrl && s.hymtModel) };
+  return { ...userSettings() };
 }
 
-export function updateSettings(patch: Partial<Settings>): Settings {
+export function updateSettings(patch: Partial<UserSettings>) {
+  // Chỉ nhận khoá tuỳ chọn học tập; khoá lạ (vd. cấu hình mô hình AI) bị bỏ qua — cấu hình đó chỉ admin sửa ở trang Quản trị
   const parsed = settingsSchema.partial().parse(patch);
-  // Client gửi lại key đã che → giữ key cũ
-  if (parsed.hymtApiKey?.startsWith(MASK)) delete parsed.hymtApiKey;
   const uid = currentUserId();
   tx(() => {
     for (const [key, value] of Object.entries(parsed)) {
@@ -113,7 +111,7 @@ export function updateSettings(patch: Partial<Settings>): Settings {
     }
   });
   cache.delete(uid);
-  return getSettings();
+  return publicSettings();
 }
 
 /** Xoá cache khi dữ liệu cài đặt đổi chủ (nhận dữ liệu cũ khi tạo tài khoản đầu tiên). */

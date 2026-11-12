@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import confetti from 'canvas-confetti';
-import { CheckCheck, Layers, PartyPopper, RotateCcw, Settings2, Undo2, Video } from 'lucide-react';
+import { CheckCheck, Layers, RotateCcw, Settings2, Undo2, Video } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../components/ui/Button';
+import { Celebration } from '../components/ui/Celebration';
 import { ChunkSentence } from '../components/phrase/ChunkSentence';
 import { Card, EmptyState, ErrorBox, Kbd, Progress, Segmented, Skeleton, Switch } from '../components/ui/primitives';
 import { Term } from '../components/ui/Term';
@@ -15,7 +16,7 @@ import { useHotkeys } from '../hooks/useHotkeys';
 import { api } from '../lib/api';
 import { pronounce } from '../lib/speech';
 import type { PhraseCard, ReviewCard } from '../lib/types';
-import { cn, formatTime, posLabel, relativeTime } from '../lib/utils';
+import { cn, formatTime, posLabel, relativeTime, CONFETTI_COLORS } from '../lib/utils';
 
 type Direction = 'en-vi' | 'vi-en' | 'mixed';
 type Filter = 'all' | 'words' | 'phrases';
@@ -23,10 +24,10 @@ type QItem = { kind: 'word'; card: ReviewCard } | { kind: 'phrase'; card: Phrase
 
 // Nút chấm nổi khối: --edge là màu "đáy" đậm hơn cùng tông
 const RATINGS = [
-  { value: 1 as const, label: 'Quên', hint: 'Không nhớ ra', key: '1', className: 'bg-rose-500 hover:bg-rose-400 [--edge:#be123c]' },
-  { value: 2 as const, label: 'Khó', hint: 'Nhớ ra nhưng vất vả', key: '2', className: 'bg-amber-500 hover:bg-amber-400 [--edge:#b45309]' },
-  { value: 3 as const, label: 'Nhớ', hint: 'Nhớ được bình thường', key: '3', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:#047857]' },
-  { value: 4 as const, label: 'Dễ', hint: 'Nhớ ngay lập tức', key: '4', className: 'bg-sky-500 hover:bg-sky-400 [--edge:#0369a1]' },
+  { value: 1 as const, label: 'Quên', hint: 'Không nhớ ra', key: '1', className: 'bg-rose-500 hover:bg-rose-400 [--edge:var(--color-rose-700)]' },
+  { value: 2 as const, label: 'Khó', hint: 'Nhớ ra nhưng vất vả', key: '2', className: 'bg-amber-500 hover:bg-amber-400 [--edge:var(--color-amber-700)]' },
+  { value: 3 as const, label: 'Nhớ', hint: 'Nhớ được bình thường', key: '3', className: 'bg-emerald-500 hover:bg-emerald-400 [--edge:var(--color-emerald-700)]' },
+  { value: 4 as const, label: 'Dễ', hint: 'Nhớ ngay lập tức', key: '4', className: 'bg-sky-500 hover:bg-sky-400 [--edge:var(--color-sky-700)]' },
 ];
 
 const LEARN_AGAIN_MS = 20 * 60_000;
@@ -80,7 +81,7 @@ function CardFace({ card, side, reversed }: { card: ReviewCard; side: 'front' | 
         <AudioButton term={card.term} audio={card.audio} />
         {card.pos && <span className="text-sm text-muted">· {posLabel(card.pos)}</span>}
       </div>
-      <p className={cn('font-bold text-violet-700 dark:text-violet-300', showTerm ? 'text-2xl' : 'text-xl')}>{card.meaning}</p>
+      <p className={cn('font-bold text-brand-700 dark:text-brand-300', showTerm ? 'text-2xl' : 'text-xl')}>{card.meaning}</p>
       {card.definition && <p className="text-sm leading-relaxed text-muted">{card.definition}</p>}
       {card.examples.slice(0, 2).map((e, i) => (
         <div key={i} className="rounded-xl bg-surface-2 p-3 text-sm">
@@ -124,8 +125,8 @@ function PhraseFace({ card, side }: { card: PhraseCard; side: 'front' | 'back' }
       </p>
       {card.sentenceVi && <p className="text-muted">{card.sentenceVi}</p>}
       {card.chunk && (
-        <p className="rounded-xl bg-violet-50 p-3 text-sm dark:bg-violet-500/10">
-          <b className="text-violet-700 dark:text-violet-200">{card.chunk}</b>
+        <p className="rounded-xl bg-brand-50 p-3 text-sm dark:bg-brand-500/10">
+          <b className="text-brand-700 dark:text-brand-200">{card.chunk}</b>
           {card.chunkVi && <span className="text-ink"> — {card.chunkVi}</span>}
         </p>
       )}
@@ -146,17 +147,15 @@ function PhraseFace({ card, side }: { card: PhraseCard; side: 'front' | 'back' }
 function Summary({ stats, onRestart }: { stats: { reviewed: number; good: number; xp: number; startedAt: number }; onRestart: () => void }) {
   useEffect(() => {
     if (stats.reviewed === 0) return;
-    confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 }, colors: ['#8b5cf6', '#d946ef', '#fb923c', '#10b981', '#0ea5e9'] });
+    confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 }, colors: CONFETTI_COLORS });
   }, [stats.reviewed]);
   const minutes = Math.max(1, Math.round((Date.now() - stats.startedAt) / 60000));
   return (
     <Card className="mx-auto max-w-xl p-8 text-center">
-      <PartyPopper className="mx-auto h-14 w-14 animate-bounce-in text-fuchsia-500" />
-      <h2 className="mt-3 text-2xl font-extrabold text-ink">Hoàn thành phiên ôn tập!</h2>
-      <p className="mt-1 text-muted">Bạn đã ôn hết các thẻ đến hạn. Bộ não của bạn sẽ cảm ơn bạn 🧠</p>
+      <Celebration emoji="🎉" title="Hoàn thành phiên ôn tập!" description="Bạn đã ôn hết các thẻ đến hạn. Bộ não của bạn sẽ cảm ơn bạn 🧠" className="py-0" />
       <div className="stagger mt-6 grid grid-cols-3 gap-3">
-        <div className="rounded-2xl bg-violet-50 p-3 dark:bg-violet-500/10">
-          <p className="text-2xl font-extrabold text-violet-600 dark:text-violet-300">{stats.reviewed}</p>
+        <div className="rounded-2xl bg-brand-50 p-3 dark:bg-brand-500/10">
+          <p className="text-2xl font-extrabold text-brand-600 dark:text-brand-300">{stats.reviewed}</p>
           <p className="text-xs text-muted">lượt ôn</p>
         </div>
         <div className="rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-500/10">
@@ -181,6 +180,11 @@ function Summary({ stats, onRestart }: { stats: { reviewed: number; good: number
   );
 }
 
+/** Khoá định danh một thẻ trong hàng đợi (từ hoặc mẫu câu) */
+function itemKey(c: QItem) {
+  return `${c.kind}:${c.card.id}`;
+}
+
 export default function Review() {
   const qc = useQueryClient();
   const { accent } = useAccent();
@@ -195,11 +199,27 @@ export default function Review() {
   const [stats, setStats] = useState({ reviewed: 0, good: 0, xp: 0, startedAt: Date.now() });
   const [playSignal, setPlaySignal] = useState(0);
   const reversedMap = useRef(new Map<number, boolean>());
+  // Trong một phiên: thẻ đã chấm xong (không quay lại) / đã đánh dấu thuộc, và bản mới nhất của thẻ còn ở bước học ngắn hạn.
+  // Nhờ vậy đổi bộ lọc hay hàng đợi tải lại (vd. sau hộp khởi động) không đưa thẻ đã chấm quay lại → không bị ghi lịch ôn hai lần.
+  const finished = useRef(new Set<string>());
+  const latest = useRef(new Map<string, QItem>());
+  // Mỗi lượt chấm trong phiên (để hoàn tác trừ đúng số "nhớ được" và XP)
+  const [history, setHistory] = useState<{ good: number; xp: number }[]>([]);
+
+  useEffect(() => {
+    finished.current = new Set();
+    latest.current = new Map();
+    setHistory([]);
+    setStats({ reviewed: 0, good: 0, xp: 0, startedAt: Date.now() });
+  }, [session]);
 
   useEffect(() => {
     if (queueQ.data) {
-      setQueue(mixQueue(queueQ.data.cards, queueQ.data.phrases ?? [], filter));
-      setStats({ reviewed: 0, good: 0, xp: 0, startedAt: Date.now() });
+      setQueue(
+        mixQueue(queueQ.data.cards, queueQ.data.phrases ?? [], filter)
+          .filter((c) => !finished.current.has(itemKey(c)))
+          .map((c) => latest.current.get(itemKey(c)) ?? c),
+      );
       setFlipped(false);
     }
   }, [queueQ.data, filter]);
@@ -241,11 +261,17 @@ export default function Review() {
       return { next: r.nextReview, xp: r.xp, updated: { kind: 'phrase', card: r.phrase } as QItem };
     },
     onSuccess: (res, { rating }) => {
-      setStats((s) => ({ ...s, reviewed: s.reviewed + 1, good: s.good + (rating >= 3 ? 1 : 0), xp: s.xp + res.xp }));
+      const good = rating >= 3 ? 1 : 0;
+      setStats((s) => ({ ...s, reviewed: s.reviewed + 1, good: s.good + good, xp: s.xp + res.xp }));
+      setHistory((h) => [...h, { good, xp: res.xp }]);
+      const again = new Date(res.next).getTime() - Date.now() < LEARN_AGAIN_MS;
+      const key = itemKey(res.updated);
+      if (again) latest.current.set(key, res.updated);
+      else finished.current.add(key);
       setQueue((q) => {
         const rest = q.slice(1);
         // Thẻ còn trong bước học ngắn hạn → quay lại sau vài thẻ (giống Anki)
-        if (new Date(res.next).getTime() - Date.now() < LEARN_AGAIN_MS) {
+        if (again) {
           const pos = Math.min(rest.length, 3);
           return [...rest.slice(0, pos), res.updated, ...rest.slice(pos)];
         }
@@ -261,6 +287,7 @@ export default function Review() {
     mutationFn: (id: number) => api.updateWord(id, { known: true }),
     onSuccess: (w) => {
       toast.success(`“${w.term}” đã được đánh dấu là đã thuộc — sẽ không xuất hiện khi ôn`);
+      finished.current.add(`word:${w.id}`);
       setQueue((q) => q.filter((c) => !(c.kind === 'word' && c.card.id === w.id)));
       setFlipped(false);
       invalidate();
@@ -275,8 +302,13 @@ export default function Review() {
         toast.message('Không có lượt ôn nào để hoàn tác');
         return;
       }
+      finished.current.delete(itemKey(restored));
+      latest.current.set(itemKey(restored), restored);
       setQueue((q) => [restored, ...q.filter((c) => !sameItem(c, restored))]);
-      setStats((s) => ({ ...s, reviewed: Math.max(0, s.reviewed - 1) }));
+      // Trừ đúng lượt vừa hoàn tác (số "nhớ được" và XP), không chỉ số lượt
+      const last = history[history.length - 1];
+      setHistory((h) => h.slice(0, -1));
+      setStats((s) => ({ ...s, reviewed: Math.max(0, s.reviewed - 1), good: Math.max(0, s.good - (last?.good ?? 0)), xp: Math.max(0, s.xp - (last?.xp ?? 0)) }));
       setFlipped(true);
       invalidate();
     },
@@ -290,7 +322,8 @@ export default function Review() {
     '2': () => doRate(2),
     '3': () => doRate(3),
     '4': () => doRate(4),
-    z: () => undo.mutate(),
+    // Chỉ hoàn tác lượt chấm trong phiên này (tránh hoàn tác nhầm lượt ôn ở hộp khởi động / luyện tập)
+    z: () => history.length > 0 && !undo.isPending && undo.mutate(),
     r: () => item?.kind === 'phrase' && setPlaySignal((n) => n + 1),
   });
 
@@ -369,10 +402,10 @@ export default function Review() {
               <b className="text-sm text-amber-500">{counts.learning}</b> đang học
             </span>
             <span title="Ôn lại: thẻ đã nhớ, nay đến hạn ôn theo lịch">
-              <b className="text-sm text-violet-500">{counts.review}</b> ôn lại
+              <b className="text-sm text-brand-500">{counts.review}</b> ôn lại
             </span>
           </span>
-          <Button size="icon" variant="ghost" onClick={() => undo.mutate()} aria-label="Hoàn tác (Z)" title="Hoàn tác lượt vừa rồi (Z)" disabled={stats.reviewed === 0}>
+          <Button size="icon" variant="ghost" onClick={() => undo.mutate()} aria-label="Hoàn tác (Z)" title="Hoàn tác lượt vừa rồi (Z)" disabled={history.length === 0 || undo.isPending}>
             <Undo2 className="h-5 w-5" />
           </Button>
           <Button size="icon" variant={showSettings ? 'soft' : 'ghost'} onClick={() => setShowSettings((v) => !v)} aria-label="Tuỳ chọn" aria-expanded={showSettings}>

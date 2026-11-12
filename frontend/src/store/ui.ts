@@ -14,7 +14,7 @@ function readTheme(): Theme {
 export function applyTheme(theme: Theme) {
   const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.classList.toggle('dark', dark);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b0912' : '#7c3aed');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#100f0f' : '#f6f4eb');
 }
 
 interface LookupState {

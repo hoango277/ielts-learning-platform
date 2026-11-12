@@ -66,7 +66,7 @@ export function VideoCard({ video, progress, compact, difficulty }: { video: Vid
             </div>
           )}
           <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/15 group-hover:opacity-100">
-            <span className="rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-violet-700 shadow-lg">▶ Học với video này</span>
+            <span className="rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-brand-700 shadow-lg">▶ Học với video này</span>
           </span>
         </div>
       </Link>
@@ -80,7 +80,7 @@ export function VideoCard({ video, progress, compact, difficulty }: { video: Vid
         )}
         <div className="min-w-0">
           <Link to={href}>
-            <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink group-hover:text-violet-700 dark:group-hover:text-violet-300">
+            <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink group-hover:text-brand-700 dark:group-hover:text-brand-300">
               {video.title}
             </h3>
           </Link>

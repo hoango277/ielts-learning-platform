@@ -4,6 +4,7 @@
  *   npm run crawl                       # crawl tất cả chủ đề → data/seed/topics.json → nạp vào DB
  *   npm run crawl -- --topics=education,environment --per-topic=30
  *   npm run crawl -- --refresh          # bỏ qua cache trên đĩa
+ *   npm run crawl -w backend -- --advanced   # chỉ thêm nhóm "Từ nâng cao" (C1–C2) vào file seed hiện có
  *
  * Nguồn dữ liệu (đều là API công khai, có giới hạn tốc độ lịch sự + cache trên đĩa):
  *   1. Datamuse API  — tìm từ liên quan tới chủ đề (rel_trg / ml), tần suất, collocation (rel_jjb / rel_jja / rel_bga)
@@ -16,10 +17,12 @@ import { config } from '../config.ts';
 import type { SeedFile, SeedLexicon, SeedTopic } from '../db/seed.ts';
 import { dictApiUrl, normalizeEntries, type DictEntry, type RawEntry } from '../lib/dictapi.ts';
 import { createLimiter, fetchJson, HttpError } from '../lib/http.ts';
+import { composePhraseIpa } from '../lib/ipa.ts';
 import { inflectionRegex, levelFromFrequency, sha1, stripHtml } from '../lib/text.ts';
 import { googleLookup, googleTranslateBatch, type GoogleLookup } from '../services/translate/google.ts';
 import { mymemoryTranslate } from '../services/translate/mymemory.ts';
-import { TOPICS, type TopicConfig } from './topics.config.ts';
+import { applyCuration } from './curate.ts';
+import { ADVANCED as ADVANCED_WORDS, TOPICS, type TopicConfig } from './topics.config.ts';
 
 // ---------- Tham số dòng lệnh ----------
 
@@ -33,6 +36,7 @@ const REFRESH = args.refresh === 'true';
 const PER_TOPIC = Number(args['per-topic'] ?? 28);
 const ONLY = args.topics ? new Set(String(args.topics).split(',')) : null;
 const NO_DB = args['no-db'] === 'true';
+const ADVANCED = args.advanced === 'true';
 
 // ---------- Cache trên đĩa + giới hạn tốc độ ----------
 
@@ -223,19 +227,11 @@ async function pickExamples(word: string, dict: DictEntry | null, google: Google
 
 /** IPA cho cụm từ: ghép IPA của từng từ thành phần ("rote learning" → /ɹəʊt ˈlɜːnɪŋ/). */
 async function phraseIpa(term: string): Promise<{ uk: string | null; us: string | null }> {
-  const parts = term.split(/\s+/);
-  if (parts.length > 4) return { uk: null, us: null };
-  const uk: string[] = [];
-  const us: string[] = [];
-  for (const p of parts) {
-    const d = await fetchDict(p.replace(/[^a-z'-]/gi, '')).catch(() => null);
-    const a = (d?.ipaUk ?? d?.ipa)?.replace(/^[/[]|[/\]]$/g, '');
-    const b = (d?.ipaUs ?? d?.ipa)?.replace(/^[/[]|[/\]]$/g, '');
-    if (!a || !b) return { uk: null, us: null };
-    uk.push(a);
-    us.push(b);
-  }
-  return { uk: `/${uk.join(' ')}/`, us: `/${us.join(' ')}/` };
+  const r = await composePhraseIpa(term, async (w) => {
+    const d = await fetchDict(w);
+    return d ? { uk: d.ipaUk ?? d.ipa ?? null, us: d.ipaUs ?? d.ipa ?? null } : null;
+  });
+  return r ?? { uk: null, us: null };
 }
 
 async function enrich(word: string, freqHint: number | null): Promise<SeedLexicon | null> {
@@ -271,7 +267,7 @@ async function enrich(word: string, freqHint: number | null): Promise<SeedLexico
   const synonyms = [...new Set([...(dict?.meanings.filter((m) => m.pos === pos).flatMap((m) => m.synonyms) ?? []), ...googleSyn])]
     .filter((s) => s.toLowerCase() !== term && !s.includes('/'))
     .slice(0, 8);
-  const ipa = isPhrase && !dict?.ipa ? await phraseIpa(term) : null;
+  const ipa = (isPhrase || term.includes('-')) && !dict?.ipa ? await phraseIpa(term) : null;
 
   return {
     word: term,
@@ -428,6 +424,8 @@ async function main() {
   }
 
   fs.mkdirSync(path.dirname(config.seedPath), { recursive: true });
+  // Dữ liệu soạn tay (curated.ts): loại từ lạc đề, sửa nghĩa, bổ sung ví dụ/định nghĩa
+  applyCuration(output);
   fs.writeFileSync(config.seedPath, JSON.stringify(output, null, 1));
   const withIpa = output.lexicon.filter((l) => l.ipa).length;
   const withAudio = output.lexicon.filter((l) => l.audio || l.audioUs).length;
@@ -444,7 +442,62 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+/**
+ * Thêm nhóm "Từ nâng cao" (C1–C2) cho từng chủ đề vào file seed hiện có — không crawl lại các từ cũ.
+ * Danh sách từ soạn tay (ADVANCED trong topics.config.ts); crawler chỉ tra nghĩa, phiên âm, ví dụ.
+ */
+async function advancedMain() {
+  const t0 = Date.now();
+  const seed = JSON.parse(fs.readFileSync(config.seedPath, 'utf8')) as SeedFile;
+  const lexByWord = new Map(seed.lexicon.map((l) => [l.word, l]));
+  const added: SeedLexicon[] = [];
+  const topics = TOPICS.filter((t) => (!ONLY || ONLY.has(t.slug)) && ADVANCED_WORDS[t.slug]?.length);
+  console.log(`🎓 Thêm từ nâng cao cho ${topics.length} chủ đề`);
+  for (const t of topics) {
+    const st = seed.topics.find((x) => x.slug === t.slug);
+    if (!st) continue;
+    // Chạy lại → thay nhóm nâng cao cũ của chủ đề
+    st.words = st.words.filter((w) => w.group !== 'advanced');
+    const inTopic = new Set(st.words.map((w) => w.word));
+    const list = ADVANCED_WORDS[t.slug].map(([w, vi]) => [w.toLowerCase(), vi] as const);
+    const entries = await Promise.all(list.map(async ([w]) => lexByWord.get(w) ?? (await enrich(w, null).catch(() => null))));
+    const picked: SeedLexicon[] = [];
+    entries.forEach((found, i) => {
+      if (!found) return console.warn(`  ⚠️ ${list[i][0]}: không tra được — bỏ qua`);
+      // Crawler có thể quy về dạng gốc (roadworks → roadwork) đã có trong file → sửa đúng mục đang lưu
+      const e = lexByWord.get(found.word) ?? found;
+      if (inTopic.has(e.word)) return;
+      // Nghĩa tiếng Việt soạn tay theo ngữ cảnh chủ đề thay cho nghĩa Google (hay sai với từ hiếm)
+      e.meaningVi = list[i][1];
+      // Từ mới quá (overtourism, staycation) chưa có số liệu tần suất → coi là C1 (đã được chọn là từ nâng cao)
+      e.level ??= 'C1';
+      picked.push(e);
+      inTopic.add(e.word);
+    });
+    const base = Math.max(0, ...st.words.map((w) => w.rank)) + 1;
+    st.words.push(...picked.map((e, k) => ({ word: e.word, group: 'advanced' as const, rank: base + k })));
+    for (const e of picked) {
+      if (!lexByWord.has(e.word)) {
+        lexByWord.set(e.word, e);
+        added.push(e);
+      }
+    }
+    console.log(`  ${t.icon} ${t.name}: +${picked.length} từ nâng cao (${picked.map((e) => `${e.word} ${e.level ?? '?'}`).join(', ')})`);
+  }
+  await translateExamples(added);
+  // Bỏ mục từ không còn thuộc chủ đề nào (từ nâng cao của lần chạy trước bị loại)
+  const used = new Set(seed.topics.flatMap((t) => t.words.map((w) => w.word)));
+  seed.lexicon = [...lexByWord.values()].filter((l) => used.has(l.word)).sort((a, b) => a.word.localeCompare(b.word));
+  seed.generatedAt = new Date().toISOString();
+  applyCuration(seed);
+  fs.writeFileSync(config.seedPath, JSON.stringify(seed, null, 1));
+  console.log(
+    `✅ Xong sau ${Math.round((Date.now() - t0) / 1000)}s: thêm ${added.length} mục từ mới → ${path.relative(process.cwd(), config.seedPath)}`,
+  );
+  console.log('   Chạy "npm run crawl:ipa" để bổ sung phiên âm còn thiếu; app tự nạp lại dữ liệu khi khởi động.');
+}
+
+(ADVANCED ? advancedMain() : main()).catch((err) => {
   console.error(err);
   process.exit(1);
 });

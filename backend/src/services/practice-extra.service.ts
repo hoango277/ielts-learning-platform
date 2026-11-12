@@ -149,7 +149,8 @@ export function wordFormQuestions(count: number, items: PracticeItem[]): Questio
       const blanked = sentence.slice(0, hit.index) + '_____' + sentence.slice(hit.index + hit.surface.length);
       const item: PracticeItem = {
         key: `f:${w.term}`,
-        wordId: w.id,
+        // Hỏi một dạng KHÁC của từ (decide → decisive) thì không ghi kết quả vào thẻ ôn của từ gốc trong sổ
+        wordId: hit.member.word === w.term ? w.id : null,
         lexiconId: null,
         term: hit.member.word,
         meaning: w.meaning,
@@ -232,7 +233,8 @@ export async function synonymItems(count: number, items: PracticeItem[]): Promis
     used.add(syn);
     out.push({
       key: `s:${key}`,
-      wordId: c.id,
+      // Không nhớ từ đồng nghĩa (Datamuse) không có nghĩa là quên từ gốc → không đụng tới lịch ôn của từ
+      wordId: null,
       lexiconId: null,
       term: c.term,
       meaning: syn,

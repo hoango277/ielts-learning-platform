@@ -27,7 +27,7 @@ function LibraryItem({ v, tab, difficulty }: { v: VideoState; tab: 'history' | '
         {difficulty && <DifficultyPill data={difficulty} className="absolute left-2 top-2 shadow" />}
       </Link>
       <div className="flex min-w-0 flex-1 flex-col">
-        <Link to={`/watch/${v.id}`} className="line-clamp-2 font-bold text-ink hover:text-violet-600">
+        <Link to={`/watch/${v.id}`} className="line-clamp-2 font-bold text-ink hover:text-brand-600">
           {v.title || v.id}
         </Link>
         <p className="mt-0.5 text-sm text-muted">{v.channel.name}</p>

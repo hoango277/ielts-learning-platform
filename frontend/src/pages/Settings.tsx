@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, CircleHelp, Cpu, Download, GraduationCap, KeyRound, Languages, LogOut, Monitor, Moon, Palette, PlugZap, Sun, Target, UserRound, Volume2, XCircle } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { CircleHelp, Download, GraduationCap, KeyRound, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun, Target, UserRound, Volume2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router';
 import { toast } from 'sonner';
 import { Button, LinkButton } from '../components/ui/Button';
-import { Card, ErrorBox, Field, Input, Segmented, Select, Skeleton, Switch } from '../components/ui/primitives';
+import { ErrorBox, Field, Input, Segmented, Select, Skeleton, Switch } from '../components/ui/primitives';
+import { Row, Section } from '../components/settings/parts';
 import { Term } from '../components/ui/Term';
 import { disableReviewNotifications, enableReviewNotifications } from '../components/warmup/StartScreen';
 import { pushSupported } from '../lib/push';
@@ -14,33 +15,6 @@ import { speak } from '../lib/speech';
 import type { Settings as SettingsT } from '../lib/types';
 import { cn } from '../lib/utils';
 import { useUi, type Theme } from '../store/ui';
-
-function Section({ icon, title, desc, children }: { icon: ReactNode; title: string; desc?: ReactNode; children: ReactNode }) {
-  return (
-    <Card className="p-5 sm:p-6">
-      <div className="mb-5 flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface-2 shadow-soft">{icon}</span>
-        <div>
-          <h2 className="text-lg font-extrabold text-ink">{title}</h2>
-          {desc && <p className="text-sm text-muted">{desc}</p>}
-        </div>
-      </div>
-      <div className="space-y-5">{children}</div>
-    </Card>
-  );
-}
-
-function Row({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="min-w-0 max-w-md">
-        <p className="text-sm font-semibold text-ink">{label}</p>
-        {hint && <p className="text-xs leading-relaxed text-muted">{hint}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
 
 /** Thanh trượt: cập nhật bản nháp ngay khi kéo, tự lưu sau khi ngừng kéo (chuột, cảm ứng lẫn bàn phím đều được). */
 function Range({
@@ -92,7 +66,7 @@ function Range({
           commit.current(v);
         }, 500);
       }}
-      className={cn('w-48 accent-violet-600', className)}
+      className={cn('w-48 accent-brand-600', className)}
     />
   );
 }
@@ -133,7 +107,7 @@ function AccountSection() {
 
   if (!user) return null;
   return (
-    <Section icon={<UserRound className="h-5 w-5 text-violet-500" />} title="Tài khoản" desc={`Đăng nhập bằng ${user.email}`}>
+    <Section icon={<UserRound className="h-5 w-5 text-brand-500" />} title="Tài khoản" desc={`Đăng nhập bằng ${user.email}`}>
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
@@ -197,12 +171,6 @@ function AccountSection() {
   );
 }
 
-const PRESETS = [
-  { label: 'Ollama (máy bạn)', baseUrl: 'http://localhost:11434/v1', model: 'hf.co/tencent/HY-MT1.5-1.8B-GGUF:Q8_0', style: 'hymt15' as const },
-  { label: 'llama.cpp server', baseUrl: 'http://localhost:8080/v1', model: 'hy-mt', style: 'hymt15' as const },
-  { label: 'vLLM (Hy-MT2-7B)', baseUrl: 'http://localhost:8000/v1', model: 'tencent/Hy-MT2-7B', style: 'hymt2' as const },
-];
-
 /** Lối vào bài test ước lượng vốn từ + kết quả lần gần nhất. */
 function PlacementRow() {
   const last = useQuery({ queryKey: ['placement-last'], queryFn: api.placementLast, staleTime: 60_000 });
@@ -225,10 +193,39 @@ export default function Settings() {
   const qc = useQueryClient();
   const { theme, setTheme } = useUi();
   const { data, error, isPending, refetch } = useQuery({ queryKey: ['settings'], queryFn: api.settings });
+  const me = useMe();
   const [draft, setDraft] = useState<SettingsT | null>(null);
+  // Bản nháp chỉ khởi tạo một lần; sau đó mỗi lần máy chủ trả cài đặt mới (vd. vừa lưu một mục khác) chỉ nhận
+  // những khoá thực sự đổi — không ghi đè các ô đang sửa dở chưa lưu (cấu hình Hy-MT…)
+  const serverRef = useRef<SettingsT | null>(null);
   useEffect(() => {
-    if (data) setDraft(data);
+    if (!data) return;
+    const prev = serverRef.current;
+    serverRef.current = data;
+    setDraft((d) => {
+      if (!d || !prev) return data;
+      const next = { ...d } as Record<keyof SettingsT, unknown>;
+      for (const k of Object.keys(data) as (keyof SettingsT)[]) {
+        if (!Object.is(data[k], prev[k])) next[k] = data[k];
+      }
+      return next as SettingsT;
+    });
   }, [data]);
+
+  // Link tới một mục (/settings#learning): trình duyệt tự cuộn khi trang còn đang tải nên không tới được → cuộn lại khi đã hiện nội dung
+  const { hash } = useLocation();
+  const loaded = Boolean(draft);
+  useEffect(() => {
+    if (!loaded || hash.length < 2) return;
+    let id = hash.slice(1);
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      /* giữ nguyên nếu hash không mã hoá hợp lệ */
+    }
+    const t = window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    return () => window.clearTimeout(t);
+  }, [hash, loaded]);
 
   const save = useMutation({
     mutationFn: (patch: Partial<SettingsT>) => api.updateSettings(patch),
@@ -240,7 +237,6 @@ export default function Settings() {
     },
     onError: (e) => toast.error((e as Error).message),
   });
-  const test = useMutation({ mutationFn: () => api.testHymt(draft!) });
   // Bật/tắt nhắc nhở có thể chờ trình duyệt khá lâu → chặn bấm lặp trong lúc đang xử lý
   const [notifyBusy, setNotifyBusy] = useState(false);
 
@@ -258,8 +254,8 @@ export default function Settings() {
       <div>
         <h1 className="text-2xl font-extrabold text-ink">Cài đặt</h1>
         <p className="text-sm text-muted">
-          Tài khoản, dịch thuật, mục tiêu học, lịch ôn tập và giao diện. Gặp mục khó hiểu? Bấm dấu <CircleHelp className="inline h-4 w-4 -translate-y-px" aria-label="hỏi chấm" /> cạnh mục đó hoặc xem{' '}
-          <Link to="/glossary" className="font-semibold text-violet-600 hover:underline dark:text-violet-300">
+          Tài khoản, mục tiêu học, lịch ôn tập, phát âm và giao diện. Gặp mục khó hiểu? Bấm dấu <CircleHelp className="inline h-4 w-4 -translate-y-px" aria-label="hỏi chấm" /> cạnh mục đó hoặc xem{' '}
+          <Link to="/glossary" className="font-semibold text-brand-600 hover:underline dark:text-brand-300">
             Giải thích thuật ngữ
           </Link>
           .
@@ -268,130 +264,21 @@ export default function Settings() {
 
       <AccountSection />
 
-      <Section icon={<Languages className="h-5 w-5 text-sky-500" />} title="Dịch thuật" desc="Dùng khi tra từ, dịch phụ đề song ngữ và câu ví dụ.">
-        <Row
-          label={
-            <>
-              Nguồn dịch <Term k="provider" icon />
-            </>
-          }
-          hint={
-            <>
-              Tự động: dùng <Term k="hymt">Hy-MT</Term> nếu đã cài và đang chạy, gặp lỗi thì chuyển sang Google.
-            </>
-          }
+      {me.data?.role === 'admin' && (
+        <Link
+          to="/admin"
+          className="card card-hover flex items-center gap-3 p-4"
         >
-          <Segmented
-            value={draft.translateProvider}
-            onChange={(v) => commit('translateProvider', v)}
-            options={[
-              { value: 'auto', label: 'Tự động' },
-              { value: 'google', label: 'Google' },
-              { value: 'hymt', label: 'Hy-MT' },
-            ]}
-          />
-        </Row>
-
-        <div className="rounded-2xl border border-line p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Cpu className="h-5 w-5 text-violet-500" />
-            <p className="flex items-center gap-1 font-bold text-ink">
-              Model dịch Hy-MT (Tencent) <Term k="hymt" icon />
-            </p>
-            <span
-              className={cn(
-                'rounded-full px-2 py-0.5 text-xs font-semibold',
-                data?.hymtConfigured ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-surface-2 text-muted',
-              )}
-            >
-              {data?.hymtConfigured ? 'Đã cấu hình' : 'Chưa cấu hình'}
-            </span>
-          </div>
-          <p className="mb-4 text-sm leading-relaxed text-muted">
-            Model dịch miễn phí của Tencent chạy ngay trên máy bạn, biết <b>dịch theo ngữ cảnh</b>: nghĩa của từ được chọn theo cả câu trong video. Phần này
-            không bắt buộc — bỏ trống thì app dùng Google dịch. Nếu bạn chạy app bằng “npm run dev:hymt” hoặc Docker Compose kèm Hy-MT thì mọi thứ đã được điền
-            sẵn.
-          </p>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {PRESETS.map((p) => (
-              <Button
-                key={p.label}
-                size="sm"
-                variant="outline"
-                onClick={() => setDraft((d) => (d ? { ...d, hymtBaseUrl: p.baseUrl, hymtModel: p.model, hymtPromptStyle: p.style } : d))}
-              >
-                {p.label}
-              </Button>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Địa chỉ máy chủ model (Base URL)" htmlFor="hymt-url" info={<Term k="base_url" icon />}>
-              <Input id="hymt-url" value={draft.hymtBaseUrl} onChange={(e) => set('hymtBaseUrl', e.target.value)} placeholder="http://localhost:11434/v1" />
-            </Field>
-            <Field label="Tên model" htmlFor="hymt-model">
-              <Input id="hymt-model" value={draft.hymtModel} onChange={(e) => set('hymtModel', e.target.value)} placeholder="hf.co/tencent/HY-MT1.5-1.8B-GGUF:Q8_0" />
-            </Field>
-            <Field label="Khoá API (nếu máy chủ yêu cầu)" htmlFor="hymt-key">
-              <Input id="hymt-key" type="password" value={draft.hymtApiKey} onChange={(e) => set('hymtApiKey', e.target.value)} placeholder="để trống nếu chạy trên máy bạn" />
-            </Field>
-            <Field label="Mẫu câu lệnh (prompt)" htmlFor="hymt-style" info={<Term k="prompt_style" icon />} hint="Chọn đúng phiên bản model bạn đang chạy.">
-              <Select id="hymt-style" value={draft.hymtPromptStyle} onChange={(e) => set('hymtPromptStyle', e.target.value as SettingsT['hymtPromptStyle'])}>
-                <option value="hymt2">Hy-MT2 (2026)</option>
-                <option value="hymt15">HY-MT1.5</option>
-              </Select>
-            </Field>
-          </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button
-              variant="primary"
-              loading={save.isPending}
-              onClick={() =>
-                save.mutate({ hymtBaseUrl: draft.hymtBaseUrl.trim(), hymtModel: draft.hymtModel.trim(), hymtApiKey: draft.hymtApiKey, hymtPromptStyle: draft.hymtPromptStyle })
-              }
-            >
-              Lưu cấu hình Hy-MT
-            </Button>
-            <Button variant="outline" loading={test.isPending} icon={<PlugZap className="h-4 w-4" />} onClick={() => test.mutate()} disabled={!draft.hymtBaseUrl || !draft.hymtModel}>
-              Kiểm tra kết nối
-            </Button>
-          </div>
-          {test.data && (
-            <div
-              className={cn(
-                'mt-3 flex items-start gap-2 rounded-xl p-3 text-sm',
-                test.data.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200',
-              )}
-            >
-              {test.data.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}
-              <div>
-                <p className="font-semibold">
-                  {test.data.message}
-                  {test.data.latencyMs !== undefined && ` · ${(test.data.latencyMs / 1000).toFixed(1)}s`}
-                </p>
-                {test.data.sample && <p>“Practice makes perfect.” → {test.data.sample}</p>}
-              </div>
-            </div>
-          )}
-          <details className="mt-4 text-sm text-muted">
-            <summary className="cursor-pointer font-semibold text-ink">Tự chạy Hy-MT bằng công cụ khác (nâng cao)</summary>
-            <div className="mt-2 space-y-2 leading-relaxed">
-              <p>
-                <b>Ollama</b> (dễ nhất):
-              </p>
-              <pre className="overflow-x-auto rounded-xl bg-surface-2 p-3 text-xs text-ink">ollama pull hf.co/tencent/HY-MT1.5-1.8B-GGUF:Q8_0</pre>
-              <p>
-                <b>llama.cpp</b>:
-              </p>
-              <pre className="overflow-x-auto rounded-xl bg-surface-2 p-3 text-xs text-ink">llama-server -hf tencent/HY-MT1.5-1.8B-GGUF:Q8_0 --port 8080 --jinja</pre>
-              <p>
-                <b>vLLM</b> (GPU, Hy-MT2):
-              </p>
-              <pre className="overflow-x-auto rounded-xl bg-surface-2 p-3 text-xs text-ink">vllm serve tencent/Hy-MT2-7B --port 8000</pre>
-              <p>Bản 1.8B (Q4/Q8 ≈ 1.1–1.9 GB) chạy được trên CPU; bản 7B nên dùng GPU.</p>
-            </div>
-          </details>
-        </div>
-      </Section>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-soft">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-ink">Dịch & mô hình AI, đăng ký, người dùng</span>
+            <span className="block text-sm text-muted">Cấu hình chung của máy chủ nằm ở trang Quản trị (chỉ quản trị viên thấy).</span>
+          </span>
+          <span className="text-sm font-semibold text-brand-600 dark:text-brand-300">Mở →</span>
+        </Link>
+      )}
 
       <Section
         icon={<Target className="h-5 w-5 text-amber-500" />}

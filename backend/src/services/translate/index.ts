@@ -1,3 +1,4 @@
+import { config } from '../../config.ts';
 import { get, run } from '../../db/index.ts';
 import { dedupe } from '../../lib/http.ts';
 import { sha1 } from '../../lib/text.ts';
@@ -31,9 +32,17 @@ export function resolveProvider(choice?: ProviderChoice): 'google' | 'hymt' {
   const s = getSettings();
   const wanted = choice ?? s.translateProvider;
   if (wanted === 'google') return 'google';
-  const hymtReady = isHymtConfigured(s) && Date.now() > hymtDownUntil;
-  if (wanted === 'hymt') return isHymtConfigured(s) ? 'hymt' : 'google';
-  return hymtReady ? 'hymt' : 'google';
+  // Cả khi chọn cố định Hy-MT: model vừa lỗi/treo → dùng dịch máy trong thời gian tạm nghỉ,
+  // thay vì để mọi request chờ hết timeout
+  return isHymtConfigured(s) && Date.now() > hymtDownUntil ? 'hymt' : 'google';
+}
+
+/**
+ * Phần "model" trong khoá cache bản dịch Hy-MT. Cấu hình mô hình AI là cấu hình chung do admin quản lý;
+ * admin đổi sang máy chủ model khác → khoá cache khác, bản dịch của máy cũ không lẫn sang (giữ khoá cũ cho địa chỉ mặc định).
+ */
+function hymtCacheModel(s: { hymtModel: string; hymtBaseUrl: string }) {
+  return s.hymtBaseUrl === config.hymt.baseUrl ? s.hymtModel : `${s.hymtModel}@${s.hymtBaseUrl}`;
 }
 
 function cacheKey(...parts: string[]) {
@@ -103,7 +112,7 @@ export async function translateText(text: string, opts: TranslateOptions = {}): 
   const context = provider === 'hymt' ? opts.context?.trim() || '' : '';
 
   if (provider === 'hymt') {
-    const key = cacheKey('t', 'hymt', s.hymtModel, from, to, context, text);
+    const key = cacheKey('t', 'hymt', hymtCacheModel(s), from, to, context, text);
     const hit = readCache<{ translation: string; contextual?: boolean }>(key);
     // Bỏ qua cache cũ (trước khi có kiểm tra bên dưới) nếu đó là bản dịch cả câu
     const staleHit = hit && hit.contextual === undefined && context && looksLikeSentenceTranslation(hit.translation, text);
@@ -142,7 +151,7 @@ export async function translateBatch(texts: string[], opts: TranslateOptions = {
   const from = opts.from ?? 'en';
   const to = opts.to ?? s.targetLang;
   const provider = resolveProvider(opts.provider);
-  const keyOf = (t: string) => (provider === 'hymt' ? cacheKey('t', 'hymt', s.hymtModel, from, to, '', t) : machineKey(from, to, t));
+  const keyOf = (t: string) => (provider === 'hymt' ? cacheKey('t', 'hymt', hymtCacheModel(s), from, to, '', t) : machineKey(from, to, t));
   const out: string[] = new Array(texts.length).fill('');
   const missing: number[] = [];
   texts.forEach((t, i) => {

@@ -110,8 +110,8 @@ export function SavePhraseDialog({ draft, videoId, onClose }: { draft: PhraseDra
                   onClick={() => clickToken(i)}
                   className={cn(
                     'rounded-md px-0.5 transition',
-                    inRange ? 'bg-violet-500 text-white' : 'hover:bg-violet-100 dark:hover:bg-violet-500/20',
-                    anchor === i && 'ring-2 ring-violet-400 ring-offset-1 ring-offset-surface-2',
+                    inRange ? 'bg-brand-500 text-white' : 'hover:bg-brand-100 dark:hover:bg-brand-500/20',
+                    anchor === i && 'ring-2 ring-brand-400 ring-offset-1 ring-offset-surface-2',
                   )}
                 >
                   {t}
@@ -123,7 +123,7 @@ export function SavePhraseDialog({ draft, videoId, onClose }: { draft: PhraseDra
         {chunk && (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted">Cụm đã chọn:</span>
-            <span className="rounded-lg bg-violet-100 px-2 py-0.5 font-bold text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">{chunk}</span>
+            <span className="rounded-lg bg-brand-100 px-2 py-0.5 font-bold text-brand-700 dark:bg-brand-500/15 dark:text-brand-200">{chunk}</span>
             <button type="button" onClick={() => setRange(null)} className="text-muted hover:text-ink" aria-label="Bỏ chọn cụm">
               <X className="h-4 w-4" />
             </button>
@@ -140,7 +140,7 @@ export function SavePhraseDialog({ draft, videoId, onClose }: { draft: PhraseDra
                   key={s.text}
                   type="button"
                   onClick={() => setRange(rangeOf(tokens, s.text))}
-                  className="rounded-xl border border-line bg-surface px-2.5 py-1 text-sm font-semibold text-ink transition hover:border-violet-300 hover:bg-violet-50 dark:hover:bg-violet-500/10"
+                  className="rounded-xl border border-line bg-surface px-2.5 py-1 text-sm font-semibold text-ink transition hover:border-brand-300 hover:bg-brand-50 dark:hover:bg-brand-500/10"
                   title={s.source === 'notebook' ? 'Có trong sổ từ của bạn' : s.source === 'collocation' ? 'Collocation hay dùng' : 'Trong bộ từ chủ đề'}
                 >
                   {s.text}

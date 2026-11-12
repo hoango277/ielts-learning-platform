@@ -3,9 +3,11 @@ import { BookMarked, Eye, EyeOff, Languages, Layers, Mic, Shapes } from 'lucide-
 import { useId, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
+import { Scene3D } from '../components/three/Scene3D';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/primitives';
 import { useMe, useSetSignedIn } from '../hooks/useAuth';
+import { useMediaQuery } from '../hooks/misc';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 import { KEY_AFTER_LOGIN } from '../store/ui';
@@ -82,6 +84,8 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [error, setError] = useState<string | null>(null);
   const next = safeNext(params.get('next'));
   const isRegister = mode === 'register';
+  // Chỉ dựng một cảnh 3D: khung trái (màn hình rộng) hoặc bản gọn trên form (màn hình hẹp)
+  const wide = useMediaQuery('(min-width: 1024px)');
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -124,16 +128,16 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   return (
     <div className="flex min-h-dvh bg-bg">
       {/* Bảng giới thiệu (desktop) */}
-      <aside className="relative hidden w-[46%] overflow-hidden bg-brand-animated p-12 text-white lg:flex lg:flex-col">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 animate-float-slow rounded-full bg-white/15 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 animate-float-slow rounded-full bg-amber-300/30 blur-3xl [animation-delay:-4s]" />
+      <aside className="relative hidden w-[46%] overflow-hidden bg-hero px-12 py-10 text-white lg:flex lg:flex-col">
         <div className="relative flex items-center gap-3">
           <img src="/favicon.svg" alt="" className="h-11 w-11 rounded-2xl bg-white/15 p-0.5" />
           <span className="font-display text-2xl font-black tracking-tight">IELTS Learn</span>
         </div>
-        <div className="relative mt-auto">
+        {/* Cảnh 3D "4 kỹ năng": sách (Đọc), tai nghe (Nghe), bong bóng thoại (Nói), bút chì (Viết) */}
+        {wide && <Scene3D className="-mx-12 my-2 min-h-56 flex-1" />}
+        <div className="relative">
           <h2 className="max-w-md text-4xl font-black leading-tight">Học tiếng Anh qua video bạn thích — mỗi ngày một chút.</h2>
-          <ul className="stagger mt-8 space-y-4">
+          <ul className="stagger mt-6 space-y-3">
             {FEATURES.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-[15px] text-white/90">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 shadow-[inset_0_1px_0_rgb(255_255_255/0.3)] ring-1 ring-white/20">
@@ -144,25 +148,28 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             ))}
           </ul>
         </div>
-        <p className="relative mt-auto pt-10 text-sm text-white/70">Dữ liệu học của bạn được lưu trên máy chủ của chính bạn.</p>
+        <p className="relative pt-8 text-sm text-white/70">Dữ liệu học của bạn được lưu trên máy chủ của chính bạn.</p>
       </aside>
 
       {/* Form */}
       <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
-          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+          <div className="flex items-center gap-2.5 lg:hidden">
             <img src="/favicon.svg" alt="" className="h-10 w-10 rounded-xl" />
             <span className="font-display text-xl font-black">
-              IELTS <span className="text-gradient">Learn</span>
+              IELTS <span className="text-brand-600 dark:text-brand-300">Learn</span>
             </span>
           </div>
+          {/* Màn hình hẹp: bản cảnh 3D gọn phía trên form */}
+          {!wide && <Scene3D compact className="-mx-4 my-2 h-40 sm:h-48" />}
+          {wide && <div className="mb-8" />}
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}</h1>
           <p className="mt-1.5 text-muted">
             {isRegister ? 'Bắt đầu lưu sổ từ, chuỗi ngày học và tiến độ của riêng bạn.' : 'Tiếp tục hành trình học tiếng Anh của bạn.'}
           </p>
 
           {firstUser && (
-            <p className="mt-5 rounded-2xl bg-violet-50 p-4 text-sm leading-relaxed text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
+            <p className="mt-5 rounded-2xl bg-brand-50 p-4 text-sm leading-relaxed text-brand-800 dark:bg-brand-500/10 dark:text-brand-200">
               🎉 Bạn là người dùng đầu tiên. Tài khoản này sẽ nhận <b>toàn bộ dữ liệu học đã có trên máy</b> (sổ từ, lịch ôn, XP, video đã xem).
             </p>
           )}
@@ -229,7 +236,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
               </div>
             )}
             <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink">
-              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-violet-600" />
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-brand-600" />
               Ghi nhớ đăng nhập trên máy này (30 ngày)
             </label>
 
@@ -248,7 +255,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             {isRegister ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? '}
             <Link
               to={`${isRegister ? '/login' : '/register'}${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}
-              className="font-semibold text-violet-600 hover:underline dark:text-violet-300"
+              className="font-semibold text-brand-600 hover:underline dark:text-brand-300"
             >
               {isRegister ? 'Đăng nhập' : 'Tạo tài khoản mới'}
             </Link>

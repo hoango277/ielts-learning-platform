@@ -78,7 +78,7 @@ export default function Upgrades() {
                         <p className="flex flex-wrap items-center gap-1.5">
                           <span className="font-bold text-ink">{u.word}</span>
                           <AudioButton term={u.word} size="sm" />
-                          <span className="text-sm text-violet-700 dark:text-violet-300">{u.vi}</span>
+                          <span className="text-sm text-brand-700 dark:text-brand-300">{u.vi}</span>
                         </p>
                         <p className="text-xs leading-relaxed text-muted">{u.note}</p>
                       </div>
@@ -88,7 +88,7 @@ export default function Upgrades() {
                         onClick={() => add.mutate({ word: u.word, vi: u.vi, note: `Thay cho “${e.basic}”: ${u.note}` })}
                         className={cn(
                           'mt-0.5 rounded-lg p-1.5 transition',
-                          saved ? 'text-emerald-600' : 'text-muted hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-500/15',
+                          saved ? 'text-emerald-600' : 'text-muted hover:bg-brand-100 hover:text-brand-700 dark:hover:bg-brand-500/15',
                         )}
                         aria-label={saved ? `${u.word} đã trong sổ` : `Thêm ${u.word} vào sổ`}
                         title={saved ? 'Đã trong sổ từ' : 'Thêm vào sổ từ'}

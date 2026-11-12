@@ -3,11 +3,14 @@ import { Captions, Link2, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '../components/ui/Button';
+import { HeroArt } from '../components/ui/HeroArt';
+import { Pagination } from '../components/ui/Pagination';
 import { EmptyState, ErrorBox, Segmented, Skeleton, Switch } from '../components/ui/primitives';
 import { Term } from '../components/ui/Term';
 import { DifficultyPill, useDifficultyBadges } from '../components/video/DifficultyBadge';
 import { ChannelAvatar, VideoCard, VideoCardSkeleton, VideoGrid } from '../components/video/VideoCard';
-import { useDebounced, useInView } from '../hooks/misc';
+import { useDebounced } from '../hooks/misc';
+import { usePagedList } from '../hooks/usePagedList';
 import { api, type SearchFilters } from '../lib/api';
 import { cn, formatTime, parseStartTime, parseYouTubeId } from '../lib/utils';
 
@@ -45,7 +48,7 @@ function SearchBox({ initial, onSearch }: { initial: string; onSearch: (q: strin
           e.preventDefault();
           submit(active >= 0 ? suggestions[active] : value);
         }}
-        className="flex items-center rounded-2xl border border-line bg-surface shadow-sm focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15"
+        className="flex items-center rounded-2xl border border-line bg-surface shadow-sm focus-within:border-brand-400 focus-within:ring-4 focus-within:ring-brand-500/15"
       >
         {ytId ? <Link2 className="ml-4 h-5 w-5 text-rose-500" /> : <Search className="ml-4 h-5 w-5 text-muted" />}
         <input
@@ -126,10 +129,10 @@ function RecommendedRow() {
           </span>
         </h2>
         <span className="flex gap-3">
-          <Link to="/placement" className="text-xs font-semibold text-violet-600 hover:underline">
+          <Link to="/placement" className="text-xs font-semibold text-brand-600 hover:underline">
             Làm bài test vốn từ
           </Link>
-          <Link to="/settings#learning" className="text-xs font-semibold text-violet-600 hover:underline">
+          <Link to="/settings#learning" className="text-xs font-semibold text-brand-600 hover:underline">
             Đổi trình độ
           </Link>
         </span>
@@ -147,7 +150,7 @@ function RecommendedRow() {
                   <span className="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1 text-[11px] font-semibold text-white">{formatTime(v.durationSec)}</span>
                 )}
               </div>
-              <p className="mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-ink group-hover:text-violet-700 dark:group-hover:text-violet-300">{v.title}</p>
+              <p className="mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-ink group-hover:text-brand-700 dark:group-hover:text-brand-300">{v.title}</p>
               <p className="truncate text-xs text-muted">
                 {v.channelName} · {v.newWords} từ mới
               </p>
@@ -169,7 +172,7 @@ function ChannelsRow() {
             <Link
               key={c.id}
               to={`/channel/${c.id}`}
-              className="flex w-[132px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center shadow-soft transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-card"
+              className="flex w-[132px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-line bg-surface p-3 text-center shadow-soft transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card"
             >
               <ChannelAvatar name={c.name} src={c.avatar} size={40} />
               <span className="line-clamp-2 text-xs font-semibold leading-tight text-ink">{c.name}</span>
@@ -186,9 +189,13 @@ const DURATIONS: { value: '' | NonNullable<SearchFilters['duration']>; label: st
   { value: 'long', label: '> 20 phút' },
 ];
 
+/** 24 chia hết cho 1/2/3/4 cột của lưới video → trang nào cũng kín hàng */
+const PAGE_SIZE = 24;
+
 export default function Explore() {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
+  const page = Math.max(1, Math.floor(Number(params.get('p'))) || 1);
   const chip = params.get('chip') ?? 'all';
   const duration = (params.get('duration') ?? '') as '' | NonNullable<SearchFilters['duration']>;
   const captions = params.get('cc') !== '0';
@@ -205,20 +212,27 @@ export default function Explore() {
     getNextPageParam: (last) => last.cursor,
     staleTime: 10 * 60_000,
   });
-  const items = useMemo(() => {
-    const seen = new Set<string>();
-    return (feed.data?.pages.flatMap((p) => p.items) ?? []).filter((v) => !seen.has(v.id) && seen.add(v.id));
-  }, [feed.data]);
-  const badges = useDifficultyBadges(items.map((v) => v.id));
-  const sentinel = useInView<HTMLDivElement>(() => {
-    if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
-  }, feed.hasNextPage);
+  const paged = usePagedList(feed, page, PAGE_SIZE);
+  const badges = useDifficultyBadges(paged.pageItems.map((v) => v.id));
 
-  const set = (patch: Record<string, string | null>) => {
+  /** Đổi bộ lọc (từ khoá, chủ đề, độ dài…) → về trang 1; chỉ giữ số trang khi chính nó được đổi */
+  const set = (patch: Record<string, string | null>, opts?: { replace?: boolean }) => {
     const next = new URLSearchParams(params);
+    if (!('p' in patch)) next.delete('p');
     for (const [k, v] of Object.entries(patch)) v === null || v === '' ? next.delete(k) : next.set(k, v);
-    setParams(next);
+    setParams(next, opts);
   };
+  const listTop = useRef<HTMLDivElement>(null);
+  const goPage = (p: number) => {
+    set({ p: p > 1 ? String(p) : null });
+    // Về đầu danh sách (ngay dưới thanh chủ đề), không cuộn mượt cả trang dài
+    listTop.current?.scrollIntoView({ block: 'start' });
+  };
+  // Sửa tay ?p=99 mà danh sách chỉ có 5 trang → về trang cuối
+  useEffect(() => {
+    if (paged.outOfRange) set({ p: paged.knownPages > 1 ? String(paged.knownPages) : null }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paged.outOfRange, paged.knownPages]);
   const topRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
   useEffect(() => {
@@ -229,15 +243,11 @@ export default function Explore() {
 
   return (
     <div className="space-y-6" ref={topRef}>
-      <section className="relative z-10 rounded-3xl bg-linear-to-br from-rose-500 via-fuchsia-500 to-violet-600 px-5 py-7 text-white shadow-[0_14px_34px_-12px_rgb(217_70_239/0.6)] sm:px-8">
-        {/* Lớp trang trí riêng có overflow-hidden để danh sách gợi ý của ô tìm kiếm không bị cắt */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-          <div className="absolute -right-10 -top-10 h-48 w-48 animate-float-slow rounded-full bg-white/15 blur-2xl" />
-          <div className="absolute -bottom-16 left-1/3 h-48 w-48 animate-float-slow rounded-full bg-orange-300/30 blur-3xl [animation-delay:-4s]" />
-        </div>
-        <h1 className="relative text-2xl font-black sm:text-3xl">Khám phá video để học</h1>
+      <section className="relative z-10 rounded-3xl bg-hero [--hero-glow:var(--color-rose-400)] px-5 py-7 text-white shadow-glow sm:px-8">
+        <HeroArt items={['🎬', '📺', '🍿']} />
+        <h1 className="pr-14 xl:pr-0 relative text-2xl font-black sm:text-3xl">Khám phá video để học</h1>
         <p className="relative mt-1 max-w-xl text-sm text-white/85">
-          Lướt video như trên YouTube. Mở bất kỳ video nào có phụ đề để nói đuổi (shadowing), chép chính tả, bấm vào từ để tra nghĩa và lưu vào sổ.
+          Mở video có phụ đề để nói đuổi, chép chính tả và bấm vào từ để tra nghĩa ngay trong câu.
         </p>
         <div className="relative mt-5">
           <SearchBox initial={q} onSearch={(query) => set({ q: query, chip: null })} />
@@ -253,7 +263,8 @@ export default function Explore() {
         </section>
       )}
 
-      <div className="sticky top-14 z-10 -mx-4 space-y-3 bg-bg/90 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+      <div ref={listTop} aria-hidden className="scroll-mt-14" />
+      <div className="sticky top-14 z-10 -mx-4 space-y-3 bg-bg px-4 py-2  sm:-mx-6 sm:px-6">
         <div className="flex items-center gap-2">
           <div className="no-scrollbar flex flex-1 gap-2 overflow-x-auto">
             {q && (
@@ -297,26 +308,27 @@ export default function Explore() {
         )}
       </div>
 
-      {feed.error ? (
-        <ErrorBox error={feed.error} onRetry={() => feed.refetch()} />
+      {feed.error && !paged.pageItems.length ? (
+        <ErrorBox error={feed.error} onRetry={() => (feed.data ? feed.fetchNextPage() : feed.refetch())} />
       ) : feed.isPending ? (
         <VideoGrid>
           {Array.from({ length: 8 }, (_, i) => (
             <VideoCardSkeleton key={i} />
           ))}
         </VideoGrid>
-      ) : items.length === 0 ? (
+      ) : !paged.pageItems.length && !paged.filling ? (
         <EmptyState icon="🔎" title="Không tìm thấy video" description="Thử từ khoá khác hoặc tắt bộ lọc phụ đề CC." />
       ) : (
         <>
           <VideoGrid>
-            {items.map((v) => (
+            {paged.pageItems.map((v) => (
               <VideoCard key={v.id} video={v} progress={progressMap.get(v.id)} difficulty={badges?.[v.id]} />
             ))}
-            {feed.isFetchingNextPage && Array.from({ length: 4 }, (_, i) => <VideoCardSkeleton key={`s${i}`} />)}
+            {paged.filling &&
+              Array.from({ length: Math.min(8, PAGE_SIZE - paged.pageItems.length) }, (_, i) => <VideoCardSkeleton key={`s${i}`} />)}
           </VideoGrid>
-          <div ref={sentinel} className="h-4" />
-          {!feed.hasNextPage && <p className="py-6 text-center text-sm text-muted">Bạn đã xem hết danh sách 🎉</p>}
+          {feed.error && <ErrorBox error={feed.error} onRetry={() => feed.fetchNextPage()} />}
+          <Pagination page={page} knownPages={paged.knownPages} hasMore={paged.hasMore} onChange={goPage} className="pt-2" />
         </>
       )}
     </div>

@@ -34,7 +34,7 @@ export function QuickLookup() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Tra từ hoặc cụm từ tiếng Anh… (Enter)"
           aria-label="Từ cần tra"
-          className="h-12 w-full rounded-2xl border border-line bg-surface-2 pl-11 pr-16 text-base text-ink placeholder:text-muted focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-500/15"
+          className="h-12 w-full rounded-2xl border border-line bg-surface-2 pl-11 pr-16 text-base text-ink placeholder:text-muted focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
         />
         <Kbd className="absolute right-3.5 top-1/2 -translate-y-1/2">Enter</Kbd>
       </form>

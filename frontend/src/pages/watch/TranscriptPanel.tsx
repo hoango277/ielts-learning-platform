@@ -41,7 +41,7 @@ const Row = memo(function Row({
       data-index={sentence.i}
       className={cn(
         'group relative flex gap-3 rounded-xl px-3 py-2.5 transition-colors',
-        active ? 'bg-violet-50 ring-1 ring-violet-200 dark:bg-violet-500/10 dark:ring-violet-500/30' : 'hover:bg-surface-2',
+        active ? 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30' : 'hover:bg-surface-2',
       )}
     >
       <button
@@ -49,7 +49,7 @@ const Row = memo(function Row({
         onClick={() => onSeek(sentence.i)}
         className={cn(
           'mt-0.5 h-6 shrink-0 rounded-md px-1.5 font-mono text-xs font-semibold tabular-nums transition',
-          active ? 'bg-violet-500 text-white' : 'bg-surface-2 text-muted hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-500/20',
+          active ? 'bg-brand-500 text-white' : 'bg-surface-2 text-muted hover:bg-brand-100 hover:text-brand-700 dark:hover:bg-brand-500/20',
         )}
         aria-label={`Phát từ ${formatTime(sentence.start)}`}
       >
@@ -68,22 +68,22 @@ const Row = memo(function Row({
         {showTranslation && !blur && translation && <p className="mt-0.5 text-sm leading-relaxed text-muted">{translation}</p>}
       </div>
       {saved && (
-        <span className="mt-1 shrink-0 text-violet-500 group-hover:invisible" title="Đã lưu vào sổ mẫu câu">
+        <span className="mt-1 shrink-0 text-brand-500 group-hover:invisible" title="Đã lưu vào sổ mẫu câu">
           <BookmarkCheck className="h-4 w-4" />
         </span>
       )}
       <div className="absolute right-2 top-2 hidden gap-1 rounded-lg bg-surface/90 p-0.5 shadow-sm group-hover:flex">
-        <button type="button" onClick={() => onSeek(sentence.i)} className="rounded-md p-1 text-muted hover:text-violet-600" aria-label="Phát câu này">
+        <button type="button" onClick={() => onSeek(sentence.i)} className="rounded-md p-1 text-muted hover:text-brand-600" aria-label="Phát câu này">
           <Play className="h-3.5 w-3.5" />
         </button>
-        <button type="button" onClick={() => onLoop(sentence.i)} className="rounded-md p-1 text-muted hover:text-violet-600" aria-label="Lặp câu này">
+        <button type="button" onClick={() => onLoop(sentence.i)} className="rounded-md p-1 text-muted hover:text-brand-600" aria-label="Lặp câu này">
           <Repeat className="h-3.5 w-3.5" />
         </button>
         {onSave && (
           <button
             type="button"
             onClick={() => onSave(sentence.i)}
-            className={cn('rounded-md p-1 hover:text-violet-600', saved ? 'text-violet-500' : 'text-muted')}
+            className={cn('rounded-md p-1 hover:text-brand-600', saved ? 'text-brand-500' : 'text-muted')}
             aria-label={saved ? 'Đã lưu mẫu câu — lưu thêm cụm khác' : 'Lưu câu vào sổ mẫu câu (B)'}
             title={saved ? 'Đã lưu — bấm để lưu thêm cụm khác' : 'Lưu vào sổ mẫu câu (B)'}
           >
@@ -91,7 +91,7 @@ const Row = memo(function Row({
           </button>
         )}
         {hidden && (
-          <button type="button" onClick={() => setPeek((v) => !v)} className="rounded-md p-1 text-muted hover:text-violet-600" aria-label="Xem câu">
+          <button type="button" onClick={() => setPeek((v) => !v)} className="rounded-md p-1 text-muted hover:text-brand-600" aria-label="Xem câu">
             <Eye className="h-3.5 w-3.5" />
           </button>
         )}
@@ -175,7 +175,7 @@ export function TranscriptPanel({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Tìm trong phụ đề…"
             aria-label="Tìm trong phụ đề"
-            className="h-9 w-full rounded-lg bg-surface-2 pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-violet-400/40"
+            className="h-9 w-full rounded-lg bg-surface-2 pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand-400/40"
           />
         </div>
         <button
@@ -186,7 +186,7 @@ export function TranscriptPanel({
           }}
           aria-pressed={follow}
           title="Tự cuộn theo video"
-          className={cn('inline-flex h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold', follow ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' : 'bg-surface-2 text-muted')}
+          className={cn('inline-flex h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold', follow ? 'bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300' : 'bg-surface-2 text-muted')}
         >
           <Crosshair className="h-4 w-4" /> Theo dõi
         </button>

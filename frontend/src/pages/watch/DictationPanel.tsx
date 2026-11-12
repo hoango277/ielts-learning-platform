@@ -33,6 +33,15 @@ export function DictationPanel({
   const [stats, setStats] = useState({ done: 0, perfect: 0, total: 0 });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const first = useRef(true);
+  // Tốc độ gốc trước khi bật "Nghe chậm" (null = đang ở tốc độ bình thường).
+  // Không chỉ khôi phục trong onDone: câu chậm có thể bị thay bởi câu khác trước khi phát xong.
+  const slowFrom = useRef<number | null>(null);
+  const setRate = player.setRate;
+  const restoreRate = () => {
+    if (slowFrom.current === null) return;
+    setRate(slowFrom.current);
+    slowFrom.current = null;
+  };
 
   useEffect(() => {
     setInput('');
@@ -40,16 +49,27 @@ export function DictationPanel({
     setHints(0);
     inputRef.current?.focus();
     // tự phát câu mới (trừ lần đầu mở chế độ khi video chưa sẵn sàng)
+    restoreRate();
     if (!first.current || player.ready) playSentence(index);
     first.current = false;
   }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Rời chế độ chép chính tả giữa lúc nghe chậm → trả lại tốc độ cũ
+  useEffect(
+    () => () => {
+      if (slowFrom.current !== null) setRate(slowFrom.current);
+    },
+    [setRate],
+  );
+
   if (!s) return null;
 
   const replay = (slow = false) => {
-    const prev = player.rate;
-    if (slow) player.setRate(0.75);
-    playSentence(index, { onDone: slow ? () => player.setRate(prev) : undefined });
+    if (slow) {
+      if (slowFrom.current === null) slowFrom.current = player.rate;
+      setRate(0.75);
+    } else restoreRate();
+    playSentence(index, { onDone: slow ? restoreRate : undefined });
     inputRef.current?.focus();
   };
 
