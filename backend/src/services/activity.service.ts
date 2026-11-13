@@ -18,6 +18,10 @@ export const XP = {
   speakTried: 1,
   ownSentence: 5,
   fluencyRound: 8,
+  tenseRecognize: 1,
+  tenseUse: 3,
+  tenseRetry: 1,
+  tenseWriting: 6,
 } as const;
 
 const FIELDS = new Set([
@@ -31,6 +35,7 @@ const FIELDS = new Set([
   'dictation_sentences',
   'speaking_items',
   'fluency_rounds',
+  'tense_items',
 ]);
 
 export type ActivityDelta = Partial<
@@ -44,7 +49,8 @@ export type ActivityDelta = Partial<
     | 'shadow_sentences'
     | 'dictation_sentences'
     | 'speaking_items'
-    | 'fluency_rounds',
+    | 'fluency_rounds'
+    | 'tense_items',
     number
   >
 >;

@@ -42,6 +42,9 @@ interface UiState {
   /** Thanh điều hướng trái thu gọn thành cột biểu tượng (máy tính) — nhớ cho mọi trang và lần mở sau */
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  /** Đang toàn màn hình (Fullscreen API, bật từ trang xem video): ẩn thanh bên / thanh trên cùng / thanh dưới */
+  immersive: boolean;
+  setImmersive: (v: boolean) => void;
   lookup: LookupState;
   openLookup: (term?: string) => void;
   closeLookup: () => void;
@@ -72,6 +75,8 @@ export const useUi = create<UiState>((set) => ({
       }
       return { sidebarCollapsed };
     }),
+  immersive: false,
+  setImmersive: (immersive) => set({ immersive }),
   lookup: { open: false, term: '' },
   openLookup: (term = '') => set({ lookup: { open: true, term } }),
   closeLookup: () => set((s) => ({ lookup: { ...s.lookup, open: false } })),

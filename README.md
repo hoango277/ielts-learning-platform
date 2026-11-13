@@ -137,9 +137,10 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
   - **Xem & tra từ**: tự dừng sau mỗi câu, lặp câu, che phụ đề để luyện nghe, chỉnh tốc độ 0.5×–1.5×.
   - **Shadowing**: nghe câu (lặp N lần) → **ghi âm** → nhận dạng giọng nói (Web Speech API) → **chấm điểm từng từ** (đúng / sai / thiếu), nghe lại giọng mình và bản gốc; chế độ tự động nghe → ghi âm → qua câu khi ≥ 80%; “nói cùng lúc” khi đeo tai nghe.
   - **Chép chính tả** (giống Daily Dictation): nghe câu, gõ lại, gợi ý từng từ, nghe chậm, so khớp có tô màu lỗi; transcript phía sau được làm mờ để không lộ đáp án.
-- **Chế độ rạp** (máy tính, màn hình rộng ≥ 1280px): nút **“Rạp”** hoặc phím `W` — video trải rộng hết khung trên nền tối, cao vừa màn hình; thanh điều khiển / bảng nói đuổi và transcript chuyển xuống dưới video. Dùng được ở cả 3 chế độ; bật/tắt không làm video tải lại hay mất chỗ đang xem; app nhớ lựa chọn cho lần sau.
+- **Chế độ rạp** (máy tính, màn hình rộng ≥ 1280px, khi *Xem & tra từ*): nút **“Rạp”** hoặc phím `W` — video trải rộng trên nền tối, **phụ đề câu đang nói nằm ngay dưới video** (chữ sáng như phụ đề phim, vẫn bấm từ để tra, vẫn song ngữ / che phụ đề / Kính thì); video tự co vừa để thấy cả video lẫn phụ đề trong một màn hình, không phải cuộn. Thanh điều khiển và transcript chuyển xuống dưới. Sang *Nói đuổi* / *Chép chính tả* thì tự về bố cục thường để bảng luyện nằm cạnh video, quay lại *Xem* thì về rạp. Bật/tắt không làm video tải lại hay mất chỗ đang xem; app nhớ lựa chọn cho lần sau.
+- **Toàn màn hình như YouTube** (nút **“Toàn màn hình”** hoặc phím `F`; thoát bằng `Esc` hoặc `F`): ẩn thanh bên, thanh trên cùng và thanh của trình duyệt, nền tối. Cột trái nền đen: **video phóng to hết cỡ**, **phụ đề của app** chạy ngay dưới video (không che hình; vẫn bấm từ để tra, song ngữ / che phụ đề / Kính thì như thường), thanh điều khiển gọn một hàng. Tuỳ chọn: nút **“Phụ đề trên video”** đưa phụ đề **đè lên phần dưới video như phụ đề YouTube** (hộp nền đen mờ sát đáy khi đang phát, tự nâng lên trên thanh tua khi tạm dừng; số thứ tự câu chuyển xuống thanh điều khiển). Cột phải: **toàn bộ phụ đề** cao hết màn hình, trên cùng là nút chọn *Xem / Nói đuổi / Chép chính tả*; nút **“Cột toàn bộ phụ đề”** ẩn cột này để video phủ kín màn hình. Ở *Nói đuổi* / *Chép chính tả* video nhỏ lại để thấy trọn bảng luyện. Sang video khác vẫn giữ toàn màn hình, rời trang xem video thì tự thoát. (Nút phóng to bên trong khung YouTube chỉ phóng to video, không có phụ đề của app.)
 - Ghi chú theo mốc thời gian, lưu video, theo dõi tiến độ xem / số câu shadowing / chính tả; tải lên phụ đề **.srt/.vtt** cho video không có phụ đề.
-- Phím tắt: `Space` phát/dừng · `←/→` câu trước/sau · `↑` nghe lại · `A` tự dừng · `L` lặp · `T` song ngữ · `H` che phụ đề · `[ ]` tốc độ · `1/2/3` chế độ · `W` chế độ rạp · `R` ghi âm · `Ctrl` nghe lại khi đang gõ · `Ctrl+K` tra từ nhanh · `Ctrl+B` thu gọn / mở rộng thanh bên.
+- Phím tắt: `Space` phát/dừng · `←/→` câu trước/sau · `↑` nghe lại · `A` tự dừng · `L` lặp · `T` song ngữ · `H` che phụ đề · `[ ]` tốc độ · `1/2/3` chế độ · `W` chế độ rạp · `F` toàn màn hình · `G` Kính thì (tô màu động từ theo thì) · `R` ghi âm · `Ctrl` nghe lại khi đang gõ · `Ctrl+K` tra từ nhanh · `Ctrl+B` thu gọn / mở rộng thanh bên.
 
 ### 3. Sổ từ vựng
 - Lọc theo trạng thái (Mới / Đang học / Đang ôn / Thành thạo / **Đã thuộc** / Đến hạn / ⭐), nguồn (video / chủ đề / tự thêm), tag; tìm kiếm, sắp xếp (mới thêm, A→Z, sắp đến hạn, **hay sai nhất**).
@@ -167,9 +168,9 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 - **Lướt thẻ kiểu Quizlet**: “Đã biết” (đánh dấu đã thuộc) / “Chưa biết” (thêm vào sổ để ôn); thêm từng từ hoặc cả chủ đề; luyện tập theo chủ đề.
 
 ### 7. Hôm nay học gì (buổi học có hướng dẫn)
-- Mỗi ngày một kế hoạch 5 bước theo khung **“bốn mảng”** (Paul Nation): ôn thẻ đến hạn → nghe một **video vừa sức** → **nói đuổi** 10 câu → **nói lại câu đã lưu** → một lượt **4/3/2**.
-- Tiến độ tự đánh dấu từ hoạt động thật trong ngày; bỏ qua từng bước; đổi video (gợi ý theo độ khó); chế độ **ngắn ~20 phút** / **chuẩn ~40 phút**.
-- Hiển thị thành **lộ trình 5 trạm** (mỗi trạm một vật thể 3D) ngay trên Trang chủ, kèm **đúng một nút** cho bước tiếp theo; trang `/today` là bản đầy đủ với đường nối dọc giữa các trạm.
+- Mỗi ngày một kế hoạch 6 bước theo khung **“bốn mảng”** (Paul Nation): ôn thẻ đến hạn → nghe một **video vừa sức** → **nói đuổi** 10 câu → **nói lại câu đã lưu** → **trộn thì** 10 câu (xem mục 17) → một lượt **4/3/2**.
+- Tiến độ tự đánh dấu từ hoạt động thật trong ngày; bỏ qua từng bước; đổi video (gợi ý theo độ khó); chế độ **ngắn ~25 phút** / **chuẩn ~45 phút**.
+- Hiển thị thành **lộ trình 6 trạm** (mỗi trạm một vật thể 3D) ngay trên Trang chủ, kèm **đúng một nút** cho bước tiếp theo; trang `/today` là bản đầy đủ với đường nối dọc giữa các trạm.
 
 ### 8. Sổ mẫu câu (học theo cụm)
 - Lưu câu hay từ phụ đề (nút dấu trang trên mỗi dòng, phím `B`, hoặc “Lưu câu làm mẫu câu” trong popover tra từ), **chọn cụm cần học** bằng cách bấm từ đầu – từ cuối; gợi ý cụm từ sổ từ, bộ chủ đề và danh sách collocation soạn sẵn.
@@ -215,9 +216,17 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 - Mọi thuật ngữ khó (FSRS, lặp lại ngắt quãng, shadowing, collocation, họ từ, CEFR, độ phủ từ vựng, 4/3/2, từ/phút, từ đệm, Web Push, Hy-MT…) có **gạch chân chấm** hoặc nút (?): rê chuột / chạm để xem giải thích ngắn bằng tiếng Việt, “Giải thích thêm” để đọc đầy đủ kèm ví dụ. Trang **Giải thích thuật ngữ** (`/glossary`) gom toàn bộ, tìm được cả khi gõ không dấu.
 - Bảng màu **“Mực ngọc”**: nền giấy kem, chữ mực đen ấm, màu chính xanh ngọc như mực bút máy, điểm nhấn cam đất; giao diện tối nền than ấm. Thang màu Tailwind được làm dịu theo bảng **Flexoki** nhưng **giữ nguyên độ sáng từng bậc**, nên độ tương phản chữ/nền không đổi. Font **Be Vietnam Pro** (chữ thường) + **Nunito** (tiêu đề, nút).
 - Hình minh hoạ 3D một phong cách xuyên suốt: ảnh 3D **Fluent Emoji** cho chủ đề, dạng bài, huy hiệu, trạng thái trống, khối chào mỗi trang (component `Emoji3D`, emoji chưa có ảnh thì hiện emoji thường); **cảnh 3D WebGL** “4 kỹ năng IELTS” (three.js, tải lười) ở trang đăng nhập/đăng ký — nghiêng theo chuột, giảm còn ~30 khung hình/giây khi để yên và dừng hẳn sau 20 giây, dừng khi ẩn tab; máy không có WebGL thì hiện ảnh 3D tĩnh.
-- Bố cục gọn: thanh bên gom theo việc cần làm (Trang chủ, Ôn tập → Nghe & xem → Từ vựng → Nói → Tiến độ), biểu tượng một màu, mục phụ (Thuật ngữ, Cài đặt) ở dưới cùng; mỗi khối chào chỉ một câu giới thiệu.
-- **Thu gọn thanh bên** (máy tính, mọi trang): nút thu gọn ở đầu thanh trên cùng, sát thanh bên (giống YouTube), hoặc `Ctrl+B` → thanh bên chỉ còn cột biểu tượng để nhường chỗ cho nội dung; rê chuột hiện tên mục, mục có việc chờ (vd. thẻ đến hạn ôn) hiện chấm cam. App nhớ lựa chọn khi chuyển trang và lần mở sau.
+- Bố cục gọn: thanh bên gom theo việc cần làm (Trang chủ, Ôn tập → Nghe & xem → Từ vựng & ngữ pháp → Nói → Tiến độ), biểu tượng một màu, mục phụ (Thuật ngữ, Cài đặt) ở dưới cùng; mỗi khối chào chỉ một câu giới thiệu.
+- **Thu gọn thanh bên** (máy tính, mọi trang): nút thu gọn ở đầu thanh bên, cạnh logo (khi đã thu gọn thì nằm ngay dưới logo), hoặc `Ctrl+B` → thanh bên chỉ còn cột biểu tượng để nhường chỗ cho nội dung; rê chuột hiện tên mục, mục có việc chờ (vd. thẻ đến hạn ôn) hiện chấm cam. App nhớ lựa chọn khi chuyển trang và lần mở sau. Màn hình thấp (≤ 920px chiều cao, vd. laptop) thì thanh bên tự gọn khoảng cách để thấy đủ mục mà không phải cuộn.
 - Hiệu năng: không có animation trang trí lặp vô hạn, không `backdrop-filter`/`filter: blur` trên vùng lớn (đo trên máy thật: CPU khi đứng yên ở Trang chủ từ ~100% một nhân còn ~0%). Nút và thẻ “nổi khối” bấm lún xuống, chuyển trang mượt bằng View Transitions — mọi hiệu ứng tự tắt khi hệ điều hành bật giảm chuyển động.
+
+### 17. Thì — hiểu nghĩa, nói & viết phản xạ (`/tenses`)
+- **Học 6 ý nghĩa thay vì 12 công thức**: hiện tại đơn · tiếp diễn (hiện tại & quá khứ) · quá khứ đơn · hiện tại hoàn thành (kèm hoàn thành tiếp diễn) · tương lai (will / be going to / hiện tại tiếp diễn cho lịch hẹn) · quá khứ hoàn thành. Mỗi bài: **trục thời gian** (SVG) cho từng cách dùng, **câu hỏi kiểm tra khái niệm** (Có/Không), **cặp câu dễ nhầm**, đối chiếu **đã / đang / sẽ / rồi / từng / vừa**, **bẫy hay gặp của người Việt**, cụm nói nhanh, phát âm đuôi -s / -ed và dạng rút gọn; câu nào cũng nghe được.
+- **Luyện**: *Nhận ra* (câu không có từ chỉ thời gian — phải nhìn động từ; nghe máy đọc rồi chọn đúng câu theo đuôi động từ) · *Nói phản xạ* (gợi ý tiếng Việt → nói câu tiếng Anh trong 6 → 4 → 3 giây, đo thời gian từ lúc thấy đề tới lúc bắt đầu nói; từ câu thứ hai micro tự bật) · *Gõ phản xạ* · *Sửa câu sai* · **Trộn thì** (xen kẽ mọi thì, như lúc nói thật) · *Viết đoạn* (đề theo bài + 4 đề dạng IELTS Speaking / Task 1 / Task 2, soát thì từng câu, có bài mẫu) · *Kể chuyện 4/3/2* theo thì (nút “Soát thì lượt này” trong kết quả 4/3/2).
+- **Chấm theo ý nghĩa, gợi ý trước**: thư viện **compromise** (MIT, chạy trên máy chủ) nhận diện thì của động từ chính — đổi động từ khác vẫn đúng nếu đúng thì; soát 7 lỗi hay gặp (mốc đã kết thúc + hoàn thành, “yesterday” + hiện tại, “since” + quá khứ đơn, thiếu/thừa -s, did + V2, thiếu am/is/are trước V-ing, have + V2). Sai lần đầu chỉ hiện **câu hỏi gợi ý**; lần hai mới hiện đáp án + giải thích. Câu sai lần đầu **tự vào hàng ôn FSRS** (thẻ mẫu câu có nhãn thì, mặt trước có gợi ý ngữ cảnh tiếng Việt, che cụm động từ).
+- **Kính thì** trên trang xem video (nút “Thì”, phím `G`): tô màu động từ trong phụ đề theo thì; bấm vào một động từ để xem vì sao người nói dùng thì đó, mở bài học, **lưu câu có nhãn thì** (hiện ở mục “Câu thật từ video của bạn” trong bài) hoặc **báo nhận sai** (trang Quản trị xem được); bấm một màu ở thanh chú thích để chỉ xem câu có thì đó.
+- **Tiến bộ**: mỗi thì 3 chỉ số — **Hiểu** (% nhận ra đúng), **Dùng** (% tự nói / gõ đúng ngay lần đầu), **Phản xạ** (thời gian phản hồi, mục tiêu ≤ 3 giây); bước **“Trộn thì”** trong *Hôm nay học gì*.
+- Nội dung soạn tay: 6 bài, **263 câu luyện**, **16 đề viết**; unit test kiểm tra mọi đáp án mẫu được chấm đúng và mọi câu sai mẫu bị chấm sai (`npx tsx backend/src/data/tenses/validate.ts`).
 
 ---
 
@@ -321,12 +330,15 @@ backend/
       push.service.ts        thông báo đẩy (VAPID, đăng ký thiết bị, bộ hẹn giờ nhắc ôn)
       placement.service.ts   bài test vốn từ (Yes/No có từ giả)
       topics.service.ts      bộ từ chủ đề
+      tenses.service.ts      module Thì: bài học, lượt luyện, chấm câu, viết đoạn, Kính thì, chỉ số tiến bộ
       stats.service.ts       streak, XP, heatmap, thành tích
     lib/wordnet.ts           đọc WordNet offline: nghĩa, đồng nghĩa, họ từ
+    lib/tense.ts             nhận diện thì (compromise), soát lỗi thì hay gặp, chấm câu phản xạ, gắn thì theo từ cho phụ đề
     lib/ngsl.ts, coverage.ts danh sách NGSL, tính độ phủ từ vựng
     lib/fluency.ts           đếm từ đệm, chỉ số trôi chảy
     data/                    collocation, nâng cấp từ, đề nói 4/3/2 (soạn tay)
     crawler/                 crawler bộ từ chủ đề
+    data/tenses/             6 bài thì (lesson-*.ts) + câu luyện + đề viết, validate.ts kiểm tra nội dung
   data/seed/topics.json      dữ liệu chủ đề đã crawl (nạp tự động lần đầu và mỗi khi file đổi)
   data/ngsl/                 New General Service List 1.2 (CC BY-SA 4.0)
 frontend/
@@ -338,9 +350,11 @@ frontend/
     pages/fluency/           4/3/2
     pages/watch/             trang học video: player, phụ đề, transcript, shadowing, chép chính tả
     pages/practice/          hub, phiên luyện tập, trò ghép cặp
+    pages/tenses/            module Thì: trang tổng, bài học, lượt luyện (nhận ra / nói / gõ / sửa câu / trộn), viết đoạn
     components/              UI cơ bản (Button, Term — thẻ giải thích thuật ngữ, Emoji3D, HeroArt, Celebration…), layout, hộp khởi động, thẻ video, popover tra từ, biểu đồ
     components/three/        cảnh 3D trang đăng nhập (three.js, tải lười)
     components/topics/       tạo/sửa bộ từ, khung thêm từ (dán cả danh sách)
+    components/tenses/       trục thời gian (SVG), kết quả soát thì, dải Kính thì, màu & tên thì
     hooks/                   YouTube player, nhận dạng giọng nói, ghi âm, phím tắt
     lib/                     API client, kiểu dữ liệu, so khớp từ (diff), phát âm, push.ts (Web Push), glossary.ts (nội dung giải thích thuật ngữ)
     index.css                design system: màu, font, bóng đổ, hiệu ứng, tiện ích (card, press, stagger…)
@@ -370,7 +384,8 @@ docker-compose.yml           chạy app; docker-compose.hymt.yml thêm model d�
 | Hôm nay | `GET /api/today` · `POST /today/skip` · `PUT /today/video` · `GET /review/warmup` (hộp khởi động) |
 | Thông báo đẩy | `GET /api/push/public-key` · `POST /push/subscribe` · `POST /push/unsubscribe` · `POST /push/test` |
 | Test vốn từ | `GET /api/placement/test` · `POST /placement/result` · `GET /placement/last` |
-| Quản trị (chỉ admin) | `GET/PUT /api/admin/settings` · `GET /api/admin/users` · `PATCH /api/admin/users/:id {role}` · `POST /api/translate/hymt/test` |
+| Thì | `GET /api/tenses` · `GET /tenses/lessons/:id` · `GET /tenses/session?mode=recognize|speak|type|fix|mixed&lesson=&count=` · `POST /tenses/recognize` · `POST /tenses/check {itemId, text, mode, attempt}` · `POST /tenses/cards` (thêm vào ôn tập) · `POST /tenses/analyze {text}` · `GET /tenses/prompts` · `GET/POST /tenses/writings` · `POST /tenses/story {lesson}` · `POST /tenses/reports` · `GET /videos/:id/tenses` (Kính thì) |
+| Quản trị (chỉ admin) | `GET/PUT /api/admin/settings` · `GET /api/admin/users` · `PATCH /api/admin/users/:id {role}` · `POST /api/translate/hymt/test` · `GET /api/admin/tense-reports` |
 | Khác | `GET /api/stats/overview` · `GET/PUT /api/settings` (tuỳ chọn học tập của mỗi người) · `GET /api/health` (kèm `version`) |
 
 ## Ghi chú
@@ -378,7 +393,7 @@ docker-compose.yml           chạy app; docker-compose.hymt.yml thêm model d�
 - Dữ liệu của mọi tài khoản nằm trong `backend/data/ielts-learn.db` (SQLite); sao lưu file này là đủ.
 - Nhận dạng giọng nói để chấm shadowing cần **Chrome hoặc Edge**; trình duyệt khác vẫn ghi âm để tự nghe lại.
 - Cấp độ CEFR của từ được ước lượng từ tần suất xuất hiện (Google Books Ngram qua Datamuse) — mang tính tham khảo.
-- Nguồn dữ liệu cho phần cách dùng từ: **WordNet 3.1** (Princeton, gói `wordnet-db`, chạy offline), **Datamuse API**, **Wiktionary** (CC BY-SA, nhãn văn phong), **NGSL 1.2** (Browne, Culligan & Phillips, CC BY-SA 4.0 — xem `backend/data/ngsl/README.md`). Danh sách collocation, nâng cấp từ và đề nói 4/3/2 do app tự soạn.
+- Nguồn dữ liệu cho phần cách dùng từ: **WordNet 3.1** (Princeton, gói `wordnet-db`, chạy offline), **Datamuse API**, **Wiktionary** (CC BY-SA, nhãn văn phong), **NGSL 1.2** (Browne, Culligan & Phillips, CC BY-SA 4.0 — xem `backend/data/ngsl/README.md`). Danh sách collocation, nâng cấp từ, đề nói 4/3/2 và nội dung module Thì do app tự soạn; nhận diện thì dùng thư viện **compromise** (MIT, chạy offline trên máy chủ).
 - Đồ hoạ: ảnh 3D **Fluent Emoji** (Microsoft, MIT — `frontend/public/emoji3d/LICENSE.txt`), bảng màu dựa trên **Flexoki** (Steph Ango, MIT), cảnh 3D dựng bằng **three.js** (MIT).
 - Ghi âm 4/3/2 nằm trong `backend/data/recordings/<id người dùng>/` (không commit); xoá buổi luyện sẽ xoá luôn file ghi âm.
 

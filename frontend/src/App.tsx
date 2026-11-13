@@ -28,6 +28,10 @@ const WordProfilePage = lazy(() => import('./pages/WordProfilePage'));
 const Placement = lazy(() => import('./pages/Placement'));
 const Upgrades = lazy(() => import('./pages/practice/Upgrades'));
 const Glossary = lazy(() => import('./pages/Glossary'));
+const TensesHub = lazy(() => import('./pages/tenses/TensesHub'));
+const TenseLesson = lazy(() => import('./pages/tenses/LessonPage'));
+const TensePractice = lazy(() => import('./pages/tenses/TensePractice'));
+const TenseWriting = lazy(() => import('./pages/tenses/WritingPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function FullScreenLoader() {
@@ -87,6 +91,10 @@ function AppRoutes() {
           <Route path="placement" element={<Placement />} />
           <Route path="practice/upgrades" element={<Upgrades />} />
           <Route path="glossary" element={<Glossary />} />
+          <Route path="tenses" element={<TensesHub />} />
+          <Route path="tenses/practice" element={<TensePractice />} />
+          <Route path="tenses/write" element={<TenseWriting />} />
+          <Route path="tenses/:id" element={<TenseLesson />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Dice5, Mic, Play, RotateCcw, Square, Tim
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
+import { TenseReport } from '../../components/tenses/TenseReport';
 import { Button, LinkButton } from '../../components/ui/Button';
 import { HeroArt } from '../../components/ui/HeroArt';
 import { ConfirmDialog } from '../../components/ui/Modal';
@@ -319,6 +320,24 @@ function Runner({ session }: { session: FluencySession }) {
   );
 }
 
+/** Soát thì lời nói một lượt (module "Thì"): động từ đã đúng thì chưa, lỗi hay gặp — gợi ý trước, đáp án sau */
+function RoundTenseCheck({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const q = useQuery({ queryKey: ['tense-analyze', text], queryFn: () => api.tenseAnalyze(text), enabled: open && Boolean(text.trim()), staleTime: Infinity });
+  if (!text.trim()) return null;
+  if (!open)
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="text-xs font-bold text-brand-600 underline underline-offset-2 hover:text-brand-700 dark:text-brand-300">
+        ⏳ Soát thì lượt này
+      </button>
+    );
+  return (
+    <div className="rounded-xl border border-line p-3">
+      {q.data ? <TenseReport analysis={q.data} compact /> : q.error ? <ErrorBox error={q.error} /> : <p className="text-xs text-muted">Đang soát thì…</p>}
+    </div>
+  );
+}
+
 function Summary({ session }: { session: FluencySession }) {
   const first = session.rounds[0];
   const last = session.rounds[session.rounds.length - 1];
@@ -374,6 +393,7 @@ function Summary({ session }: { session: FluencySession }) {
                 </p>
               )}
               {r.hasAudio && <audio src={`${api.fluencyAudioUrl(r.id)}?v=${encodeURIComponent(r.createdAt)}`} controls className="h-9 w-full" />}
+              <RoundTenseCheck text={r.transcript} />
             </div>
           ))}
         </div>

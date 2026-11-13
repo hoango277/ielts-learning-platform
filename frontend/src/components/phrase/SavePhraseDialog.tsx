@@ -3,6 +3,8 @@ import { BookmarkPlus, Sparkles, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
+import type { TenseForm } from '../../lib/types';
+import { FORM_META, tenseColor } from '../tenses/meta';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
@@ -14,6 +16,8 @@ export interface PhraseDraft {
   end?: number;
   /** Cụm chọn sẵn (vd. người học bôi đen trong phụ đề) */
   chunk?: string;
+  /** Nhãn thì (lưu từ Kính thì) → câu hiện trong bài học thì tương ứng */
+  tense?: TenseForm;
 }
 
 const strip = (s: string) => s.replace(/^[^\p{L}\p{N}']+|[^\p{L}\p{N}']+$/gu, '');
@@ -39,11 +43,13 @@ export function SavePhraseDialog({ draft, videoId, onClose }: { draft: PhraseDra
   const [range, setRange] = useState<[number, number] | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
   const [note, setNote] = useState('');
+  const [withTense, setWithTense] = useState(true);
 
   useEffect(() => {
     setRange(draft?.chunk ? rangeOf(tokens, draft.chunk) : null);
     setAnchor(null);
     setNote('');
+    setWithTense(true);
   }, [draft, tokens]);
 
   const suggestions = useQuery({
@@ -57,7 +63,15 @@ export function SavePhraseDialog({ draft, videoId, onClose }: { draft: PhraseDra
 
   const save = useMutation({
     mutationFn: (withChunk: boolean) =>
-      api.createPhrase({ sentence: draft!.text, chunk: withChunk ? chunk : undefined, videoId, start: draft!.start, end: draft!.end, note: note.trim() || undefined }),
+      api.createPhrase({
+        sentence: draft!.text,
+        chunk: withChunk ? chunk : undefined,
+        videoId,
+        start: draft!.start,
+        end: draft!.end,
+        note: note.trim() || undefined,
+        tense: withTense ? draft!.tense : undefined,
+      }),
     onSuccess: ({ existed }) => {
       toast.success(existed ? 'Mẫu câu này đã có trong sổ' : 'Đã lưu vào sổ mẫu câu', {
         description: existed ? undefined : 'Câu sẽ xuất hiện khi ôn tập và luyện nói lại.',
@@ -66,6 +80,7 @@ export function SavePhraseDialog({ draft, videoId, onClose }: { draft: PhraseDra
       qc.invalidateQueries({ queryKey: ['video-phrases', videoId] });
       qc.invalidateQueries({ queryKey: ['review-queue'] });
       qc.invalidateQueries({ queryKey: ['today'] });
+      qc.invalidateQueries({ queryKey: ['tense-lesson'] });
       onClose();
     },
     onError: (e) => toast.error((e as Error).message),
@@ -149,6 +164,15 @@ export function SavePhraseDialog({ draft, videoId, onClose }: { draft: PhraseDra
               ))}
             </div>
           </div>
+        )}
+        {draft?.tense && (
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm">
+            <input type="checkbox" checked={withTense} onChange={(e) => setWithTense(e.target.checked)} className="h-4 w-4 accent-brand-500" />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: tenseColor(draft.tense) }} />
+            <span className="text-ink">
+              Gắn nhãn thì <b>{FORM_META[draft.tense].label}</b> — câu sẽ hiện trong bài học thì này
+            </span>
+          </label>
         )}
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú (không bắt buộc): khi nào dùng, sắc thái…" aria-label="Ghi chú" maxLength={500} />
       </div>

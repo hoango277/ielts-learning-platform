@@ -5,6 +5,7 @@ import {
   CircleHelp,
   Compass,
   Flame,
+  Hourglass,
   Layers,
   LayoutDashboard,
   Library,
@@ -31,6 +32,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigationType } from 'react-rou
 import { useLogout, useMe } from '../../hooks/useAuth';
 import { useHotkeys } from '../../hooks/useHotkeys';
 import { api } from '../../lib/api';
+import { isPageFullscreen } from '../../lib/fullscreen';
 import { cn } from '../../lib/utils';
 import { applyTheme, useUi, type Theme } from '../../store/ui';
 import { Kbd, Progress, Spinner } from '../ui/primitives';
@@ -53,7 +55,7 @@ interface NavItem {
 
 /*
  * Điều hướng gom theo việc người học muốn làm (định luật Hick: gom nhóm thay vì liệt kê dàn trải):
- * hai việc hằng ngày ở trên cùng (Trang chủ = buổi học hôm nay, Ôn tập) → Nghe & xem → Từ vựng → Nói → Tiến độ.
+ * hai việc hằng ngày ở trên cùng (Trang chủ = buổi học hôm nay, Ôn tập) → Nghe & xem → Từ vựng & ngữ pháp → Nói → Tiến độ.
  * Thuật ngữ và Cài đặt là mục phụ, nằm dưới cùng thanh bên. Biểu tượng một màu; chỉ mục đang mở có màu thương hiệu.
  */
 function useNav(): NavItem[] {
@@ -67,10 +69,11 @@ function useNav(): NavItem[] {
     { to: '/review', label: 'Ôn tập', icon: Layers, badge: due, badgeHint: `${due} thẻ đang chờ ôn` },
     { to: '/explore', label: 'Khám phá video', icon: Compass, group: 'Nghe & xem', also: ['/watch', '/channel'] },
     { to: '/library', label: 'Thư viện của tôi', icon: Library, group: 'Nghe & xem' },
-    { to: '/notebook', label: 'Sổ từ vựng', icon: BookMarked, group: 'Từ vựng', also: ['/profile'] },
-    { to: '/topics', label: 'Bộ từ chủ đề', icon: Shapes, group: 'Từ vựng' },
-    { to: '/phrases', label: 'Sổ mẫu câu', icon: MessageSquareQuote, group: 'Từ vựng' },
-    { to: '/practice', label: 'Luyện tập', icon: Target, group: 'Từ vựng' },
+    { to: '/notebook', label: 'Sổ từ vựng', icon: BookMarked, group: 'Từ vựng & ngữ pháp', also: ['/profile'] },
+    { to: '/topics', label: 'Bộ từ chủ đề', icon: Shapes, group: 'Từ vựng & ngữ pháp' },
+    { to: '/phrases', label: 'Sổ mẫu câu', icon: MessageSquareQuote, group: 'Từ vựng & ngữ pháp' },
+    { to: '/practice', label: 'Luyện tập', icon: Target, group: 'Từ vựng & ngữ pháp' },
+    { to: '/tenses', label: 'Thì (nói & viết)', icon: Hourglass, group: 'Từ vựng & ngữ pháp' },
     { to: '/speaking', label: 'Luyện nói lại', icon: Mic, group: 'Nói' },
     { to: '/fluency', label: 'Nói trôi chảy 4/3/2', icon: Timer, group: 'Nói' },
     { to: '/progress', label: 'Tiến độ', icon: TrendingUp, group: 'Của bạn' },
@@ -160,7 +163,7 @@ function SidebarLink({ item, onClick, compact, collapsed }: { item: NavItem; onC
         aria-current={active ? 'page' : undefined}
         title={item.badge ? `${item.label} — ${item.badgeHint}` : item.label}
         className={cn(
-          'group relative flex justify-center rounded-xl py-1 transition-colors',
+          'group relative flex justify-center rounded-xl py-1 transition-colors short:py-0.5',
           active ? 'bg-brand-500/10' : 'text-muted hover:bg-surface-2 hover:text-ink',
         )}
       >
@@ -189,7 +192,7 @@ function SidebarLink({ item, onClick, compact, collapsed }: { item: NavItem; onC
       aria-current={active ? 'page' : undefined}
       className={cn(
         'group flex items-center gap-3 rounded-xl px-2 font-semibold transition-colors',
-        compact ? 'py-1.5 text-sm' : 'py-1 text-[15px]',
+        compact ? 'py-1.5 text-sm short:py-1' : 'py-1 text-[15px] short:py-0.5',
         active ? 'bg-brand-500/10 text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink',
       )}
     >
@@ -217,10 +220,22 @@ function SidebarLink({ item, onClick, compact, collapsed }: { item: NavItem; onC
   );
 }
 
+/** Nút thu gọn / mở rộng thanh bên (máy tính; phím tắt Ctrl+B) — nằm ngay trên thanh bên, cạnh logo */
+function SidebarToggle() {
+  const { sidebarCollapsed: collapsed, toggleSidebar } = useUi();
+  const label = collapsed ? 'Mở rộng thanh bên (Ctrl B)' : 'Thu gọn thanh bên (Ctrl B)';
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  return (
+    <button type="button" onClick={toggleSidebar} aria-expanded={!collapsed} aria-controls="sidebar" aria-label={label} title={label} className={ICON_BUTTON}>
+      <Icon className="h-5 w-5" />
+    </button>
+  );
+}
+
 /**
- * Thanh bên trái (máy tính). Thu gọn được thành cột biểu tượng (nút đầu thanh trên cùng hoặc Ctrl+B) để nhường chỗ cho
- * nội dung; trạng thái nhớ cho mọi trang. Đổi độ rộng tức thì, không làm hiệu ứng: animate width bắt cả trang tính lại
- * bố cục mỗi khung hình (giật trên trang video).
+ * Thanh bên trái (máy tính). Thu gọn được thành cột biểu tượng (nút cạnh logo hoặc Ctrl+B) để nhường chỗ cho nội dung;
+ * trạng thái nhớ cho mọi trang. Đổi độ rộng tức thì, không làm hiệu ứng: animate width bắt cả trang tính lại bố cục mỗi
+ * khung hình (giật trên trang video).
  */
 function Sidebar() {
   const nav = useNav();
@@ -229,16 +244,19 @@ function Sidebar() {
   return (
     <aside
       id="sidebar"
-      className={cn('sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-surface py-5 lg:flex', collapsed ? 'w-19 px-2' : 'w-64 px-3')}
+      className={cn('sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-surface py-5 short:py-3 lg:flex', collapsed ? 'w-19 px-2' : 'w-64 px-3')}
     >
-      <div className={collapsed ? 'flex justify-center' : 'px-2'}>
+      {/* Đầu thanh bên: logo + nút thu gọn (đang mở rộng: nút ở bên phải logo; đã thu gọn: nút ngay dưới logo).
+          Cùng một cây phần tử ở cả hai trạng thái nên bấm xong nút vẫn giữ tiêu điểm bàn phím. */}
+      <div className={collapsed ? 'flex flex-col items-center gap-2 short:gap-1.5' : 'flex items-center justify-between gap-2 pl-2 pr-1'}>
         <Logo compact={collapsed} />
+        <SidebarToggle />
       </div>
       {collapsed ? (
         <button
           type="button"
           onClick={() => openLookup()}
-          className={cn(ICON_BUTTON, 'mx-auto mt-5 border border-line bg-surface-2/60')}
+          className={cn(ICON_BUTTON, 'mx-auto mt-3 border border-line bg-surface-2/60 short:mt-2')}
           aria-label="Tra từ nhanh (Ctrl K)"
           title="Tra từ nhanh (Ctrl K)"
         >
@@ -248,23 +266,23 @@ function Sidebar() {
         <button
           type="button"
           onClick={() => openLookup()}
-          className="mx-1 mt-5 flex h-10 items-center gap-2 rounded-xl border border-line bg-surface-2/60 px-3 text-sm text-muted shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] transition hover:border-brand-300 hover:text-ink"
+          className="mx-1 mt-5 flex h-10 items-center short:mt-3 gap-2 rounded-xl border border-line bg-surface-2/60 px-3 text-sm text-muted shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] transition hover:border-brand-300 hover:text-ink"
         >
           <Search className="h-4 w-4" />
           <span className="flex-1 text-left">Tra từ nhanh…</span>
           <Kbd>Ctrl K</Kbd>
         </button>
       )}
-      <nav className="scrollbar-thin -mx-1 mt-3 flex-1 space-y-0.5 overflow-y-auto px-1" aria-label="Điều hướng chính">
+      <nav className="scrollbar-thin -mx-1 mt-3 flex-1 space-y-0.5 overflow-y-auto px-1 short:mt-2" aria-label="Điều hướng chính">
         {nav.map((item, i) => (
           <div key={item.to}>
             {item.group &&
               item.group !== nav[i - 1]?.group &&
               (collapsed ? (
                 // Thu gọn: tên nhóm thành vạch ngăn mảnh — vẫn thấy các mục được gom nhóm
-                <div aria-hidden className="mx-3 my-2.5 border-t border-line" />
+                <div aria-hidden className="mx-3 my-2.5 border-t border-line short:my-1.5" />
               ) : (
-                <p className="px-2 pb-1 pt-4 text-[11px] font-bold uppercase tracking-widest text-muted/80">{item.group}</p>
+                <p className="px-2 pb-1 pt-4 text-[11px] font-bold uppercase tracking-widest text-muted/80 short:pb-0.5 short:pt-2.5">{item.group}</p>
               ))}
             <SidebarLink item={item} collapsed={collapsed} />
           </div>
@@ -412,24 +430,10 @@ function UserMenu() {
 }
 
 function TopBar() {
-  const { openLookup, sidebarCollapsed, toggleSidebar } = useUi();
-  const sidebarLabel = sidebarCollapsed ? 'Mở rộng thanh bên (Ctrl B)' : 'Thu gọn thanh bên (Ctrl B)';
+  const { openLookup } = useUi();
   return (
     <header className="glass sticky top-0 z-20 border-b border-line">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-1 px-4 sm:gap-1.5 sm:px-6">
-        {/* Nút thu gọn thanh bên (máy tính): đặt ở thanh trên cùng như YouTube để không làm thanh bên dài thêm
-            (thêm một hàng ở cuối thanh sẽ đẩy mục cuối xuống dưới mép màn hình laptop) */}
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          aria-expanded={!sidebarCollapsed}
-          aria-controls="sidebar"
-          aria-label={sidebarLabel}
-          title={sidebarLabel}
-          className={cn(ICON_BUTTON, 'hidden lg:-ml-2 lg:inline-flex')}
-        >
-          {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-        </button>
         <div className="lg:hidden">
           <Logo compact />
         </div>
@@ -458,21 +462,38 @@ export function PageFallback() {
 }
 
 export function AppShell({ children }: { children?: ReactNode }) {
-  const { openLookup, theme, toggleSidebar } = useUi();
+  const { openLookup, theme, toggleSidebar, immersive, setImmersive } = useUi();
   const location = useLocation();
   const navigationType = useNavigationType();
   const navType = useRef(navigationType);
   navType.current = navigationType;
   useHotkeys({ 'mod+k': () => openLookup(), 'mod+b': toggleSidebar });
 
+  // Toàn màn hình (bật ở trang xem video): đồng bộ với trình duyệt — bấm Esc thoát thì thanh bên / thanh trên hiện lại.
+  // Khung YouTube tự phóng to (nút của YouTube) thì fullscreenElement là iframe → không tính.
   useEffect(() => {
-    applyTheme(theme);
+    const sync = () => setImmersive(isPageFullscreen());
+    sync();
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, [setImmersive]);
+  // Rời trang xem video thì thoát toàn màn hình; chuyển sang video khác vẫn giữ
+  useEffect(() => {
+    if (immersive && !location.pathname.startsWith('/watch/')) void document.exitFullscreen().catch(() => undefined);
+  }, [immersive, location.pathname]);
+
+  useEffect(() => {
+    // Toàn màn hình (xem video) luôn nền tối như YouTube; thoát ra thì về giao diện người dùng đã chọn
+    const apply = () => {
+      applyTheme(theme);
+      if (immersive) document.documentElement.classList.add('dark');
+    };
+    apply();
     if (theme !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const on = () => applyTheme('system');
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, [theme]);
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [theme, immersive]);
 
   // Sang trang khác → về đầu trang; Back/Forward (POP) thì để trình duyệt giữ vị trí cũ
   useEffect(() => {
@@ -490,10 +511,13 @@ export function AppShell({ children }: { children?: ReactNode }) {
       >
         Bỏ qua tới nội dung chính
       </a>
-      <Sidebar />
+      {!immersive && <Sidebar />}
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
-        <main id="main" className="mx-auto w-full max-w-[1600px] flex-1 px-4 pb-28 pt-5 sm:px-6 lg:pb-12">
+        {!immersive && <TopBar />}
+        <main
+          id="main"
+          className={cn('mx-auto w-full max-w-[1600px] flex-1 px-4 pb-28 pt-5 sm:px-6 lg:pb-12', immersive && 'max-w-none pb-4 pt-4 lg:p-0')}
+        >
           <Suspense fallback={<PageFallback />}>
             {/* Chuyển trang mượt (View Transitions API): trang cũ mờ đi, trang mới trượt nhẹ lên. Trình duyệt chưa hỗ trợ thì chuyển ngay như thường. */}
             <ViewTransition key={section} enter="page-in" exit="page-out" update="none" default="none">
@@ -502,7 +526,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           </Suspense>
         </main>
       </div>
-      <MobileNav />
+      {!immersive && <MobileNav />}
       <QuickLookup />
       <StartScreen />
       <MilestoneWatcher />

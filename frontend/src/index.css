@@ -8,6 +8,8 @@
 @import '@fontsource-variable/nunito';
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Màn hình thấp (laptop ~ 768–900px chiều cao): thanh bên gọn lại để thấy đủ mục mà không phải cuộn */
+@custom-variant short (@media (max-height: 920px));
 
 /* ---------- Bảng màu (luôn xuất ra :root để CSS tự viết dùng được var(--color-*)) ---------- */
 @theme static {
@@ -607,6 +609,31 @@
 .dark .word-token[data-spoken='true'] {
   color: var(--color-brand-300);
 }
+
+/* Kính thì: động từ được tô theo thì (gạch chân đậm + nền rất nhạt) — màu khai báo ở --tense */
+.word-token[data-tense],
+.tense-mark[data-tense] {
+  background: color-mix(in oklab, var(--tense) 14%, transparent);
+  box-shadow: inset 0 -0.16em 0 color-mix(in oklab, var(--tense) 85%, transparent);
+  border-radius: 3px;
+}
+.dark .word-token[data-tense],
+.dark .tense-mark[data-tense] {
+  background: color-mix(in oklab, var(--tense) 24%, transparent);
+}
+[data-tense='present-simple'] { --tense: var(--color-sky-500); }
+[data-tense='present-continuous'] { --tense: var(--color-emerald-500); }
+[data-tense='past-simple'] { --tense: var(--color-amber-500); }
+[data-tense='past-continuous'] { --tense: var(--color-orange-500); }
+[data-tense='present-perfect'] { --tense: var(--color-violet-500); }
+[data-tense='present-perfect-continuous'] { --tense: var(--color-fuchsia-500); }
+[data-tense='past-perfect'] { --tense: var(--color-rose-500); }
+[data-tense='future-will'] { --tense: var(--color-teal-500); }
+[data-tense='future-going-to'] { --tense: var(--color-cyan-500); }
+[data-tense='past-perfect-continuous'] { --tense: var(--color-pink-500); }
+[data-tense='future-continuous'] { --tense: var(--color-lime-500); }
+[data-tense='future-perfect'] { --tense: var(--color-indigo-500); }
+[data-tense='modal'] { --tense: var(--color-slate-400); }
 
 /* Chuyển trang (React <ViewTransition> trong AppShell): trang cũ mờ nhanh, trang mới trượt nhẹ lên */
 ::view-transition-old(.page-out) {

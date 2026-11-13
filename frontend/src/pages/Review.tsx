@@ -108,9 +108,12 @@ function CardFace({ card, side, reversed }: { card: ReviewCard; side: 'front' | 
 
 function PhraseFace({ card, side }: { card: PhraseCard; side: 'front' | 'back' }) {
   if (side === 'front') {
+    // Thẻ luyện thì: mặt trước có gợi ý ngữ cảnh tiếng Việt (không nói tên thì để không lộ đáp án)
+    const tenseCard = Boolean(card.tense);
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-fuchsia-500">Mẫu câu · nghe và nhớ lại cụm bị che</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-fuchsia-500">{tenseCard ? 'Thì · nói cả câu, nhớ lại động từ bị che' : 'Mẫu câu · nghe và nhớ lại cụm bị che'}</p>
+        {tenseCard && card.note && <p className="max-w-xl rounded-xl bg-surface-2 px-3 py-2 text-sm text-ink">💡 {card.note}</p>}
         <p className="max-w-xl text-xl font-semibold leading-relaxed text-ink sm:text-2xl">
           <ChunkSentence sentence={card.sentence} chunk={card.chunk} hidden />
         </p>

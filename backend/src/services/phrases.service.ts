@@ -7,6 +7,7 @@ import { formatInterval, localDay, startOfLocalDay } from '../lib/time.ts';
 import { inflectionRegex, termKey, uniqBy } from '../lib/text.ts';
 import { addActivity, XP } from './activity.service.ts';
 import { getSettings } from './settings.service.ts';
+import { TENSE_FORMS } from '../lib/tense.ts';
 import { LEARN_AHEAD_MS, previewIntervals, scheduler, toCard } from './review.service.ts';
 import { translateText } from './translate/index.ts';
 
@@ -38,6 +39,7 @@ export interface PhraseRow {
   last_review: string | null;
   speak_count: number;
   best_score: number | null;
+  tense: string | null;
   created_at: string;
   updated_at: string;
   video_title?: string | null;
@@ -71,6 +73,8 @@ export function toPhraseDTO(r: PhraseRow) {
     lastReview: r.last_review,
     speakCount: r.speak_count,
     bestScore: r.best_score,
+    /** Nhãn thì (module "Thì") — câu lưu để luyện thì */
+    tense: r.tense ?? null,
     createdAt: r.created_at,
   };
 }
@@ -103,6 +107,9 @@ export const createSchema = z.object({
   end: z.number().min(0).optional(),
   sentenceVi: z.string().max(1000).optional(),
   note: z.string().max(1000).optional(),
+  /** Nghĩa của cụm đã biết sẵn (vd. tên thì) → không gọi dịch máy */
+  chunkVi: z.string().max(300).optional(),
+  tense: z.enum(TENSE_FORMS).optional(),
 });
 
 const cleanChunk = (s?: string) => (s ?? '').trim().replace(/\s+/g, ' ').replace(/^[^\p{L}\p{N}']+|[^\p{L}\p{N}']+$/gu, '');
@@ -130,15 +137,15 @@ export async function createPhrase(input: z.infer<typeof createSchema>) {
 
   const [sentenceVi, chunkVi] = await Promise.all([
     input.sentenceVi?.trim() || translateText(sentence).then((r) => r.translation).catch(() => ''),
-    translateChunk(chunk, sentence),
+    input.chunkVi !== undefined ? input.chunkVi : translateChunk(chunk, sentence),
   ]);
   const saved = tx(() => {
     // Bấm lưu 2 lần: yêu cầu sau tới đây khi yêu cầu đầu đã lưu xong (giữa chừng có chờ dịch) → trả về mẫu câu đã có
     const dup = get<{ id: number }>('SELECT id FROM phrases WHERE user_id = ? AND sentence_key = ? AND lower(chunk) = lower(?)', uid, key, chunk);
     if (dup) return { id: dup.id, existed: true };
     const res = run(
-      `INSERT INTO phrases (user_id, video_id, start, end, sentence, sentence_key, sentence_vi, chunk, chunk_vi, note)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO phrases (user_id, video_id, start, end, sentence, sentence_key, sentence_vi, chunk, chunk_vi, note, tense)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       uid,
       input.videoId ?? null,
       input.start ?? null,
@@ -149,6 +156,7 @@ export async function createPhrase(input: z.infer<typeof createSchema>) {
       chunk,
       chunkVi,
       input.note ?? '',
+      input.tense ?? null,
     );
     addActivity({ xp: XP.newWord });
     return { id: Number(res.lastInsertRowid), existed: false };
@@ -198,6 +206,8 @@ export const listSchema = z.object({
   q: z.string().optional(),
   videoId: z.string().optional(),
   status: z.enum(['all', 'due', 'new', 'learning', 'reviewing', 'mastered']).optional(),
+  /** Lọc câu theo nhãn thì; 'any' = mọi câu có nhãn thì */
+  tense: z.union([z.enum(TENSE_FORMS), z.literal('any')]).optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
 });
@@ -212,6 +222,11 @@ export function listPhrases(f: z.infer<typeof listSchema>) {
   if (f.videoId) {
     where.push('p.video_id = :videoId');
     params.videoId = f.videoId;
+  }
+  if (f.tense === 'any') where.push('p.tense IS NOT NULL');
+  else if (f.tense) {
+    where.push('p.tense = :tense');
+    params.tense = f.tense;
   }
   const statusSql = {
     all: '',

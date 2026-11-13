@@ -22,6 +22,7 @@ const STEP_META: Record<TodayStepKey, { emoji: string; short: string; strand: st
   watch: { emoji: '🎧', short: 'Nghe video', strand: 'Nghe hiểu' },
   shadow: { emoji: '🦜', short: 'Nói đuổi', strand: 'Phát âm & ngữ điệu' },
   speak: { emoji: '🎙️', short: 'Nói lại', strand: 'Tự nói ra' },
+  tenses: { emoji: '⏳', short: 'Trộn thì', strand: 'Học có chủ đích' },
   fluency: { emoji: '⏱️', short: 'Trôi chảy', strand: 'Luyện trôi chảy' },
 };
 

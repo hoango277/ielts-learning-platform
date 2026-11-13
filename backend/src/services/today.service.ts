@@ -8,17 +8,18 @@ import { phraseSummary } from './phrases.service.ts';
 import { reviewSummary } from './review.service.ts';
 import { getSettings } from './settings.service.ts';
 import { todayCounts } from './speaking.service.ts';
+import { todayTenseItems } from './tenses.service.ts';
 
 /**
  * "Hôm nay học gì": một buổi học có hướng dẫn, đủ bốn mảng (Nation): ôn thẻ → nghe video vừa sức →
- * nói đuổi → nói lại câu đã lưu → nói trôi chảy 4/3/2. Tiến độ tính từ hoạt động thật trong ngày.
+ * nói đuổi → nói lại câu đã lưu → trộn thì (phản xạ ngữ pháp) → nói trôi chảy 4/3/2. Tiến độ tính từ hoạt động thật trong ngày.
  */
-export const STEP_KEYS = ['review', 'watch', 'shadow', 'speak', 'fluency'] as const;
+export const STEP_KEYS = ['review', 'watch', 'shadow', 'speak', 'tenses', 'fluency'] as const;
 export type StepKey = (typeof STEP_KEYS)[number];
 
 const TARGETS = {
-  standard: { review: 20, watchMin: 5, shadow: 10, speak: 5, fluency: 1 },
-  short: { review: 10, watchMin: 3, shadow: 5, speak: 3, fluency: 0 },
+  standard: { review: 20, watchMin: 5, shadow: 10, speak: 5, tenses: 10, fluency: 1 },
+  short: { review: 10, watchMin: 3, shadow: 5, speak: 3, tenses: 5, fluency: 0 },
 } as const;
 
 interface PlanRow {
@@ -108,6 +109,15 @@ export function todayPlan() {
       link: `/speaking?mode=cloze&count=${t.speak}`,
       blocked: phraseTotal === 0,
     },
+    {
+      key: 'tenses' as const,
+      title: 'Trộn thì',
+      desc: `${t.tenses} câu xen kẽ các thì: nhận ra nghĩa, tự nói / gõ thật nhanh, sửa câu sai`,
+      value: Math.min(todayTenseItems(), t.tenses),
+      target: t.tenses,
+      unit: 'câu',
+      link: `/tenses/practice?mode=mixed&count=${t.tenses}`,
+    },
     ...(t.fluency
       ? [
           {
@@ -141,7 +151,7 @@ export function todayPlan() {
           difficulty,
         }
       : null,
-    estimatedMinutes: mode === 'standard' ? 40 : 20,
+    estimatedMinutes: mode === 'standard' ? 45 : 25,
   };
 }
 

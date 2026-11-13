@@ -485,6 +485,8 @@ export interface Phrase {
   lastReview: string | null;
   speakCount: number;
   bestScore: number | null;
+  /** Nhãn thì (câu lưu để luyện thì) */
+  tense: TenseForm | null;
   createdAt: string;
 }
 
@@ -659,7 +661,7 @@ export interface Recommended {
 
 // ---------- Hôm nay học gì ----------
 
-export type TodayStepKey = 'review' | 'watch' | 'shadow' | 'speak' | 'fluency';
+export type TodayStepKey = 'review' | 'watch' | 'shadow' | 'speak' | 'tenses' | 'fluency';
 
 export interface TodayStep {
   key: TodayStepKey;
@@ -683,4 +685,230 @@ export interface TodayPlan {
   allDone: boolean;
   video: { id: string; title: string; channelName: string | null; durationSec: number; thumbnail: string; difficulty: DifficultyBadge | null } | null;
   estimatedMinutes: number;
+}
+
+// ---------- Thì (module học thì theo ý nghĩa) ----------
+
+export type TenseForm =
+  | 'present-simple'
+  | 'present-continuous'
+  | 'past-simple'
+  | 'past-continuous'
+  | 'present-perfect'
+  | 'present-perfect-continuous'
+  | 'past-perfect'
+  | 'future-will'
+  | 'future-going-to';
+export type VerbForm = TenseForm | 'past-perfect-continuous' | 'future-continuous' | 'future-perfect' | 'modal';
+export type TenseLessonId = 'present-simple' | 'continuous' | 'past-simple' | 'present-perfect' | 'future' | 'past-perfect';
+export type TenseLevel = 'A2' | 'B1' | 'B2';
+
+export interface TenseStats {
+  understand: number | null;
+  use: number | null;
+  speakMs: number | null;
+  typeMs: number | null;
+  attempts: number;
+}
+
+export type TimelineMark =
+  | { type: 'point'; at: number; label?: string; tone?: 'main' | 'other' }
+  | { type: 'span'; from: number; to: number; label?: string; tone?: 'main' | 'other'; open?: 'left' | 'right' | 'both' }
+  | { type: 'repeat'; from: number; to: number; label?: string }
+  | { type: 'progress'; from: number; to: number; label?: string; tone?: 'main' | 'other' }
+  | { type: 'link'; from: number; to: number; label?: string }
+  | { type: 'ref'; at: number; label: string };
+
+export interface TimelineSpec {
+  now?: number;
+  marks: TimelineMark[];
+  caption?: string;
+}
+
+export interface TenseExample {
+  en: string;
+  vi: string;
+}
+
+export interface TenseLesson {
+  id: TenseLessonId;
+  order: number;
+  title: string;
+  emoji: string;
+  idea: string;
+  summary: string;
+  forms: TenseForm[];
+  uses: { title: string; explain: string; timeline: TimelineSpec; examples: TenseExample[]; form: TenseForm }[];
+  shapes: { form: TenseForm; affirmative: string; negative: string; question: string }[];
+  ccq: { sentence: string; question: string; answer: boolean; explain: string }[];
+  contrasts: { a: TenseExample & { form: TenseForm }; b: TenseExample & { form: TenseForm }; question: string; answerA: string; answerB: string; explain: string }[];
+  vietnamese: { marker: string; english: string; note: string }[];
+  traps: { wrong: string; right: string; why: string }[];
+  signals: { words: string[]; note: string };
+  chunks: TenseExample[];
+  pronunciation?: { title: string; items: { text: string; note: string }[] };
+}
+
+export interface TenseKindCounts {
+  meaning: number;
+  ccq: number;
+  listen: number;
+  produce: number;
+}
+
+export interface TenseLessonSummary {
+  id: TenseLessonId;
+  order: number;
+  title: string;
+  emoji: string;
+  idea: string;
+  summary: string;
+  forms: TenseForm[];
+  counts: TenseKindCounts;
+  stats: TenseStats;
+}
+
+export interface TensesOverview {
+  lessons: TenseLessonSummary[];
+  forms: (TenseStats & { form: TenseForm; label: string })[];
+  today: { done: number; target: number };
+  totals: { attempts: number; writings: number; items: number; prompts: number };
+}
+
+export interface TensePrompt {
+  id: string;
+  lesson: TenseLessonId | 'mixed';
+  title: string;
+  prompt: string;
+  guide: string[];
+  targets: TenseForm[];
+  targetLabels: string[];
+  minSentences: number;
+  model: string;
+  ielts?: 'speaking' | 'task1' | 'task2';
+}
+
+export interface TenseLessonDetail {
+  lesson: TenseLesson;
+  formLabels: Record<string, string>;
+  counts: TenseKindCounts;
+  stats: TenseStats;
+  videoExamples: { id: number; sentence: string; chunk: string; videoId: string; start: number | null; tense: TenseForm; videoTitle: string | null }[];
+  prompts: TensePrompt[];
+}
+
+interface TenseItemBase {
+  id: string;
+  lesson: TenseLessonId;
+  form: TenseForm;
+  level: TenseLevel;
+  formLabel: string;
+  task: 'recognize' | 'speak' | 'type' | 'fix';
+}
+
+export type TenseSessionItem =
+  | (TenseItemBase & { kind: 'meaning'; sentence: string; question?: string; options: string[]; answer: number; explain: string })
+  | (TenseItemBase & { kind: 'ccq'; sentence: string; question: string; answer: boolean; explain: string })
+  | (TenseItemBase & { kind: 'listen'; options: { text: string; form: TenseForm; meaning: string }[]; explain: string })
+  | (TenseItemBase & {
+      kind: 'produce';
+      cueType: 'translate' | 'situation';
+      cue: string;
+      answers: string[];
+      verb: string;
+      accept: TenseForm[];
+      wrong: string[];
+      hint: string;
+      explain: string;
+      wrongSentence?: string;
+    });
+
+export type TensePracticeMode = 'recognize' | 'speak' | 'type' | 'fix' | 'mixed';
+
+export interface TenseSession {
+  mode: TensePracticeMode;
+  lesson: TenseLessonId | null;
+  items: TenseSessionItem[];
+}
+
+export interface TenseIssueDTO {
+  type: string;
+  text: string;
+  hint: string;
+  explain?: string;
+  fix?: string;
+}
+
+export interface TenseCheckResult {
+  correct: boolean;
+  reason: 'ok' | 'wrong-form' | 'no-verb' | 'issue' | 'unchanged';
+  used: VerbForm | null;
+  usedLabel: string | null;
+  usedText: string | null;
+  paraphrase: boolean;
+  acceptLabels: string[];
+  issues: TenseIssueDTO[];
+  hint?: string;
+  answer?: string;
+  answers?: string[];
+  explain?: string;
+  xp: number;
+  addedCard: boolean;
+}
+
+export interface TenseAnalysis {
+  sentences: {
+    text: string;
+    offset: number;
+    verbs: { text: string; form: VerbForm; lemma: string; parts: [number, number][]; label: string }[];
+    issues: { type: string; start: number; end: number; text: string; hint: string; explain: string; fix?: string }[];
+  }[];
+  counts: { form: VerbForm; label: string; count: number }[];
+  issueCount: number;
+}
+
+export interface TenseWritingResult {
+  analysis: TenseAnalysis;
+  targets: { form: TenseForm; label: string; used: boolean }[];
+  sentenceCount: number;
+  minSentences: number;
+  enough: boolean;
+  xp: number;
+  model: string;
+}
+
+export interface TenseWriting {
+  id: number;
+  promptId: string;
+  title: string;
+  text: string;
+  issueCount: number;
+  createdAt: string;
+}
+
+export interface WordTenseSpan {
+  from: number;
+  to: number;
+  form: VerbForm;
+  g: number;
+}
+
+export interface VideoTenses {
+  videoId: string;
+  trackId: string;
+  sentences: Record<number, WordTenseSpan[]>;
+  counts: Partial<Record<VerbForm, number>>;
+  labels: Record<VerbForm, string>;
+}
+
+export interface TenseReportRow {
+  id: number;
+  videoId: string | null;
+  sentence: string;
+  verb: string;
+  form: string;
+  formLabel: string;
+  note: string;
+  userName: string | null;
+  createdAt: string;
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, CheckCircle2, Cpu, Languages, Plus, PlugZap, ShieldCheck, UserPlus, Users, XCircle } from 'lucide-react';
+import { BookOpen, CheckCircle2, Cpu, Flag, Languages, Plus, PlugZap, ShieldCheck, UserPlus, Users, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -238,6 +238,44 @@ function TopicsSection() {
   );
 }
 
+/** Kính thì: học viên bấm "Nhận sai?" khi app tô sai thì của một động từ trong video */
+function TenseReportsSection() {
+  const reports = useQuery({ queryKey: ['admin-tense-reports'], queryFn: api.adminTenseReports });
+  return (
+    <Section
+      id="tense-reports"
+      icon={<Flag className="h-5 w-5 text-rose-500" />}
+      title="Báo nhận diện thì sai"
+      desc="Học viên bấm “Nhận sai?” khi Kính thì tô sai thì của một động từ trong phụ đề video. Danh sách này giúp cải thiện luật nhận diện thì."
+    >
+      {reports.error ? (
+        <ErrorBox error={reports.error} onRetry={() => reports.refetch()} />
+      ) : reports.data?.length ? (
+        <ul className="divide-y divide-line">
+          {reports.data.map((r) => (
+            <li key={r.id} className="space-y-0.5 py-2 text-sm">
+              <p className="text-ink">{r.sentence}</p>
+              <p className="text-xs text-muted">
+                “{r.verb}” → app nhận là <b className="text-ink">{r.formLabel}</b> · {r.userName ?? 'không rõ'} · {relativeTime(r.createdAt)}
+                {r.videoId && (
+                  <>
+                    {' · '}
+                    <Link to={`/watch/${r.videoId}`} className="font-semibold underline underline-offset-2">
+                      mở video
+                    </Link>
+                  </>
+                )}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted">{reports.isPending ? 'Đang tải…' : 'Chưa có báo cáo nào.'}</p>
+      )}
+    </Section>
+  );
+}
+
 function UsersSection({ meId }: { meId: number }) {
   const qc = useQueryClient();
   const users = useQuery({ queryKey: ['admin-users'], queryFn: api.adminUsers });
@@ -339,6 +377,7 @@ export default function Admin() {
           <TranslationSection data={settings.data} />
           <RegistrationSection data={settings.data} />
           <TopicsSection />
+          <TenseReportsSection />
           <UsersSection meId={me.data.id} />
         </>
       )}

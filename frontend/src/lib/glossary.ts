@@ -2,7 +2,7 @@
  * Giải thích các thuật ngữ khó trong app bằng tiếng Việt dễ hiểu.
  * Dùng cho thẻ giải thích (component Term) và trang /glossary.
  */
-export type GlossaryCategory = 'memory' | 'listening' | 'vocab' | 'speaking' | 'level' | 'tech';
+export type GlossaryCategory = 'memory' | 'listening' | 'vocab' | 'grammar' | 'speaking' | 'level' | 'tech';
 
 export interface GlossaryEntry {
   key: string;
@@ -19,6 +19,7 @@ export const CATEGORY_LABEL: Record<GlossaryCategory, { label: string; emoji: st
   memory: { label: 'Ghi nhớ & ôn tập', emoji: '🧠' },
   listening: { label: 'Nghe & phát âm', emoji: '🎧' },
   vocab: { label: 'Từ vựng & cách dùng từ', emoji: '📚' },
+  grammar: { label: 'Ngữ pháp & thì', emoji: '⏳' },
   speaking: { label: 'Luyện nói', emoji: '🎙️' },
   level: { label: 'Trình độ & độ khó', emoji: '📊' },
   tech: { label: 'Cài đặt & kỹ thuật', emoji: '⚙️' },
@@ -222,6 +223,95 @@ const entries: GlossaryEntry[] = [
     short: 'Từ vựng IELTS chia theo 26 chủ đề (giáo dục, môi trường…), có nghĩa, phiên âm và ví dụ.',
   },
 
+  // ---------- Ngữ pháp & thì ----------
+  {
+    key: 'tense',
+    term: 'Thì (tense)',
+    category: 'grammar',
+    short: 'Cách động từ cho biết việc xảy ra khi nào và người nói nhìn nó thế nào.',
+    long: 'Tiếng Việt chỉ thời gian bằng từ (đã, đang, sẽ) và hay bỏ đi khi đã rõ; tiếng Anh bắt buộc thể hiện ngay trên động từ. 12 “thì” thực ra là tổ hợp của 2 trục: thời điểm (quá khứ / hiện tại / tương lai) × cách nhìn (đơn: cả việc · tiếp diễn: đang ở giữa việc · hoàn thành: nhìn lại từ một mốc). App dạy theo 6 ý nghĩa thay vì 12 công thức.',
+    example: 'I work / I am working / I have worked — cùng một việc, ba cách nhìn khác nhau.',
+  },
+  {
+    key: 'continuous',
+    term: 'Tiếp diễn (be + V-ing)',
+    category: 'grammar',
+    short: 'Nhìn việc khi nó đang ở giữa chừng: chưa xong, đang diễn ra quanh một mốc thời gian.',
+    long: 'Dùng được ở mọi thời: hiện tại (I am cooking — bây giờ), quá khứ (I was cooking when she called — lúc cô ấy gọi), tương lai (I will be cooking at 7). Động từ chỉ trạng thái như know, like, want thường không dùng tiếp diễn.',
+    example: 'She is working from home this week. (tạm thời, đang diễn ra)',
+  },
+  {
+    key: 'perfect',
+    term: 'Hoàn thành (have + V3)',
+    category: 'grammar',
+    short: 'Nhìn lại từ một mốc: việc xảy ra trước đó còn liên quan tới mốc này.',
+    long: 'Hiện tại hoàn thành nhìn lại từ bây giờ: kinh nghiệm (Have you ever…?), kết quả còn đó (I have lost my keys), khoảng thời gian kéo dài tới giờ (since / for). Có mốc đã kết thúc như yesterday, last year, ago thì dùng quá khứ đơn. Quá khứ hoàn thành (had + V3) nhìn lại từ một mốc trong quá khứ.',
+    example: 'I have lived here since 2020. (vẫn đang sống ở đây)',
+  },
+  {
+    key: 'auxiliary',
+    term: 'Trợ động từ',
+    category: 'grammar',
+    short: 'Từ nhỏ đứng trước động từ chính để tạo thì, câu hỏi, câu phủ định: do / does / did, am / is / are, have / has / had, will…',
+    long: 'Người Việt hay quên trợ động từ (“I going”, “She not like”) vì tiếng Việt không có. Trong câu hỏi, trợ động từ đứng lên trước chủ ngữ: Do you…? Did she…? Have they…?',
+    example: 'She doesn’t like coffee. · Are you coming?',
+  },
+  {
+    key: 'v2_v3',
+    term: 'V2 / V3',
+    category: 'grammar',
+    short: 'V2: dạng quá khứ (went); V3: quá khứ phân từ (gone) dùng sau have / has / had và trong câu bị động.',
+    long: 'Động từ có quy tắc thì V2 và V3 giống nhau (worked – worked). Động từ bất quy tắc phải nhớ riêng: go – went – gone, see – saw – seen. Lỗi hay gặp: “I have went” (phải là have gone).',
+  },
+  {
+    key: 'ccq',
+    term: 'Câu hỏi kiểm tra khái niệm (CCQ)',
+    category: 'grammar',
+    short: 'Câu hỏi Có/Không về Ý NGHĨA của câu, để chắc bạn hiểu thật — thay cho câu “bạn hiểu chưa?”.',
+    long: 'Ví dụ với “I have lived in Hue for 5 years”: “Bây giờ người nói còn sống ở Huế không?” — Có. Trả lời đúng nghĩa là bạn hiểu thì, không cần thuộc công thức. Giáo viên tiếng Anh dùng cách này vì người học hay trả lời “hiểu rồi” cho có.',
+  },
+  {
+    key: 'timeline',
+    term: 'Trục thời gian',
+    category: 'grammar',
+    short: 'Hình vẽ một đường từ quá khứ sang tương lai, có mốc “bây giờ”, cho thấy mỗi thì “nhìn” sự việc thế nào.',
+    long: 'Dấu × là một việc xảy ra tại một lúc; đoạn thẳng là việc kéo dài; đường lượn sóng là việc đang diễn ra; mũi tên cong nối một việc trong quá khứ tới mốc khác (thì hoàn thành); vạch đứt là mốc tham chiếu như “lúc tôi đến”.',
+  },
+  {
+    key: 'reflex',
+    term: 'Phản xạ (thời gian phản hồi)',
+    category: 'grammar',
+    short: 'Thời gian từ lúc thấy đề tới lúc bạn bắt đầu nói đúng — càng ngắn càng gần với nói tự nhiên.',
+    long: 'Hiểu thì là bước đầu; nói được nhanh cần luyện nhiều, có ý nghĩa và đúng kỹ năng (muốn nói nhanh thì phải luyện nói). App đặt mục tiêu 6 giây rồi giảm dần còn 4 và 3 giây khi bạn trả lời nhanh và đúng liên tiếp, và lưu thời gian trung bình gần đây của từng thì để bạn thấy mình tiến bộ.',
+  },
+  {
+    key: 'tense_lens',
+    term: 'Kính thì',
+    category: 'grammar',
+    short: 'Nút “Thì” ở trang xem video: tô màu động từ trong phụ đề theo thì, bấm vào để xem vì sao người nói dùng thì đó.',
+    long: 'Thì được nhận diện tự động (thư viện xử lý ngôn ngữ compromise, chạy trên máy chủ của app) nên đôi khi nhầm, nhất là phụ đề tự động không dấu câu — gặp chỗ sai, bấm “Nhận sai?” để báo. Bấm vào một màu ở thanh chú thích để chỉ xem các câu có thì đó, rồi lưu câu hay làm mẫu câu có nhãn thì.',
+  },
+  {
+    key: 'interleaving',
+    term: 'Học xen kẽ (trộn thì)',
+    category: 'grammar',
+    short: 'Trộn nhiều thì trong một lượt luyện thay vì luyện riêng từng thì — khó hơn lúc tập nhưng nhớ lâu hơn.',
+    long: 'Khi luyện riêng một thì, bạn biết trước đáp án sẽ là thì đó. Lúc nói thật thì không ai báo trước — bạn phải tự chọn. Trộn thì luyện đúng việc “chọn thì” này. Nghiên cứu về luyện ngữ pháp cho thấy trộn bài tập giúp nhớ lâu hơn.',
+  },
+  {
+    key: 'structured_input',
+    term: 'Bài “nhận ra” (đầu vào có cấu trúc)',
+    category: 'grammar',
+    short: 'Câu nghe / đọc không có từ chỉ thời gian, buộc bạn nhìn vào động từ mới hiểu được nghĩa.',
+    long: 'Người học thường dựa vào “yesterday”, “now” để đoán thời gian rồi bỏ qua đuôi động từ. Bỏ các từ đó đi, bạn phải để ý -ed, -s, have, ’ll… — chính là những thứ cần nghe ra và nói ra khi giao tiếp.',
+  },
+  {
+    key: 'ending_sounds',
+    term: 'Âm cuối -s / -ed',
+    category: 'grammar',
+    short: 'Đuôi -s đọc /s/ /z/ /ɪz/, đuôi -ed đọc /t/ /d/ /ɪd/ — bỏ âm cuối là người nghe không biết bạn nói thì nào.',
+    long: 'Tiếng Việt không có phụ âm đôi ở cuối từ nên người Việt hay nuốt âm cuối: “He work”, “I walk yesterday”. Nói rõ âm cuối cũng quan trọng như chia đúng thì. Ví dụ: works /s/, plays /z/, watches /ɪz/; worked /t/, played /d/, wanted /ɪd/.',
+  },
   // ---------- Luyện nói ----------
   {
     key: 'delayed_repeat',

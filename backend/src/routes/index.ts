@@ -15,6 +15,7 @@ import { getSettings, publicSettings, updateSettings } from '../services/setting
 import { requireAdmin } from './auth.ts';
 import { upgradeBasics, wordProfile } from '../services/profile.service.ts';
 import * as speaking from '../services/speaking.service.ts';
+import * as tenses from '../services/tenses.service.ts';
 import { overview } from '../services/stats.service.ts';
 import * as today from '../services/today.service.ts';
 import * as topics from '../services/topics.service.ts';
@@ -470,6 +471,63 @@ api.post('/practice/complete', (req, res) => {
   res.json(practice.completeSession(practice.completeSchema.parse(req.body)));
 });
 
+// ---------- Thì (học theo ý nghĩa, luyện phản xạ nói / viết) ----------
+
+api.get('/tenses', (_req, res) => {
+  res.json(tenses.overview());
+});
+
+api.get('/tenses/lessons/:id', (req, res) => {
+  res.json(tenses.lessonDetail(z.string().max(40).parse(req.params.id)));
+});
+
+api.get('/tenses/session', (req, res) => {
+  res.json(tenses.createSession(tenses.sessionSchema.parse(req.query)));
+});
+
+api.post('/tenses/recognize', (req, res) => {
+  res.json(tenses.recordRecognition(tenses.recognizeSchema.parse(req.body)));
+});
+
+api.post('/tenses/check', async (req, res) => {
+  res.json(await tenses.checkAnswer(tenses.checkSchema.parse(req.body)));
+});
+
+api.post('/tenses/cards', async (req, res) => {
+  const body = z.object({ itemId: z.string().max(40) }).parse(req.body);
+  res.json(await tenses.addCard(body.itemId));
+});
+
+api.post('/tenses/analyze', (req, res) => {
+  res.json(tenses.analyze(tenses.analyzeSchema.parse(req.body).text));
+});
+
+api.get('/tenses/prompts', (_req, res) => {
+  res.json(tenses.listPrompts());
+});
+
+api.get('/tenses/writings', (_req, res) => {
+  res.json(tenses.listWritings());
+});
+
+api.post('/tenses/writings', (req, res) => {
+  res.json(tenses.submitWriting(tenses.writingSchema.parse(req.body)));
+});
+
+api.post('/tenses/story', (req, res) => {
+  res.status(201).json(tenses.createStory(tenses.storySchema.parse(req.body).lesson));
+});
+
+api.post('/tenses/reports', (req, res) => {
+  res.json(tenses.report(tenses.reportSchema.parse(req.body)));
+});
+
+// Kính thì: thì của từng câu phụ đề (tô màu trên trang xem video)
+api.get('/videos/:id/tenses', async (req, res) => {
+  const q = z.object({ track: z.string().max(40).optional() }).parse(req.query);
+  res.json(await tenses.videoTenses(videoId.parse(req.params.id), q.track));
+});
+
 // ---------- Bộ từ theo chủ đề ----------
 
 api.get('/topics', (_req, res) => {
@@ -537,6 +595,10 @@ api.get('/admin/settings', requireAdmin, (_req, res) => {
 
 api.put('/admin/settings', requireAdmin, (req, res) => {
   res.json(updateServerSettings(req.body ?? {}));
+});
+
+api.get('/admin/tense-reports', requireAdmin, (_req, res) => {
+  res.json(tenses.listReports());
 });
 
 api.get('/admin/users', requireAdmin, (_req, res) => {

@@ -550,6 +550,52 @@ export const MIGRATIONS: { id: number; sql: string }[] = [
       CREATE INDEX idx_topics_user ON topics(user_id);
     `,
   },
+  {
+    // Module "Thì": lượt luyện (hiểu / dùng + thời gian phản hồi để đo phản xạ), bài viết đã nộp,
+    // báo nhận diện thì sai trong video; mẫu câu có nhãn thì; đếm câu luyện thì mỗi ngày (kế hoạch hôm nay).
+    id: 8,
+    sql: /* sql */ `
+      CREATE TABLE tense_attempts (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL DEFAULT 0,
+        item_id     TEXT NOT NULL,
+        lesson      TEXT NOT NULL,
+        form        TEXT NOT NULL,
+        skill       TEXT NOT NULL,
+        mode        TEXT NOT NULL,
+        correct     INTEGER NOT NULL,
+        latency_ms  INTEGER,
+        answer      TEXT NOT NULL DEFAULT '',
+        created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      );
+      CREATE INDEX idx_tense_attempts_user ON tense_attempts(user_id, form, created_at);
+      CREATE INDEX idx_tense_attempts_item ON tense_attempts(user_id, item_id, created_at);
+
+      CREATE TABLE tense_writings (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER NOT NULL DEFAULT 0,
+        prompt_id    TEXT NOT NULL,
+        text         TEXT NOT NULL,
+        issue_count  INTEGER NOT NULL DEFAULT 0,
+        created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      );
+      CREATE INDEX idx_tense_writings_user ON tense_writings(user_id, created_at);
+
+      CREATE TABLE tense_reports (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL DEFAULT 0,
+        video_id    TEXT,
+        sentence    TEXT NOT NULL,
+        verb        TEXT NOT NULL,
+        form        TEXT NOT NULL,
+        note        TEXT NOT NULL DEFAULT '',
+        created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      );
+
+      ALTER TABLE phrases ADD COLUMN tense TEXT;
+      ALTER TABLE activity ADD COLUMN tense_items INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 /** Các bảng có cột user_id — dùng khi chuyển dữ liệu cũ (user_id = 0) cho tài khoản đầu tiên. */
@@ -571,4 +617,7 @@ export const USER_TABLES = [
   'push_log',
   'placement_results',
   'topics',
+  'tense_attempts',
+  'tense_writings',
+  'tense_reports',
 ] as const;

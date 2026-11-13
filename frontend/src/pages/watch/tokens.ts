@@ -1,4 +1,4 @@
-import type { Sentence, WordKey, WordStatus } from '../../lib/types';
+import type { Sentence, VerbForm, WordKey, WordStatus } from '../../lib/types';
 import { lemmaCandidates, termKey } from '../../lib/utils';
 
 export interface Token {
@@ -7,6 +7,9 @@ export interface Token {
   s: number;
   e: number;
   status?: WordStatus;
+  /** Kính thì: thì của cụm động từ chứa từ này + mã nhóm (câu hỏi đảo có 2 đoạn chung một nhóm) */
+  tense?: VerbForm;
+  tenseG?: number;
 }
 
 export interface KeyIndex {

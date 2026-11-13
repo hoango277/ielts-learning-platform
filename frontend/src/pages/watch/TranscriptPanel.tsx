@@ -1,7 +1,8 @@
 import { Bookmark, BookmarkCheck, Crosshair, Eye, Play, Repeat, Search } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { TimeStore } from '../../hooks/useYouTubePlayer';
-import type { Sentence } from '../../lib/types';
+import type { Sentence, VerbForm } from '../../lib/types';
+import { FORM_META, FORM_ORDER, tenseColor } from '../../components/tenses/meta';
 import { cn, formatTime } from '../../lib/utils';
 import type { PopoverTarget } from '../../components/word/WordPopover';
 import { WordLine, type WordClick } from './SubtitleBar';
@@ -114,6 +115,8 @@ export function TranscriptPanel({
   onPhrase,
   savedStarts,
   onSavePhrase,
+  lens,
+  filterIndices,
 }: {
   sentences: Sentence[];
   tokenized: Token[][];
@@ -130,6 +133,10 @@ export function TranscriptPanel({
   /** Thời điểm bắt đầu (làm tròn 0,1 s) của các câu đã lưu vào sổ mẫu câu */
   savedStarts?: Set<number>;
   onSavePhrase?: (i: number) => void;
+  /** Kính thì đang bật: số cụm động từ theo từng thì + lọc câu theo thì */
+  lens?: { counts: Partial<Record<VerbForm, number>>; filter: VerbForm | null; onFilter: (f: VerbForm | null) => void; loading: boolean; failed?: boolean };
+  /** Chỉ hiện các câu này (lọc theo thì) */
+  filterIndices?: Set<number> | null;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const userScrollAt = useRef(0);
@@ -138,16 +145,17 @@ export function TranscriptPanel({
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? sentences.filter((s) => s.text.toLowerCase().includes(q)) : sentences;
-  }, [sentences, query]);
+    const base = filterIndices ? sentences.filter((s) => filterIndices.has(s.i)) : sentences;
+    return q ? base.filter((s) => s.text.toLowerCase().includes(q)) : base;
+  }, [sentences, query, filterIndices]);
 
   useEffect(() => {
     const c = ref.current;
-    if (!follow || activeIndex < 0 || !c || query) return;
+    if (!follow || activeIndex < 0 || !c || query || filterIndices) return;
     if (Date.now() - userScrollAt.current < 4000) return;
     const el = c.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`);
     if (el) c.scrollTo({ top: el.offsetTop - c.clientHeight / 3, behavior: 'smooth' });
-  }, [activeIndex, follow, query]);
+  }, [activeIndex, follow, query, filterIndices]);
 
   const onMouseUp = () => {
     const sel = window.getSelection();
@@ -191,7 +199,46 @@ export function TranscriptPanel({
           <Crosshair className="h-4 w-4" /> Theo dõi
         </button>
       </div>
-      <p className="px-4 pt-2 text-[11px] text-muted">Bấm vào từ để tra nghĩa · Bôi đen nhiều từ để tra cụm từ</p>
+      {lens && (
+        <div className="border-b border-line px-3 py-2">
+          {lens.loading ? (
+            <p className="text-xs text-muted">Đang nhận diện thì trong phụ đề…</p>
+          ) : lens.failed ? (
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">Chưa nhận diện được thì cho phụ đề này.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Lọc câu theo thì">
+              <button
+                type="button"
+                onClick={() => lens.onFilter(null)}
+                aria-pressed={!lens.filter}
+                className={cn('h-7 rounded-lg px-2 text-[11px] font-bold', !lens.filter ? 'bg-ink text-bg' : 'bg-surface-2 text-muted hover:text-ink')}
+              >
+                Tất cả
+              </button>
+              {FORM_ORDER.filter((f) => lens.counts[f]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => lens.onFilter(lens.filter === f ? null : f)}
+                  aria-pressed={lens.filter === f}
+                  title={`Chỉ hiện câu có ${FORM_META[f].label}`}
+                  className={cn(
+                    'inline-flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] font-bold transition',
+                    lens.filter === f ? 'bg-ink text-bg' : 'bg-surface-2 text-ink hover:bg-surface-3',
+                  )}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ background: tenseColor(f) }} />
+                  {FORM_META[f].label}
+                  <span className="opacity-60">{lens.counts[f]}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <p className="px-4 pt-2 text-[11px] text-muted">
+        {lens ? 'Bấm vào động từ có màu để xem vì sao dùng thì đó · bấm một màu để chỉ xem câu có thì đó · nhận diện tự động, có thể nhầm' : 'Bấm vào từ để tra nghĩa · Bôi đen nhiều từ để tra cụm từ'}
+      </p>
       <div
         ref={ref}
         onWheel={() => (userScrollAt.current = Date.now())}
@@ -216,7 +263,7 @@ export function TranscriptPanel({
             onSave={onSavePhrase}
           />
         ))}
-        {!visible.length && <p className="py-10 text-center text-sm text-muted">Không có câu nào khớp “{query}”.</p>}
+        {!visible.length && <p className="py-10 text-center text-sm text-muted">{query ? `Không có câu nào khớp “${query}”.` : 'Không có câu nào có thì này.'}</p>}
       </div>
     </div>
   );

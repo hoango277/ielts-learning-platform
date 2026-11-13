@@ -10,6 +10,19 @@ import type {
   PlacementResult,
   PlacementTest,
   Warmup,
+  TenseAnalysis,
+  TenseCheckResult,
+  TenseLessonDetail,
+  TenseLessonId,
+  TensePracticeMode,
+  TensePrompt,
+  TenseReportRow,
+  TenseSession,
+  TenseWriting,
+  TenseWritingResult,
+  TensesOverview,
+  TenseForm,
+  VideoTenses,
   PhraseList,
   PhraseSuggestion,
   Recommended,
@@ -225,10 +238,10 @@ export const api = {
     request<{ basic: string; pos: string; upgrades: { word: string; vi: string; note: string }[]; inNotebook: string[] }[]>('/practice/upgrades'),
 
   // Mẫu câu
-  phrases: (f: { q?: string; videoId?: string; status?: string; page?: number; limit?: number } = {}) => request<PhraseList>('/phrases', { query: f }),
+  phrases: (f: { q?: string; videoId?: string; status?: string; tense?: string; page?: number; limit?: number } = {}) => request<PhraseList>('/phrases', { query: f }),
   suggestChunks: (sentence: string) => request<PhraseSuggestion[]>('/phrases/suggest', { query: { sentence } }),
   videoPhrases: (videoId: string) => request<{ id: number; start: number | null; key: string; chunk: string }[]>(`/phrases/video/${videoId}`),
-  createPhrase: (body: { sentence: string; chunk?: string; videoId?: string; start?: number; end?: number; sentenceVi?: string; note?: string }) =>
+  createPhrase: (body: { sentence: string; chunk?: string; videoId?: string; start?: number; end?: number; sentenceVi?: string; note?: string; chunkVi?: string; tense?: TenseForm }) =>
     post<{ phrase: Phrase; existed: boolean }>('/phrases', body),
   updatePhrase: (id: number, body: { chunk?: string; chunkVi?: string; sentenceVi?: string; note?: string }) =>
     request<Phrase>(`/phrases/${id}`, { method: 'PATCH', body }),
@@ -284,12 +297,28 @@ export const api = {
   skipTodayStep: (step: TodayStepKey, skipped: boolean) => post<TodayPlan>('/today/skip', { step, skipped }),
   setTodayVideo: (videoId: string | null) => request<TodayPlan>('/today/video', { method: 'PUT', body: { videoId } }),
 
+  // Thì: học theo ý nghĩa, luyện phản xạ nói / viết
+  tenses: () => request<TensesOverview>('/tenses'),
+  tenseLesson: (id: TenseLessonId) => request<TenseLessonDetail>(`/tenses/lessons/${id}`),
+  tenseSession: (p: { mode: TensePracticeMode; lesson?: TenseLessonId; count?: number; speak?: '0' | '1' }) => request<TenseSession>('/tenses/session', { query: p }),
+  tenseRecognize: (body: { itemId: string; correct: boolean; latencyMs?: number; answer?: string }) => post<{ xp: number }>('/tenses/recognize', body),
+  tenseCheck: (body: { itemId: string; text: string; mode: 'speak' | 'type' | 'fix'; attempt: number; latencyMs?: number }) => post<TenseCheckResult>('/tenses/check', body),
+  tenseAddCard: (itemId: string) => post<{ phrase: Phrase; existed: boolean }>('/tenses/cards', { itemId }),
+  tenseAnalyze: (text: string) => post<TenseAnalysis>('/tenses/analyze', { text }),
+  tensePrompts: () => request<TensePrompt[]>('/tenses/prompts'),
+  tenseWritings: () => request<TenseWriting[]>('/tenses/writings'),
+  submitTenseWriting: (body: { promptId: string; text: string }) => post<TenseWritingResult>('/tenses/writings', body),
+  tenseStory: (lesson: TenseLessonId) => post<FluencySession>('/tenses/story', { lesson }),
+  tenseReport: (body: { videoId?: string; sentence: string; verb: string; form: string; note?: string }) => post<{ ok: true }>('/tenses/reports', body),
+  videoTenses: (id: string, track?: string) => request<VideoTenses>(`/videos/${id}/tenses`, { query: { track } }),
+
   // Thống kê & cài đặt
   overview: () => request<Overview>('/stats/overview'),
   // Quản trị (chỉ admin; người dùng thường nhận lỗi 403)
   adminSettings: () => request<ServerSettings>('/admin/settings'),
   updateAdminSettings: (body: Partial<ServerSettings>) => request<ServerSettings>('/admin/settings', { method: 'PUT', body }),
   adminUsers: () => request<AdminUser[]>('/admin/users'),
+  adminTenseReports: () => request<TenseReportRow[]>('/admin/tense-reports'),
   setUserRole: (id: number, role: AdminUser['role']) => request<User>(`/admin/users/${id}`, { method: 'PATCH', body: { role } }),
   settings: () => request<Settings>('/settings'),
   updateSettings: (body: Partial<Settings>) => request<Settings>('/settings', { method: 'PUT', body }),

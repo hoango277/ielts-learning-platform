@@ -6,12 +6,15 @@ import { useMediaQuery } from '../../hooks/misc';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { LookupCard } from './LookupCard';
+import { TenseStrip, type TenseInfo } from '../tenses/TenseStrip';
 
 export interface PopoverTarget {
   term: string;
   context?: string;
   rect: DOMRect;
   videoTime?: number;
+  /** Kính thì: từ được bấm thuộc một cụm động từ đã gắn thì */
+  tense?: TenseInfo;
 }
 
 const WIDTH = 380;
@@ -66,6 +69,7 @@ export function WordPopover({
   if (mobile) {
     return (
       <Modal open onClose={onClose} title="Tra từ">
+        {target.tense && <TenseStrip info={target.tense} onClose={onClose} />}
         <LookupCard term={target.term} context={target.context} videoId={videoId} videoTime={target.videoTime} />
         <PopoverExtras term={target.term} onSavePhrase={onSavePhrase} onClose={onClose} />
       </Modal>
@@ -83,6 +87,7 @@ export function WordPopover({
       <button type="button" onClick={onClose} aria-label="Đóng" className="absolute right-2.5 top-2.5 rounded-lg p-1 text-muted hover:bg-surface-2 hover:text-ink">
         <X className="h-4 w-4" />
       </button>
+      {target.tense && <TenseStrip info={target.tense} onClose={onClose} />}
       <LookupCard term={target.term} context={target.context} videoId={videoId} videoTime={target.videoTime} compact />
       <PopoverExtras term={target.term} onSavePhrase={onSavePhrase} onClose={onClose} />
     </div>,
