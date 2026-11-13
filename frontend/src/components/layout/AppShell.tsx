@@ -14,6 +14,8 @@ import {
   Mic,
   Monitor,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Settings as SettingsIcon,
   ShieldCheck,
@@ -145,10 +147,41 @@ function StreakChip() {
   );
 }
 
-function SidebarLink({ item, onClick, compact }: { item: NavItem; onClick?: () => void; compact?: boolean }) {
+function SidebarLink({ item, onClick, compact, collapsed }: { item: NavItem; onClick?: () => void; compact?: boolean; collapsed?: boolean }) {
   const Icon = item.icon;
   const { pathname } = useLocation();
   const active = isActive(item, pathname);
+  if (collapsed) {
+    // Thanh bên thu gọn: chỉ biểu tượng; tên mục hiện khi rê chuột (title) và vẫn đọc được bằng trình đọc màn hình
+    return (
+      <Link
+        to={item.to}
+        onClick={onClick}
+        aria-current={active ? 'page' : undefined}
+        title={item.badge ? `${item.label} — ${item.badgeHint}` : item.label}
+        className={cn(
+          'group relative flex justify-center rounded-xl py-1 transition-colors',
+          active ? 'bg-brand-500/10' : 'text-muted hover:bg-surface-2 hover:text-ink',
+        )}
+      >
+        <span
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] transition-transform duration-200',
+            active ? 'icon-tile bg-brand text-white' : 'group-hover:scale-110',
+          )}
+        >
+          <Icon className={compact ? 'h-4 w-4' : 'h-4.5 w-4.5'} />
+        </span>
+        <span className="sr-only">
+          {item.label}
+          {item.badge ? ` — ${item.badgeHint}` : ''}
+        </span>
+        {!!item.badge && (
+          <span aria-hidden className="absolute right-2.5 top-1 h-2.5 w-2.5 rounded-full bg-orange-600 ring-2 ring-surface" />
+        )}
+      </Link>
+    );
+  }
   return (
     <Link
       to={item.to}
@@ -184,37 +217,62 @@ function SidebarLink({ item, onClick, compact }: { item: NavItem; onClick?: () =
   );
 }
 
+/**
+ * Thanh bên trái (máy tính). Thu gọn được thành cột biểu tượng (nút đầu thanh trên cùng hoặc Ctrl+B) để nhường chỗ cho
+ * nội dung; trạng thái nhớ cho mọi trang. Đổi độ rộng tức thì, không làm hiệu ứng: animate width bắt cả trang tính lại
+ * bố cục mỗi khung hình (giật trên trang video).
+ */
 function Sidebar() {
   const nav = useNav();
   const secondary = useSecondaryNav();
-  const { openLookup } = useUi();
+  const { openLookup, sidebarCollapsed: collapsed } = useUi();
   return (
-    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-surface px-3 py-5 lg:flex">
-      <div className="px-2">
-        <Logo />
+    <aside
+      id="sidebar"
+      className={cn('sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-surface py-5 lg:flex', collapsed ? 'w-19 px-2' : 'w-64 px-3')}
+    >
+      <div className={collapsed ? 'flex justify-center' : 'px-2'}>
+        <Logo compact={collapsed} />
       </div>
-      <button
-        type="button"
-        onClick={() => openLookup()}
-        className="mx-1 mt-5 flex h-10 items-center gap-2 rounded-xl border border-line bg-surface-2/60 px-3 text-sm text-muted shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] transition hover:border-brand-300 hover:text-ink"
-      >
-        <Search className="h-4 w-4" />
-        <span className="flex-1 text-left">Tra từ nhanh…</span>
-        <Kbd>Ctrl K</Kbd>
-      </button>
+      {collapsed ? (
+        <button
+          type="button"
+          onClick={() => openLookup()}
+          className={cn(ICON_BUTTON, 'mx-auto mt-5 border border-line bg-surface-2/60')}
+          aria-label="Tra từ nhanh (Ctrl K)"
+          title="Tra từ nhanh (Ctrl K)"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => openLookup()}
+          className="mx-1 mt-5 flex h-10 items-center gap-2 rounded-xl border border-line bg-surface-2/60 px-3 text-sm text-muted shadow-[inset_0_1px_2px_rgb(0_0_0/0.04)] transition hover:border-brand-300 hover:text-ink"
+        >
+          <Search className="h-4 w-4" />
+          <span className="flex-1 text-left">Tra từ nhanh…</span>
+          <Kbd>Ctrl K</Kbd>
+        </button>
+      )}
       <nav className="scrollbar-thin -mx-1 mt-3 flex-1 space-y-0.5 overflow-y-auto px-1" aria-label="Điều hướng chính">
         {nav.map((item, i) => (
           <div key={item.to}>
-            {item.group && item.group !== nav[i - 1]?.group && (
-              <p className="px-2 pb-1 pt-4 text-[11px] font-bold uppercase tracking-widest text-muted/80">{item.group}</p>
-            )}
-            <SidebarLink item={item} />
+            {item.group &&
+              item.group !== nav[i - 1]?.group &&
+              (collapsed ? (
+                // Thu gọn: tên nhóm thành vạch ngăn mảnh — vẫn thấy các mục được gom nhóm
+                <div aria-hidden className="mx-3 my-2.5 border-t border-line" />
+              ) : (
+                <p className="px-2 pb-1 pt-4 text-[11px] font-bold uppercase tracking-widest text-muted/80">{item.group}</p>
+              ))}
+            <SidebarLink item={item} collapsed={collapsed} />
           </div>
         ))}
       </nav>
       <div className="-mx-1 mt-2 space-y-0.5 border-t border-line px-1 pt-2">
         {secondary.map((item) => (
-          <SidebarLink key={item.to} item={item} compact />
+          <SidebarLink key={item.to} item={item} compact collapsed={collapsed} />
         ))}
       </div>
     </aside>
@@ -354,10 +412,24 @@ function UserMenu() {
 }
 
 function TopBar() {
-  const { openLookup } = useUi();
+  const { openLookup, sidebarCollapsed, toggleSidebar } = useUi();
+  const sidebarLabel = sidebarCollapsed ? 'Mở rộng thanh bên (Ctrl B)' : 'Thu gọn thanh bên (Ctrl B)';
   return (
     <header className="glass sticky top-0 z-20 border-b border-line">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-1 px-4 sm:gap-1.5 sm:px-6">
+        {/* Nút thu gọn thanh bên (máy tính): đặt ở thanh trên cùng như YouTube để không làm thanh bên dài thêm
+            (thêm một hàng ở cuối thanh sẽ đẩy mục cuối xuống dưới mép màn hình laptop) */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="sidebar"
+          aria-label={sidebarLabel}
+          title={sidebarLabel}
+          className={cn(ICON_BUTTON, 'hidden lg:-ml-2 lg:inline-flex')}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+        </button>
         <div className="lg:hidden">
           <Logo compact />
         </div>
@@ -386,12 +458,12 @@ export function PageFallback() {
 }
 
 export function AppShell({ children }: { children?: ReactNode }) {
-  const { openLookup, theme } = useUi();
+  const { openLookup, theme, toggleSidebar } = useUi();
   const location = useLocation();
   const navigationType = useNavigationType();
   const navType = useRef(navigationType);
   navType.current = navigationType;
-  useHotkeys({ 'mod+k': () => openLookup() });
+  useHotkeys({ 'mod+k': () => openLookup(), 'mod+b': toggleSidebar });
 
   useEffect(() => {
     applyTheme(theme);

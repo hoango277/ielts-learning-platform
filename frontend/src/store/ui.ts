@@ -28,9 +28,20 @@ export const KEY_AFTER_LOGIN = 'warmup-after-login';
 /** Vì sao hộp khởi động được mở — để chọn lời chào phù hợp */
 export type WarmupTrigger = 'login' | 'open' | 'return' | 'manual' | 'notification';
 
+function readSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem('sidebar-collapsed') === '1';
+  } catch {
+    return false;
+  }
+}
+
 interface UiState {
   theme: Theme;
   setTheme: (t: Theme) => void;
+  /** Thanh điều hướng trái thu gọn thành cột biểu tượng (máy tính) — nhớ cho mọi trang và lần mở sau */
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
   lookup: LookupState;
   openLookup: (term?: string) => void;
   closeLookup: () => void;
@@ -50,6 +61,17 @@ export const useUi = create<UiState>((set) => ({
     applyTheme(theme);
     set({ theme });
   },
+  sidebarCollapsed: readSidebarCollapsed(),
+  toggleSidebar: () =>
+    set((s) => {
+      const sidebarCollapsed = !s.sidebarCollapsed;
+      try {
+        localStorage.setItem('sidebar-collapsed', sidebarCollapsed ? '1' : '0');
+      } catch {
+        /* chế độ ẩn danh: chỉ nhớ trong phiên */
+      }
+      return { sidebarCollapsed };
+    }),
   lookup: { open: false, term: '' },
   openLookup: (term = '') => set({ lookup: { open: true, term } }),
   closeLookup: () => set((s) => ({ lookup: { ...s.lookup, open: false } })),

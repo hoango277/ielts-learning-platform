@@ -14,6 +14,7 @@ import {
   Pause,
   PenLine,
   Play,
+  RectangleHorizontal,
   Repeat,
   RotateCcw,
   SkipBack,
@@ -36,6 +37,7 @@ import { ChannelAvatar } from '../../components/video/VideoCard';
 import { useSettings } from '../../components/word/bits';
 import { WordPopover, type PopoverTarget } from '../../components/word/WordPopover';
 import { useHotkeys } from '../../hooks/useHotkeys';
+import { useLocalStorage } from '../../hooks/misc';
 import { PLAYER_ERRORS, useYouTubePlayer, type PlayerApi } from '../../hooks/useYouTubePlayer';
 import { api } from '../../lib/api';
 import type { Transcript, VideoDetails, VideoState } from '../../lib/types';
@@ -66,9 +68,11 @@ function ShortcutsHelp({ open, onClose }: { open: boolean; onClose: () => void }
     ['H', 'Ẩn/hiện phụ đề (luyện nghe)'],
     ['[ / ]', 'Giảm / tăng tốc độ'],
     ['1 / 2 / 3', 'Chế độ Xem / Shadowing / Chép chính tả'],
+    ['W', 'Chế độ rạp: video rộng hết khung (máy tính)'],
     ['R', 'Ghi âm (chế độ Shadowing)'],
     ['Ctrl', 'Nghe lại (khi đang gõ chép chính tả)'],
     ['Ctrl + K', 'Tra từ nhanh'],
+    ['Ctrl + B', 'Thu gọn / mở rộng thanh bên'],
   ];
   return (
     <Modal open={open} onClose={onClose} title="Phím tắt" size="sm">
@@ -279,6 +283,8 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
   const [pop, setPop] = useState<PopoverTarget | null>(null);
   const [help, setHelp] = useState(false);
   const [phraseDraft, setPhraseDraft] = useState<PhraseDraft | null>(null);
+  // Chế độ rạp (máy tính): video rộng hết khung, bảng phụ đề / luyện tập xuống dưới — nhớ cho lần sau
+  const [theatre, setTheatre] = useLocalStorage('watch-theatre', false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Lấy giá trị mặc định từ Cài đặt một lần khi mở video (không ghi đè lựa chọn trong lúc xem)
@@ -423,6 +429,7 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
     '3': () => switchMode('dictation'),
     '?': () => setHelp(true),
     b: () => current >= 0 && savePhraseAt(current),
+    w: () => setTheatre((v) => !v),
   });
 
   const upload = useMutation({
@@ -464,133 +471,160 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <div className="min-w-0 space-y-4">
-        <div className="sticky top-14 z-10 -mx-4 bg-bg px-4 pb-2 pt-1  sm:-mx-6 sm:px-6 xl:static xl:mx-0 xl:bg-transparent xl:p-0">
-          <Player player={player} videoId={id} />
-        </div>
-
-        {mode === 'watch' && (
-          <SubtitleBar
-            tokens={activeTokens}
-            translation={translations[activeIndex]}
-            showTranslation={showTranslation}
-            hidden={hideSubs}
-            timeStore={player.timeStore}
-            onWordClick={onWordClick(activeIndex)}
-            index={activeIndex}
-            total={sentences.length}
-            autoPaused={autoPause && !player.playing && activeIndex >= 0 && playback.autoPausedIndex === activeIndex}
-            onResume={playback.resume}
-            onDisableAutoPause={() => {
-              toggleAutoPause(false);
-              playback.resume();
-            }}
-          />
-        )}
-
-        {/* Thanh điều khiển */}
-        <div className="card flex flex-wrap items-center gap-2 p-2.5">
-          <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" onClick={prev} aria-label="Câu trước (←)" title="Câu trước (←)">
-              <SkipBack className="h-5 w-5" />
-            </Button>
-            <Button size="icon" variant="ghost" onClick={replay} aria-label="Nghe lại câu (↑)" title="Nghe lại câu (↑)">
-              <RotateCcw className="h-5 w-5" />
-            </Button>
-            <Button size="icon" variant="primary" onClick={togglePlay} aria-label={player.playing ? 'Tạm dừng (Space)' : 'Phát (Space)'} className="h-11 w-11 rounded-full">
-              {player.playing ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />}
-            </Button>
-            <Button size="icon" variant="ghost" onClick={next} aria-label="Câu sau (→)" title="Câu sau (→)">
-              <SkipForward className="h-5 w-5" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-1 rounded-xl bg-surface-2 px-2 py-1" title="Tốc độ phát ([ / ])">
-            <Timer className="h-4 w-4 text-muted" />
-            <select
-              value={player.rate}
-              onChange={(e) => player.setRate(Number(e.target.value))}
-              aria-label="Tốc độ phát"
-              className="cursor-pointer bg-transparent text-sm font-semibold text-ink focus:outline-none"
-            >
-              {SPEEDS.map((s) => (
-                <option key={s} value={s}>
-                  {s}×
-                </option>
-              ))}
-            </select>
-          </div>
-          {mode === 'watch' && (
-            <>
-              <ToggleChip on={autoPause} onClick={() => toggleAutoPause()} icon={<Pause className="h-4 w-4" />} label="Tự dừng" title="Video tự tạm dừng sau mỗi câu để bạn kịp nhại lại (phím A)" />
-              <ToggleChip on={loop} onClick={() => setLoop((v) => !v)} icon={<Repeat className="h-4 w-4" />} label="Lặp câu" title="Phát đi phát lại câu hiện tại (phím L)" />
-              <ToggleChip on={hideSubs} onClick={() => setHideSubs((v) => !v)} icon={hideSubs ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} label="Che phụ đề" title="Làm mờ phụ đề để luyện nghe (phím H)" />
-            </>
+      {/*
+        Chế độ rạp chỉ đổi bố cục bằng CSS: cột trái thành `display: contents` để khung video trải hết hai cột,
+        nội dung + bảng bên xuống hàng dưới. Cây DOM giữ nguyên → khung YouTube không bị dựng lại, video không tải lại.
+      */}
+      <div className={cn('min-w-0 space-y-4', theatre && 'xl:contents')}>
+        <div
+          className={cn(
+            'sticky top-14 z-10 -mx-4 bg-bg px-4 pb-2 pt-1 sm:-mx-6 sm:px-6 xl:static',
+            theatre ? 'xl:col-span-2 xl:-mt-5 xl:mb-0 xl:bg-black xl:py-4' : 'xl:mx-0 xl:bg-transparent xl:p-0',
           )}
-          <ToggleChip on={showTranslation} onClick={() => setShowTranslation((v) => !v)} icon={<Languages className="h-4 w-4" />} label="Song ngữ" title="Hiện thêm bản dịch tiếng Việt dưới phụ đề tiếng Anh (phím T)" />
-          <DifficultyChip videoId={id} onClick={() => setSide('level')} />
-          <span className="ml-auto hidden font-mono text-xs text-muted sm:inline">
-            {current >= 0 && sentences[current] ? formatTime(sentences[current].start) : '0:00'} / {formatTime(player.duration || details.data?.durationSec || 0)}
-          </span>
-          <Button size="icon-sm" variant="ghost" onClick={() => setHelp(true)} aria-label="Phím tắt" title="Phím tắt (?)">
-            <Keyboard className="h-4 w-4" />
-          </Button>
+        >
+          {/* Rạp: video cao tối đa vừa màn hình (chừa chỗ thanh trên cùng), canh giữa trên nền đen */}
+          <div className={cn(theatre && 'xl:mx-auto xl:max-w-[calc((100dvh-9.5rem)*16/9)]')}>
+            <Player player={player} videoId={id} />
+          </div>
         </div>
 
-        <Segmented<Mode>
-          value={mode}
-          onChange={switchMode}
-          ariaLabel="Chế độ học"
-          className="w-full [&>button]:flex-1"
-          options={[
-            { value: 'watch', label: <><Tv className="h-4 w-4" /> <span className="sm:hidden">Xem</span><span className="hidden sm:inline">Xem & tra từ</span></>, title: 'Xem video, bấm vào từ để tra nghĩa (phím 1)' },
-            { value: 'shadow', label: <><Mic className="h-4 w-4" /> Nói đuổi</>, title: 'Shadowing: nghe từng câu rồi nhại lại, app chấm từ nào bạn nói khớp (phím 2)' },
-            { value: 'dictation', label: <><PenLine className="h-4 w-4" /> <span className="sm:hidden">Chính tả</span><span className="hidden sm:inline">Chép chính tả</span></>, title: 'Nghe từng câu rồi gõ lại chính xác (phím 3)' },
-          ]}
-        />
+        <div className={cn('min-w-0 space-y-4', theatre && 'xl:col-start-1 xl:row-start-2')}>
+          {mode === 'watch' && (
+            <SubtitleBar
+              tokens={activeTokens}
+              translation={translations[activeIndex]}
+              showTranslation={showTranslation}
+              hidden={hideSubs}
+              timeStore={player.timeStore}
+              onWordClick={onWordClick(activeIndex)}
+              index={activeIndex}
+              total={sentences.length}
+              autoPaused={autoPause && !player.playing && activeIndex >= 0 && playback.autoPausedIndex === activeIndex}
+              onResume={playback.resume}
+              onDisableAutoPause={() => {
+                toggleAutoPause(false);
+                playback.resume();
+              }}
+            />
+          )}
 
-        {mode === 'shadow' && sentences.length > 0 && (
-          <ShadowingPanel
-            sentences={sentences}
-            tokens={tokenized[practiceIndex]}
-            index={practiceIndex}
-            setIndex={setPracticeIndex}
-            player={player}
-            playSentence={playback.playSentence}
-            videoId={id}
-            translation={translations[practiceIndex]}
-            repeat={settings?.shadowRepeat ?? 1}
-            onWordClick={onWordClick(practiceIndex)}
-          />
-        )}
-        {mode === 'dictation' && sentences.length > 0 && (
-          <DictationPanel
-            sentences={sentences}
-            index={practiceIndex}
-            setIndex={setPracticeIndex}
-            player={player}
-            playSentence={playback.playSentence}
-            videoId={id}
-            translation={translations[practiceIndex]}
-          />
-        )}
-        {mode !== 'watch' && !sentences.length && !transcriptQ.isPending && (
-          <EmptyState icon="🎧" title="Cần phụ đề để luyện" description="Video này chưa có phụ đề. Hãy tải lên file .srt/.vtt hoặc chọn video khác." />
-        )}
+          {/* Thanh điều khiển */}
+          <div className="card flex flex-wrap items-center gap-2 p-2.5">
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" onClick={prev} aria-label="Câu trước (←)" title="Câu trước (←)">
+                <SkipBack className="h-5 w-5" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={replay} aria-label="Nghe lại câu (↑)" title="Nghe lại câu (↑)">
+                <RotateCcw className="h-5 w-5" />
+              </Button>
+              <Button size="icon" variant="primary" onClick={togglePlay} aria-label={player.playing ? 'Tạm dừng (Space)' : 'Phát (Space)'} className="h-11 w-11 rounded-full">
+                {player.playing ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />}
+              </Button>
+              <Button size="icon" variant="ghost" onClick={next} aria-label="Câu sau (→)" title="Câu sau (→)">
+                <SkipForward className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-1 rounded-xl bg-surface-2 px-2 py-1" title="Tốc độ phát ([ / ])">
+              <Timer className="h-4 w-4 text-muted" />
+              <select
+                value={player.rate}
+                onChange={(e) => player.setRate(Number(e.target.value))}
+                aria-label="Tốc độ phát"
+                className="cursor-pointer bg-transparent text-sm font-semibold text-ink focus:outline-none"
+              >
+                {SPEEDS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}×
+                  </option>
+                ))}
+              </select>
+            </div>
+            {mode === 'watch' && (
+              <>
+                <ToggleChip on={autoPause} onClick={() => toggleAutoPause()} icon={<Pause className="h-4 w-4" />} label="Tự dừng" title="Video tự tạm dừng sau mỗi câu để bạn kịp nhại lại (phím A)" />
+                <ToggleChip on={loop} onClick={() => setLoop((v) => !v)} icon={<Repeat className="h-4 w-4" />} label="Lặp câu" title="Phát đi phát lại câu hiện tại (phím L)" />
+                <ToggleChip on={hideSubs} onClick={() => setHideSubs((v) => !v)} icon={hideSubs ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} label="Che phụ đề" title="Làm mờ phụ đề để luyện nghe (phím H)" />
+              </>
+            )}
+            <ToggleChip on={showTranslation} onClick={() => setShowTranslation((v) => !v)} icon={<Languages className="h-4 w-4" />} label="Song ngữ" title="Hiện thêm bản dịch tiếng Việt dưới phụ đề tiếng Anh (phím T)" />
+            <DifficultyChip videoId={id} onClick={() => setSide('level')} />
+            <ToggleChip
+              on={theatre}
+              onClick={() => setTheatre((v) => !v)}
+              icon={<RectangleHorizontal className="h-4 w-4" />}
+              label="Rạp"
+              title="Chế độ rạp: video rộng hết khung, phụ đề và bảng luyện xuống dưới (phím W)"
+              className="hidden xl:inline-flex"
+            />
+            <span className="ml-auto hidden font-mono text-xs text-muted sm:inline">
+              {current >= 0 && sentences[current] ? formatTime(sentences[current].start) : '0:00'} / {formatTime(player.duration || details.data?.durationSec || 0)}
+            </span>
+            <Button size="icon-sm" variant="ghost" onClick={() => setHelp(true)} aria-label="Phím tắt" title="Phím tắt (?)">
+              <Keyboard className="h-4 w-4" />
+            </Button>
+          </div>
 
-        <VideoInfo
-          details={details.data}
-          state={state}
-          transcript={transcript}
-          track={track}
-          setTrack={setTrack}
-          onUpload={() => fileRef.current?.click()}
-          onResetUpload={() => resetUpload.mutate()}
-        />
-        {details.error && <ErrorBox error={details.error} onRetry={() => details.refetch()} />}
+          <Segmented<Mode>
+            value={mode}
+            onChange={switchMode}
+            ariaLabel="Chế độ học"
+            className="w-full [&>button]:flex-1"
+            options={[
+              { value: 'watch', label: <><Tv className="h-4 w-4" /> <span className="sm:hidden">Xem</span><span className="hidden sm:inline">Xem & tra từ</span></>, title: 'Xem video, bấm vào từ để tra nghĩa (phím 1)' },
+              { value: 'shadow', label: <><Mic className="h-4 w-4" /> Nói đuổi</>, title: 'Shadowing: nghe từng câu rồi nhại lại, app chấm từ nào bạn nói khớp (phím 2)' },
+              { value: 'dictation', label: <><PenLine className="h-4 w-4" /> <span className="sm:hidden">Chính tả</span><span className="hidden sm:inline">Chép chính tả</span></>, title: 'Nghe từng câu rồi gõ lại chính xác (phím 3)' },
+            ]}
+          />
+
+          {mode === 'shadow' && sentences.length > 0 && (
+            <ShadowingPanel
+              sentences={sentences}
+              tokens={tokenized[practiceIndex]}
+              index={practiceIndex}
+              setIndex={setPracticeIndex}
+              player={player}
+              playSentence={playback.playSentence}
+              videoId={id}
+              translation={translations[practiceIndex]}
+              repeat={settings?.shadowRepeat ?? 1}
+              onWordClick={onWordClick(practiceIndex)}
+            />
+          )}
+          {mode === 'dictation' && sentences.length > 0 && (
+            <DictationPanel
+              sentences={sentences}
+              index={practiceIndex}
+              setIndex={setPracticeIndex}
+              player={player}
+              playSentence={playback.playSentence}
+              videoId={id}
+              translation={translations[practiceIndex]}
+            />
+          )}
+          {mode !== 'watch' && !sentences.length && !transcriptQ.isPending && (
+            <EmptyState icon="🎧" title="Cần phụ đề để luyện" description="Video này chưa có phụ đề. Hãy tải lên file .srt/.vtt hoặc chọn video khác." />
+          )}
+
+          <VideoInfo
+            details={details.data}
+            state={state}
+            transcript={transcript}
+            track={track}
+            setTrack={setTrack}
+            onUpload={() => fileRef.current?.click()}
+            onResetUpload={() => resetUpload.mutate()}
+          />
+          {details.error && <ErrorBox error={details.error} onRetry={() => details.refetch()} />}
+        </div>
       </div>
 
-      {/* Panel bên phải */}
-      <aside className="card flex h-[75vh] min-h-[420px] flex-col overflow-hidden xl:sticky xl:top-20 xl:h-[calc(100dvh-6.5rem)]">
+      {/* Panel bên phải (chế độ rạp: nằm hàng dưới, cạnh bảng luyện tập) */}
+      <aside
+        className={cn(
+          'card flex h-[75vh] min-h-105 flex-col overflow-hidden xl:sticky xl:top-20 xl:h-[calc(100dvh-6.5rem)]',
+          theatre && 'xl:col-start-2 xl:row-start-2',
+        )}
+      >
         <div role="tablist" aria-label="Bảng bên" className="flex border-b border-line">
           {sideTabs.map((t) => {
             const Icon = t.icon;
@@ -677,7 +711,21 @@ function WatchView({ id, start, state, initialMode }: { id: string; start: numbe
   );
 }
 
-function ToggleChip({ on, onClick, icon, label, title }: { on: boolean; onClick: () => void; icon: React.ReactNode; label: string; title: string }) {
+function ToggleChip({
+  on,
+  onClick,
+  icon,
+  label,
+  title,
+  className,
+}: {
+  on: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  title: string;
+  className?: string;
+}) {
   return (
     <button
       type="button"
@@ -687,6 +735,7 @@ function ToggleChip({ on, onClick, icon, label, title }: { on: boolean; onClick:
       className={cn(
         'inline-flex h-9 items-center gap-1.5 rounded-xl px-3 font-display text-sm font-bold transition active:scale-95',
         on ? 'bg-brand-500 text-white shadow-[inset_0_-2px_0_rgb(0_0_0/0.18),0_4px_10px_-4px_color-mix(in_oklab,var(--color-brand-500)_70%,transparent)]' : 'bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink',
+        className,
       )}
     >
       {icon}

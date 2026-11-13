@@ -34,8 +34,9 @@ export function useHotkeys(map: Record<string, Handler>, enabled = true, scope: 
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
-      // defaultPrevented: một thành phần khác đã xử lý phím này (vd. thẻ giải thích thuật ngữ)
-      if (e.isComposing || e.repeat || e.defaultPrevented) return;
+      // defaultPrevented: một thành phần khác đã xử lý phím này (vd. thẻ giải thích thuật ngữ).
+      // Không có e.key: sự kiện giả của trình duyệt khi tự điền mật khẩu/biểu mẫu — không phải người dùng bấm phím
+      if (!e.key || e.isComposing || e.repeat || e.defaultPrevented) return;
       const name = keyName(e);
       const fn = ref.current[name];
       if (!fn) return;

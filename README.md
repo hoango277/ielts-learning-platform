@@ -137,8 +137,9 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
   - **Xem & tra từ**: tự dừng sau mỗi câu, lặp câu, che phụ đề để luyện nghe, chỉnh tốc độ 0.5×–1.5×.
   - **Shadowing**: nghe câu (lặp N lần) → **ghi âm** → nhận dạng giọng nói (Web Speech API) → **chấm điểm từng từ** (đúng / sai / thiếu), nghe lại giọng mình và bản gốc; chế độ tự động nghe → ghi âm → qua câu khi ≥ 80%; “nói cùng lúc” khi đeo tai nghe.
   - **Chép chính tả** (giống Daily Dictation): nghe câu, gõ lại, gợi ý từng từ, nghe chậm, so khớp có tô màu lỗi; transcript phía sau được làm mờ để không lộ đáp án.
+- **Chế độ rạp** (máy tính, màn hình rộng ≥ 1280px): nút **“Rạp”** hoặc phím `W` — video trải rộng hết khung trên nền tối, cao vừa màn hình; thanh điều khiển / bảng nói đuổi và transcript chuyển xuống dưới video. Dùng được ở cả 3 chế độ; bật/tắt không làm video tải lại hay mất chỗ đang xem; app nhớ lựa chọn cho lần sau.
 - Ghi chú theo mốc thời gian, lưu video, theo dõi tiến độ xem / số câu shadowing / chính tả; tải lên phụ đề **.srt/.vtt** cho video không có phụ đề.
-- Phím tắt: `Space` phát/dừng · `←/→` câu trước/sau · `↑` nghe lại · `A` tự dừng · `L` lặp · `T` song ngữ · `H` che phụ đề · `[ ]` tốc độ · `1/2/3` chế độ · `R` ghi âm · `Ctrl` nghe lại khi đang gõ · `Ctrl+K` tra từ nhanh.
+- Phím tắt: `Space` phát/dừng · `←/→` câu trước/sau · `↑` nghe lại · `A` tự dừng · `L` lặp · `T` song ngữ · `H` che phụ đề · `[ ]` tốc độ · `1/2/3` chế độ · `W` chế độ rạp · `R` ghi âm · `Ctrl` nghe lại khi đang gõ · `Ctrl+K` tra từ nhanh · `Ctrl+B` thu gọn / mở rộng thanh bên.
 
 ### 3. Sổ từ vựng
 - Lọc theo trạng thái (Mới / Đang học / Đang ôn / Thành thạo / **Đã thuộc** / Đến hạn / ⭐), nguồn (video / chủ đề / tự thêm), tag; tìm kiếm, sắp xếp (mới thêm, A→Z, sắp đến hạn, **hay sai nhất**).
@@ -215,6 +216,7 @@ Sao lưu: chép file `.db` khi server đã dừng, hoặc chạy `VACUUM INTO` k
 - Bảng màu **“Mực ngọc”**: nền giấy kem, chữ mực đen ấm, màu chính xanh ngọc như mực bút máy, điểm nhấn cam đất; giao diện tối nền than ấm. Thang màu Tailwind được làm dịu theo bảng **Flexoki** nhưng **giữ nguyên độ sáng từng bậc**, nên độ tương phản chữ/nền không đổi. Font **Be Vietnam Pro** (chữ thường) + **Nunito** (tiêu đề, nút).
 - Hình minh hoạ 3D một phong cách xuyên suốt: ảnh 3D **Fluent Emoji** cho chủ đề, dạng bài, huy hiệu, trạng thái trống, khối chào mỗi trang (component `Emoji3D`, emoji chưa có ảnh thì hiện emoji thường); **cảnh 3D WebGL** “4 kỹ năng IELTS” (three.js, tải lười) ở trang đăng nhập/đăng ký — nghiêng theo chuột, giảm còn ~30 khung hình/giây khi để yên và dừng hẳn sau 20 giây, dừng khi ẩn tab; máy không có WebGL thì hiện ảnh 3D tĩnh.
 - Bố cục gọn: thanh bên gom theo việc cần làm (Trang chủ, Ôn tập → Nghe & xem → Từ vựng → Nói → Tiến độ), biểu tượng một màu, mục phụ (Thuật ngữ, Cài đặt) ở dưới cùng; mỗi khối chào chỉ một câu giới thiệu.
+- **Thu gọn thanh bên** (máy tính, mọi trang): nút thu gọn ở đầu thanh trên cùng, sát thanh bên (giống YouTube), hoặc `Ctrl+B` → thanh bên chỉ còn cột biểu tượng để nhường chỗ cho nội dung; rê chuột hiện tên mục, mục có việc chờ (vd. thẻ đến hạn ôn) hiện chấm cam. App nhớ lựa chọn khi chuyển trang và lần mở sau.
 - Hiệu năng: không có animation trang trí lặp vô hạn, không `backdrop-filter`/`filter: blur` trên vùng lớn (đo trên máy thật: CPU khi đứng yên ở Trang chủ từ ~100% một nhân còn ~0%). Nút và thẻ “nổi khối” bấm lún xuống, chuyển trang mượt bằng View Transitions — mọi hiệu ứng tự tắt khi hệ điều hành bật giảm chuyển động.
 
 ---
